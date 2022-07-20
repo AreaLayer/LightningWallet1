@@ -1,6 +1,11 @@
-import testWallets from '../../testWallets'
-
-import { createBrowser, importWallet, selectSendCurrency, takeScreenshot, timeOut } from '../utils'
+import {
+  createBrowser,
+  importWallet,
+  selectSendCurrency,
+  takeScreenshot,
+  timeOut,
+  testWallets,
+} from '../utils'
 
 const amount = 50_000e-8
 
@@ -13,17 +18,17 @@ describe('Send', () => {
 
     try {
       await importWallet({
-        page: page,
-        seed: testWallets.btcMTaker.seedPhrase.split(' '),
+        page,
+        seed: testWallets.btcToEthTokenMTaker.seedPhrase.split(' '),
       })
 
       await page.waitForSelector('#btcAddress') // waits for Maker wallet to load
 
       await timeOut(3 * 1000)
 
-      const recoveredMakerBtcAddress = await page.$eval('#btcAddress', el => el.textContent)
+      const recoveredBtcAddress = await page.$eval('#btcAddress', el => el.textContent)
 
-      expect(recoveredMakerBtcAddress).toBe(testWallets.btcMTaker.address)
+      expect(recoveredBtcAddress).toBe(testWallets.btcToEthTokenMTaker.address)
 
     } catch (error) {
       await takeScreenshot(page, 'SendBTC_RestoreWalletError')
@@ -34,9 +39,9 @@ describe('Send', () => {
     try {
       await timeOut(3 * 1000)
 
-      await selectSendCurrency({page: page, currency: 'btc'})
+      await selectSendCurrency({ page, currency: 'btc' })
 
-      await page.type('#toAddressInput', testWallets.btcMMaker.address)
+      await page.type('#toAddressInput', testWallets.btcToEthTokenMMaker.address)
 
       await page.type('#amountInput', amount.toString())
 
@@ -55,7 +60,7 @@ describe('Send', () => {
         }
       })
 
-      await page.waitForSelector('#txAmout', {timeout: 60 * 1000})
+      await page.waitForSelector('#txAmout', { timeout: 60 * 1000 })
       const btcTxAmout  = await page.$eval('#txAmout', el => el.textContent)
 
       await takeScreenshot(page, 'SendBTC_TxInfo')

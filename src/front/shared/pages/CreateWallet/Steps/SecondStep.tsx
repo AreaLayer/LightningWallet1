@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import CSSModules from 'react-css-modules'
-import styles from '../CreateWallet.scss'
 import reducers from 'redux/core/reducers'
 
 import { FormattedMessage, injectIntl } from 'react-intl'
@@ -9,6 +8,9 @@ import { isMobile } from 'react-device-detect'
 import actions from 'redux/actions'
 import { constants } from 'helpers'
 import feedback from 'shared/helpers/feedback'
+import Button from 'components/controls/Button/Button'
+
+import styles from '../CreateWallet.scss'
 import Explanation from '../Explanation'
 import icons from '../images'
 import Cupture, {
@@ -17,20 +19,18 @@ import Cupture, {
   cupture2,
 } from './texts'
 
-
-const SecondStep = (props) => {
-  const { 
-    intl: { locale }, 
-    onClick, 
-    currencies, 
-    error, 
-    setError, 
-    forcedCurrencyData, 
+function SecondStep(props) {
+  const {
+    intl: { locale },
+    onClick,
+    currencies,
+    error,
+    setError,
+    forcedCurrencyData,
     btcData,
   } = props
 
   const _protection = {
-    sms: {},
     pin: {
       btc: true,
     },
@@ -41,7 +41,6 @@ const SecondStep = (props) => {
 
   const _activated = {
     nothing: {},
-    sms: {},
     pin: {},
     g2fa: {},
     multisign: {},
@@ -49,38 +48,33 @@ const SecondStep = (props) => {
   }
 
   const { hiddenCoinsList } = constants.localStorage
-  //@ts-ignore: strictNullChecks
+  // @ts-ignore: strictNullChecks
   const hiddenCoins = JSON.parse(localStorage.getItem(hiddenCoinsList))
 
   if (currencies.BTC) {
-    //@ts-ignore
-    _protection.sms.btc = true
-    //@ts-ignore
+    // @ts-ignore
     _protection.pin.btc = true
-    //@ts-ignore
+    // @ts-ignore
     _protection.g2fa.btc = false
-    //@ts-ignore
+    // @ts-ignore
     _protection.multisign.btc = true
-    //@ts-ignore
+    // @ts-ignore
     _protection.fingerprint.btc = true
-    //@ts-ignore
+    // @ts-ignore
     _activated.nothing.btc = btcData.balance > 0 || (hiddenCoins.length ? !hiddenCoins.includes('BTC') && !hiddenCoins.includes(`BTC:${btcData.address}`) : false)
-    //@ts-ignore
-    _activated.sms.btc = actions.btcmultisig.checkSMSActivated()
-    //@ts-ignore
+    // @ts-ignore
     _activated.pin.btc = actions.btcmultisig.checkPINActivated()
-    //@ts-ignore
+    // @ts-ignore
     _activated.g2fa.btc = actions.btcmultisig.checkG2FAActivated()
-    //@ts-ignore
+    // @ts-ignore
     _activated.multisign.btc = actions.btcmultisig.checkUserActivated()
-    //@ts-ignore
+    // @ts-ignore
     _activated.fingerprint.btc = false
   }
 
   const [border, setBorder] = useState({
     color: {
       withoutSecure: false,
-      sms: false,
       pin: false,
       google2FA: false,
       multisignature: false,
@@ -94,20 +88,19 @@ const SecondStep = (props) => {
 
   const [isFingerprintFeatureAsked, setFingerprintFeatureAsked] = useState(false)
   const [isTrivialFeatureAsked, setTrivialFeatureAsked] = useState(false)
-  const [isSmsFeatureAsked, setSmsFeatureAsked] = useState(false)
   const [isPinFeatureAsked, setPinFeatureAsked] = useState(false)
   const [is2FAFeatureAsked, set2FAFeatureAsked] = useState(false)
   const [isMultisigFeatureAsked, setMultisigFeatureAsked] = useState(false)
 
   useEffect(() => {
     try {
-      //@ts-ignore
+      // @ts-ignore
       if (typeof PublicKeyCredential !== 'undefined') {
         // eslint-disable-next-line no-undef
-        //@ts-ignore
+        // @ts-ignore
         if (thisComponentInitHelper.current && PublicKeyCredential) {
           // eslint-disable-next-line no-undef
-          //@ts-ignore
+          // @ts-ignore
           PublicKeyCredential
             .isUserVerifyingPlatformAuthenticatorAvailable()
             .then(result => {
@@ -190,29 +183,6 @@ const SecondStep = (props) => {
         feedback.createWallet.securitySelected(`${currencyName}-normal`)
       },
     },
-    /*
-    {
-      text: 'SMS',
-      name: 'sms',
-      capture: {
-        en: 'Verify your transactions via SMS code',
-        ru: 'Транзакции подтверждаются кодом по SMS',
-        nl: 'Verifieer uw transacties via SMS code',
-        es: 'Verifique sus transacciones mediante código SMS',
-        pl: 'Zweryfikuj swoje transakcje za pomocą kodu SMS',
-      }[locale],
-      // enabled: _protection.sms[currencyKey],
-      enabled: false, // sms temporarly disabled
-      activated: _activated.sms[currencyKey],
-      onClickHandler: () => {
-        if (isSmsFeatureAsked) {
-          return null
-        }
-        setSmsFeatureAsked(true)
-        feedback.createWallet.securitySelected(`${currencyName}-sms`)
-      },
-    },
-    */
     {
       text: 'PIN',
       name: 'pin',
@@ -299,13 +269,14 @@ const SecondStep = (props) => {
 
   return (
     <div>
-      {!isMobile && !forcedCurrencyData &&
-        <div>
-          <Explanation subHeaderText={subHeaderText1()} step={1} notMain>
-            <Cupture />
-          </Explanation>
-        </div>
-      }
+      {!isMobile && !forcedCurrencyData
+        && (
+          <div>
+            <Explanation subHeaderText={subHeaderText1()} step={1} notMain>
+              <Cupture />
+            </Explanation>
+          </div>
+        )}
       <div>
         <div>
           <Explanation subHeaderText={subHeaderText2()} step={2} isShow={forcedCurrencyData}>
@@ -334,12 +305,13 @@ const SecondStep = (props) => {
                   }}
                 >
                   <div styleName="ind">
-                    {(!enabled || activated) &&
-                      <em>
-                        {!activated && <FormattedMessage id="createWalletSoon" defaultMessage="Soon!" />}
-                        {activated && <FormattedMessage id="createWalletActivated" defaultMessage="Activated!" />}
-                      </em>
-                    }
+                    {(!enabled || activated)
+                      && (
+                        <em>
+                          {!activated && <FormattedMessage id="createWalletSoon" defaultMessage="Soon!" />}
+                          {activated && <FormattedMessage id="createWalletActivated" defaultMessage="Activated!" />}
+                        </em>
+                      )}
                   </div>
                   <div styleName="flex">
                     <div styleName="logo securityIcon">
@@ -361,14 +333,14 @@ const SecondStep = (props) => {
             })}
           </div>
         </div>
-        <button
+        <Button
           id="createWalletBtn"
-          styleName="continue"
-          onClick={handleFinish}
+          styleName="stepButton"
           disabled={error || border.selected === '' || border.selected === 'fingerprint'}
+          onClick={handleFinish}
         >
           <FormattedMessage id="createWalletButton3" defaultMessage="Create Wallet" />
-        </button>
+        </Button>
       </div>
     </div>
   )

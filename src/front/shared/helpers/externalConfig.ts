@@ -24,7 +24,7 @@ const initExternalConfig = () => {
 
     Object.keys(config[standard]).forEach((tokenSymbol) => {
       if (!constants.COIN_DATA[tokenSymbol]) {
-        util[standard].register(tokenSymbol, config[standard][tokenSymbol].decimals)
+        util.tokenRegistrar[standard].register(tokenSymbol, config[standard][tokenSymbol].decimals)
       }
     })
   })
@@ -43,9 +43,15 @@ const externalConfig = () => {
       bnb: true,
       matic: true,
       arbeth: true,
+      aureth: true,
+      xdai: true,
+      ftm: true,
+      avax: true,
+      movr: true,
+      one: true,
       btc: true,
       ghost: true,
-      next: true,
+      next: false,
     },
     blockchainSwapEnabled: {
       btc: true,
@@ -53,13 +59,23 @@ const externalConfig = () => {
       bnb: false,
       matic: false,
       arbeth: false,
+      aureth: false,
+      xdai: false,
+      ftm: false,
+      avax: false,
+      movr: false,
+      one: false,
       ghost: true,
-      next: true,
+      next: false,
     },
+    L2_EVM_KEYS: ['aureth', 'arbeth'],
+    createWalletCoinsOrder: false,
+    buyFiatSupported: ['eth', 'matic'],
     defaultExchangePair: {
       buy: '{eth}wbtc',
       sell: 'btc',
     },
+    defaultQuickSell: false,
     ownTokens: false,
     addCustomTokens: true,
     invoiceEnabled: !config.isWidget,
@@ -80,8 +96,96 @@ const externalConfig = () => {
     activeFiat: 'USD',
     exchangeDisabled: false,
     ui: {
-      footerDisabled: false,
+      hideServiceLinks: false,
+      serviceLink: 'https://tools.onout.org/wallet',
+      farmLink: false, // use default link #/marketmaker
+      bannersSource: 'https://noxon.wpmix.net/swapBanners/banners.php',
+      disableInternalWallet: false,
+      faq: {
+        before: [/*
+          {
+            title: 'Faq title before 1',
+            content: 'Faq 1 content'
+          },
+          {
+            title: 'Faq title before 2',
+            content: 'Faq 2 content'
+          }
+        */],
+        after: [/*
+          {
+            title: 'Faq title after',
+            content: 'Faq content'
+          }
+        */]
+      },
+      menu: {
+        before: [/*
+          {
+            "title": "After",
+            "link": "https:\/\/google.com"
+          }
+        */],
+        after: []
+      },
     },
+  }
+
+  if (window
+    && window.SO_FaqBeforeTabs
+    && window.SO_FaqBeforeTabs.length
+  ) {
+    config.opts.ui.faq.before = window.SO_FaqBeforeTabs
+  }
+  if (window
+    && window.SO_FaqAfterTabs
+    && window.SO_FaqAfterTabs.length
+  ) {
+    config.opts.ui.faq.after = window.SO_FaqAfterTabs
+  }
+
+  if (window
+    && window.SO_MenuItemsBefore
+    && window.SO_MenuItemsBefore.length
+  ) {
+    config.opts.ui.menu.before = window.SO_MenuItemsBefore
+  }
+  if (window
+    && window.SO_MenuItemsAfter
+    && window.SO_MenuItemsAfter.length
+  ) {
+    config.opts.ui.menu.after = window.SO_MenuItemsAfter
+  }
+
+  if (window?.SO_disableInternalWallet) {
+    config.opts.ui.disableInternalWallet = window.SO_disableInternalWallet
+  }
+
+  if (window?.SO_addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase) {
+    config.opts.addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase = window.SO_addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase
+  }
+
+  if (window
+    && window.SO_fiatBuySupperted
+    && window.SO_fiatBuySupperted.length
+  ) {
+    config.opts.buyFiatSupported = window.SO_fiatBuySupperted
+  }
+  if (window
+    && window.SO_defaultQuickSell
+  ) {
+    config.opts.defaultQuickSell = window.SO_defaultQuickSell
+  }
+  if (window
+    && window.SO_defaultQuickBuy
+  ) {
+    config.opts.defaultQuickBuy = window.SO_defaultQuickBuy
+  }
+  if (window
+    && window.SO_createWalletCoinsOrder
+    && window.SO_createWalletCoinsOrder.length
+  ) {
+    config.opts.createWalletCoinsOrder = window.SO_createWalletCoinsOrder
   }
 
   if (window
@@ -91,9 +195,9 @@ const externalConfig = () => {
   }
 
   if (window
-    && window._ui_footerDisabled
+    && window.hideServiceLinks
   ) {
-    config.opts.ui.footerDisabled = window._ui_footerDisabled
+    config.opts.ui.hideServiceLinks = window.hideServiceLinks
   }
 
   if (window
@@ -143,9 +247,9 @@ const externalConfig = () => {
     config.opts.blockchainSwapEnabled.ghost = false
   }
 
-  if (window && window.CUR_NEXT_DISABLED === true) {
-    config.opts.curEnabled.next = false
-    config.opts.blockchainSwapEnabled.next = false
+  if (window && window.CUR_NEXT_DISABLED === false) {
+    config.opts.curEnabled.next = true
+    config.opts.blockchainSwapEnabled.next = true
   }
 
   if (window && window.CUR_ETH_DISABLED === true) {
@@ -168,6 +272,47 @@ const externalConfig = () => {
     config.opts.blockchainSwapEnabled.arbeth = false
   }
 
+  if (window && window.CUR_XDAI_DISABLED === true) {
+    config.opts.curEnabled.xdai = false
+    config.opts.blockchainSwapEnabled.xdai = false
+  }
+
+  if (window && window.CUR_FTM_DISABLED === true) {
+    config.opts.curEnabled.ftm = false
+    config.opts.blockchainSwapEnabled.ftm = false
+  }
+
+  if (window && window.CUR_AVAX_DISABLED === true) {
+    config.opts.curEnabled.avax = false
+    config.opts.blockchainSwapEnabled.avax = false
+  }
+
+  if (window && window.CUR_MOVR_DISABLED === true) {
+    config.opts.curEnabled.movr = false
+    config.opts.blockchainSwapEnabled.movr = false
+  }
+
+  if (window && window.CUR_ONE_DISABLED === true) {
+    config.opts.curEnabled.one = false
+    config.opts.blockchainSwapEnabled.one = false
+  }
+
+  if (window && window.CUR_AURORA_DISABLED === true) {
+    config.opts.curEnabled.aureth = false
+    config.opts.blockchainSwapEnabled.aureth = false
+  }
+
+  config.enabledEvmNetworks = Object.keys(config.evmNetworks)
+    .filter((key) => config.opts.curEnabled[key.toLowerCase()])
+    .reduce((acc, key) => {
+      acc[key] = config.evmNetworks[key]
+
+      return acc
+    }, {})
+
+  config.enabledEvmNetworkVersions = Object.values(config.enabledEvmNetworks).map(
+    (info: { networkVersion: number }) => info.networkVersion
+  )
 
   // Plugins
   if (window
@@ -210,17 +355,18 @@ const externalConfig = () => {
   }
 
   if (config?.isWidget || config?.opts.ownTokens?.length) {
-    if (config?.opts.ownTokens?.length) {
-      config.opts.ownTokens.forEach((token) => {
-        config[token.standard][token.name.toLowerCase()] = token
+    // THIS IS CODE FOR SHOW ALL WIDGET TOKENS IN WALLET BY DEFAULT
+    // if (config?.opts.ownTokens?.length) {
+    //   config.opts.ownTokens.forEach((token) => {
+    //     config[token.standard][token.name.toLowerCase()] = token
 
-        const baseCurrency = TOKEN_STANDARDS[token.standard].currency.toUpperCase()
-        const tokenName = token.name.toUpperCase()
-        const tokenValue = `{${baseCurrency}}${tokenName}`
+    //     const baseCurrency = TOKEN_STANDARDS[token.standard].currency.toUpperCase()
+    //     const tokenName = token.name.toUpperCase()
+    //     const tokenValue = `{${baseCurrency}}${tokenName}`
 
-        reducers.core.markCoinAsVisible(tokenValue)
-      })
-    }
+    //     reducers.core.markCoinAsVisible(tokenValue)
+    //   })
+    // }
 
     // Clean not uninitialized single-token
     // ? we can't use here as whole string {#WIDGETTOKENCODE#} ?
@@ -311,16 +457,18 @@ const externalConfig = () => {
 
     // add currency commissions for tokens
     if (hasTokenAdminFee) {
-      const feeObj = config.opts.fee
-
       Object.keys(TOKEN_STANDARDS).forEach((key) => {
         const standard = TOKEN_STANDARDS[key].standard.toLowerCase()
         const baseCurrency = TOKEN_STANDARDS[key].currency.toLowerCase()
-        const currencyFee = feeObj[baseCurrency]
+        const baseCurrencyFee = config.opts.fee[baseCurrency]
 
-        if (currencyFee?.min && currencyFee?.fee) {
-          feeObj[standard].min = currencyFee.min
-          feeObj[standard].fee = currencyFee.fee
+        if (!config.opts.fee[standard]) {
+          config.opts.fee[standard] = {}
+        }
+
+        if (baseCurrencyFee?.min && baseCurrencyFee?.fee && config.opts.fee[standard].address) {
+          config.opts.fee[standard].min = baseCurrencyFee.min
+          config.opts.fee[standard].fee = baseCurrencyFee.fee
         }
       })
     }

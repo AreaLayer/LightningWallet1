@@ -1,17 +1,10 @@
 import React, { ReactNode } from 'react'
 import cssModules from 'react-css-modules'
-import { constants } from 'helpers'
-import actions from 'redux/actions'
-import { FormattedMessage } from 'react-intl'
 import { isMobile } from 'react-device-detect'
-
 import cx from 'classnames'
-
-import Button from 'components/controls/Button/Button'
+import styles from './styles.scss'
 import FAQ from 'components/FAQ/FAQ'
 import { ModalConductorProvider } from 'components/modal'
-
-import styles from './styles.scss'
 
 type ComponentProps = {
   page: 'history' | 'invoices'
@@ -30,14 +23,6 @@ const DashboardLayout = (props: ComponentProps) => {
     activeView = 1
   }
   if (page === 'invoices') activeView = 2
-
-  const isSweepReady = localStorage.getItem(constants.localStorage.isSweepReady)
-  const isBtcSweeped = actions.btc.isSweeped()
-  const isEthSweeped = actions.eth.isSweeped()
-
-  let showSweepBanner = !isSweepReady
-
-  if (isBtcSweeped || isEthSweeped) showSweepBanner = false
 
   return (
     <article className="data-tut-start-widget-tour">
@@ -65,20 +50,6 @@ const DashboardLayout = (props: ComponentProps) => {
               active: true,
             })}
           >
-            {showSweepBanner && (
-              <p styleName="sweepInfo">
-                <Button blue>
-                  <FormattedMessage id="SweepBannerButton" defaultMessage="Done" />
-                </Button>
-                <FormattedMessage
-                  id="SweepBannerDescription"
-                  defaultMessage={`Пожалуйста, переместите все средства на кошельки помеченные "new" 
-                      (USDT и остальные токены переведите на Ethereum (new) адрес). 
-                      Затем нажмите кнопку "DONE". Старые адреса будут скрыты.`}
-                />
-              </p>
-            )}
-
             <ModalConductorProvider>{children}</ModalConductorProvider>
           </div>
           <div

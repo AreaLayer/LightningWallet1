@@ -3,13 +3,15 @@
 ## Available on exchanges
 
 - 🦄 [Uniswap](https://app.uniswap.org/#/swap?outputCurrency=0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9)
-- 🥞 [PancakeSwap](https://exchange.pancakeswap.finance/#/swap?inputCurrency=0x92648e4537cdfa1ee743a244465a31aa034b1ce8) ([eth-bsc bridge](https://mainnet-to-bsc-omnibridge.web.app/bridge))
+- 🥞 [PancakeSwap](https://pancakeswap.finance/swap?inputCurrency=0x92648e4537cdfa1ee743a244465a31aa034b1ce8) recommended
 - ⚛️ [Swaponline](https://swaponline.io/#/exchange/btc-to-swap)
 
-## Contract address
+## Contracts addresses
 
-Ethereum: [0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9](https://etherscan.io/token/0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9)
-Binance Smart Chain: [0x92648e4537cdfa1ee743a244465a31aa034b1ce8](https://bscscan.com/token/0x92648e4537cdfa1ee743a244465a31aa034b1ce8)
+### Ethereum: [0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9](https://etherscan.io/token/0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9)
+### Binance Smart Chain: [0x92648e4537cdfa1ee743a244465a31aa034b1ce8](https://bscscan.com/token/0x92648e4537cdfa1ee743a244465a31aa034b1ce8) ([eth-bsc bridge](https://omni.xdaichain.com/bridge))
+### Xdai: [0x8C80bE81d971601977Fb91DE35dC1d599680B8F1 ](https://etherscan.io/token/0x8C80bE81d971601977Fb91DE35dC1d599680B8F1 ) ([bsc-xdai bridge](https://omni.xdaichain.com/bridge))
+### Polygon: [0x654496319f438a59fee9557940393cf818753ee9](https://bscscan.com/address/0x654496319f438a59fee9557940393cf818753ee9)
 
 ## Tokenomics 
 
@@ -17,7 +19,7 @@ Binance Smart Chain: [0x92648e4537cdfa1ee743a244465a31aa034b1ce8](https://bscsca
 - Governance
 - Launchpad (holders will finance new bridges, and other projects to get dividends)
 
-Check out our governance portal  https://gov.bsc.io/ 
+https://farm.swaponline.io/ stake SWAP earn BNB here
 
 ## Total limited supply
 

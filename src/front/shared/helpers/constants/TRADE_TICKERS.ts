@@ -32,7 +32,7 @@ const swap = (config && config.isWidget) ?
     ...(!config.opts.curEnabled || (config.opts.curEnabled.eth && config.opts.curEnabled.btc)) ? ['ETH-BTC'] : [],
     ...(!config.opts.curEnabled || (config.opts.curEnabled.bnb && config.opts.curEnabled.btc)) ? ['BNB-BTC'] : [],
     ...(!config.opts.curEnabled || (config.opts.curEnabled.matic && config.opts.curEnabled.btc)) ? ['MATIC-BTC'] : [],
-    ...(!config.opts.curEnabled || (config.opts.curEnabled.arbeth && config.opts.curEnabled.btc)) ? ['ARBITRUM-BTC'] : [],
+    ...(!config.opts.curEnabled || (config.opts.curEnabled.arbeth && config.opts.curEnabled.btc)) ? ['ARBETH-BTC'] : [],
     ...(!config.opts.curEnabled || (config.opts.curEnabled.eth && config.opts.curEnabled.ghost)) ? ['ETH-GHOST'] : [],
     ...(!config.opts.curEnabled || (config.opts.curEnabled.eth && config.opts.curEnabled.next)) ? ['ETH-NEXT'] : [],
   ]
@@ -59,7 +59,11 @@ if (config?.isWidget) {
   if (window?.widgetEvmLikeTokens?.length) {
     window.widgetEvmLikeTokens.forEach((token) => {
       const { name, standard } = token
-      const baseCurrency = TOKEN_STANDARDS[standard]?.currency
+
+      const tokenStandardConfig = TOKEN_STANDARDS[standard]
+      if (!tokenStandardConfig?.hasSupportAtomicSwap) return
+
+      const baseCurrency = tokenStandardConfig?.currency
       const tokenKey = `{${baseCurrency.toUpperCase()}}${name.toUpperCase()}`
 
       swap.push(`${tokenKey}-BTC`)
@@ -79,6 +83,10 @@ if (buildOpts.addCustomTokens) {
   const customTokenConfig = getCustomTokenConfig()
 
   Object.keys(customTokenConfig).forEach((standard) => {
+
+    const tokenStandardConfig = TOKEN_STANDARDS[standard]
+    if (!tokenStandardConfig?.hasSupportAtomicSwap) return
+
     Object.keys(customTokenConfig[standard]).forEach((tokenContractAddr) => {
       const tokenObj = customTokenConfig[standard][tokenContractAddr]
       const { symbol, baseCurrency } = tokenObj

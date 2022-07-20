@@ -5,7 +5,7 @@
 .faqWrapper {
   background: var(--color-background-elements);
   box-shadow: var(--box-shadow);
-  border-radius: 4px;
+  border-radius: var(--main-component-border-radius);
   height: fit-content;
   padding: 25px;
   margin-top: 23px;
@@ -17,19 +17,6 @@
 
   ul {
     margin-top: 0
-  }
-}
-
-.sweepInfo {
-  background: 0% 0% / cover rgb(97, 68, 229);
-  color: var(--color-background-elements);
-  padding: 1em;
-
-  button {
-    float: right;
-    border: 3px solid var(--color-background-elements);
-    color: var(--color-brand);
-    background: var(--color-background-elements);
   }
 }
 
@@ -137,7 +124,7 @@
 
 @media all and (max-width: $media-mobile-end) {
   .mobileEnabledViewForFaq {
-    display: none;
+    display: block;
   }
 
   .desktopEnabledViewForFaq {
@@ -149,5 +136,6 @@
   .faqWrapper {
     box-shadow: none;
     background: var(--color-background);
+    margin-top: 0;
   }
 }

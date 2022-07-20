@@ -29,6 +29,12 @@ const title = defineMessages({
       bnbData,
       maticData,
       arbethData,
+      aurethData,
+      xdaiData,
+      ftmData,
+      avaxData,
+      movrData,
+      oneData,
       btcData,
       ghostData,
       nextData,
@@ -39,6 +45,12 @@ const title = defineMessages({
       bnbData,
       maticData,
       arbethData,
+      aurethData,
+      xdaiData,
+      ftmData,
+      avaxData,
+      movrData,
+      oneData,
       btcData,
       ghostData,
       nextData,
@@ -79,7 +91,6 @@ class DownloadModal extends React.Component<any, any> {
     )
 
     return (
-      //@ts-ignore: strictNullChecks
       <Modal name={name} title={intl.formatMessage(title.downloadModal)}>
         <div styleName="subTitle">
           <FormattedMessage

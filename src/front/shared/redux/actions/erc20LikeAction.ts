@@ -23,7 +23,7 @@ class Erc20LikeAction {
   readonly currency: string
   readonly currencyKey: string
   readonly standard: string // (ex. erc20, bep20, ...)
-  readonly explorerName: string
+  readonly explorerApiName: string
   readonly explorerLink: string
   readonly explorerApiKey: string
   readonly adminFeeObj: {
@@ -37,7 +37,7 @@ class Erc20LikeAction {
     const {
       currency,
       standard,
-      explorerName,
+      explorerApiName,
       explorerLink,
       explorerApiKey,
       adminFeeObj,
@@ -47,30 +47,40 @@ class Erc20LikeAction {
     this.currency = currency
     this.currencyKey = currency.toLowerCase()
     this.standard = standard
-    this.explorerName = explorerName
+    this.explorerApiName = explorerApiName
     this.explorerLink = explorerLink
     this.explorerApiKey = explorerApiKey
     this.adminFeeObj = adminFeeObj
     this.Web3 = web3
   }
 
-  reportError = (error) => {
+  reportError = (error, details = '') => {
     feedback.actions.failed(
-      ''.concat(`details - standard: ${this.standard}, `, `error message - ${error.message} `)
+      ''.concat(
+        `Details => standard: ${this.standard}`,
+        details ? `, ${details}` : '',
+        ` | Error message - ${error.message} `
+      )
     )
     console.group(`Actions >%c ${this.standard}`, 'color: red;')
     console.error('error: ', error)
-    console.log('%c Stack trace', 'color: orange;')
-    console.trace()
     console.groupEnd()
   }
 
   getCurrentWeb3 = () => metamask.getWeb3() || this.Web3
 
+  getTokenContract = (contractAddr) => {
+    const web3 = this.getCurrentWeb3()
+
+    return new web3.eth.Contract(TokenAbi, contractAddr)
+  }
+
   addToken = (params) => {
     const { standard, contractAddr, symbol, decimals, baseCurrency } = params
     const customTokens = this.getCustomTokensConfig()
     const privateKey = localStorage.getItem(constants.privateKeyNames[baseCurrency])
+
+    if (!customTokens[NETWORK][standard]) customTokens[NETWORK][standard] = {} // TODO: add migration when add some chain and standard
 
     customTokens[NETWORK][standard][contractAddr] = {
       address: contractAddr,
@@ -103,7 +113,7 @@ class Erc20LikeAction {
         }
       } 
     } catch (error) {
-      this.reportError(error)
+      this.reportError(error, 'fail on token info')
     }
 
     return false
@@ -145,7 +155,7 @@ class Erc20LikeAction {
     return `${this.explorerLink}/tx/${tx}`
   }
 
-  getBalance = async (tokenName) => {
+  getBalance = async (tokenName, ownAddress = null) => {
     if (tokenName === undefined) return
 
     const {
@@ -158,7 +168,7 @@ class Erc20LikeAction {
 
     if(metamask.isConnected() && !metamask.isAvailableNetworkByCurrency(tokenKey)) return
 
-    const address = metamask.isConnected() ? metamask.getAddress() : ownerAddress
+    const address = (ownAddress) ? ownAddress : metamask.isConnected() ? metamask.getAddress() : ownerAddress
     const balanceInCache = cacheStorageGet('currencyBalances', `token_${tokenKey}_${address}`)
 
     if (balanceInCache !== false) {
@@ -172,13 +182,12 @@ class Erc20LikeAction {
 
     try {
       const amount = await this.fetchBalance(address, contractAddress, decimals)
-
       reducers.user.setTokenBalance({
         baseCurrency: this.currencyKey,
         name,
         amount,
       })
-      cacheStorageSet('currencyBalances', `token_${tokenKey}_${address}`, amount, 60)
+      cacheStorageSet('currencyBalances', `token_${tokenKey}_${address}`, amount, 30)
 
       return amount
     } catch (error) {
@@ -196,9 +205,11 @@ class Erc20LikeAction {
       const { user: { tokensData } } = getState()
       // if we have a base currency prefix then delete it
       tokenName = tokenName.replace(/^\{[a-z]+\}/, '')
-      const tokenKey = `{${this.currencyKey}}${tokenName.toLowerCase()}`
-      const { address = ownAddress, contractAddress } = tokensData[tokenKey]
 
+      const tokenKey = `{${this.currencyKey}}${tokenName.toLowerCase()}`
+      const { address : sysAddress, contractAddress } = tokensData[tokenKey]
+
+      const address = ownAddress || sysAddress
 
       const url = ''.concat(
         `?module=account&action=tokentx`,
@@ -209,7 +220,7 @@ class Erc20LikeAction {
       )
 
       return apiLooper
-        .get(this.explorerName, url, {
+        .get(this.explorerApiName, url, {
           cacheResponse: 30 * 1000, // 30 seconds
         })
         .then((response: IUniversalObj) => {
@@ -302,11 +313,15 @@ class Erc20LikeAction {
         user: { tokensData },
       } = getState()
       const Web3 = this.getCurrentWeb3()
+
       Web3.eth.getTransaction(hash)
         .then((tx) => {
+          if (!tx) return res(false)
+
+          const { to, from, gas, gasPrice, blockHash } = tx
           let amount = 0
-          let receiverAddress = tx.to
-          const contractAddress = tx.to
+          let receiverAddress = to
+          const contractAddress = to
           let tokenDecimal = 18
 
           for (const key in tokensData) {
@@ -321,17 +336,12 @@ class Erc20LikeAction {
 
           const txData = Decoder.decodeData(tx.input)
 
-          if (
-            (txData && txData.inputs?.length === 2 && txData.name === `transfer`) ||
-            txData.method === `transfer`
-          ) {
+          if (txData && txData.inputs?.length === 2 && txData.method === `transfer`) {
             receiverAddress = `0x${txData.inputs[0]}`
             amount = new BigNumber(txData.inputs[1])
               .div(new BigNumber(10).pow(tokenDecimal))
               .toNumber()
           }
-
-          const { from, gas, gasPrice, blockHash } = tx
 
           const minerFee = new BigNumber(Web3.utils.toBN(gas).toNumber())
             .multipliedBy(Web3.utils.toBN(gasPrice).toNumber())
@@ -362,7 +372,7 @@ class Erc20LikeAction {
             adminFee,
             confirmed: blockHash !== null,
             isContractTx:
-              contractAddress.toLowerCase() === externalConfig.swapContract[this.standard].toLowerCase(),
+              contractAddress?.toLowerCase() === externalConfig.swapContract[this.standard]?.toLowerCase(),
           })
         })
         .catch((error) => {
@@ -375,7 +385,8 @@ class Erc20LikeAction {
   fetchFees = async (params) => {
     const { gasPrice, gasLimit, speed } = params
     const newGasPrice = gasPrice || await ethLikeHelper[this.currencyKey].estimateGasPrice({ speed })
-    const newGasLimit = gasLimit || DEFAULT_CURRENCY_PARAMETERS.evmLikeToken.limit.send
+    const defaultGasLimitKey = this.currencyKey === 'aureth' ? 'aurethToken' : 'evmLikeToken'
+    const newGasLimit = gasLimit || DEFAULT_CURRENCY_PARAMETERS[defaultGasLimitKey].limit.send
 
     return {
       gas: newGasLimit,
@@ -404,8 +415,6 @@ class Erc20LikeAction {
       throw new Error('web3 does not have given address')
     }
 
-    const isSweeped = actions[this.currencyKey].isSweeped()
-
     let data = {
       address: ethAddress,
       balance: 0,
@@ -414,7 +423,6 @@ class Erc20LikeAction {
       currency: nameContract.toUpperCase(),
       contractAddress,
       decimals,
-      isMnemonic: isSweeped,
       isMetamask: false,
       isConnected: false,
       // TODO: use a standard key and delete this key
@@ -449,7 +457,7 @@ class Erc20LikeAction {
     const { tokenContract, decimals } = this.returnTokenInfo(name)
     const feeResult = await this.fetchFees({ ...feeConfig })
     const txArguments = {
-      gas: feeResult.gas,
+      gas: '0x00',
       gasPrice: feeResult.gasPrice,
       from,
     }
@@ -463,32 +471,48 @@ class Erc20LikeAction {
     })
 
     return new Promise(async (res, rej) => {
-      const receipt = tokenContract.methods
+      const gasLimitCalculated = await tokenContract.methods
+        .transfer(to, `0x${hexAmountWithDecimals}`)
+        .estimateGas(txArguments)
+
+      const gasLimitWithPercentForSuccess = new BigNumber(
+        new BigNumber(gasLimitCalculated)
+          .multipliedBy(1.05) // + 5% -  множитель добавочного газа, если будет фейл транзакции - увеличит (1.05 +5%, 1.1 +10%)
+          .toFixed(0)
+      ).toString(16)
+
+      txArguments.gas = `0x${gasLimitWithPercentForSuccess}`
+
+      tokenContract.methods
         // hex amount fixes a BigNumber error
-        .transfer(to, '0x' + hexAmountWithDecimals)
+        .transfer(to, `0x${hexAmountWithDecimals}`)
         .send(txArguments)
-        .on('transactionHash', (hash) => res({ transactionHash: hash }))
+        .on('transactionHash', (hash) => {
+          reducers.transactions.addTransactionToQueue({
+            networkCoin: this.currency,
+            hash,
+          })
+          res({ transactionHash: hash })
+        })
+        .on('receipt', () => {
+          if (this.adminFeeObj && !walletData.isMetamask) {
+            this.sendAdminTransaction({
+              from,
+              tokenContract,
+              decimals,
+              amount,
+            })
+          }
+        })
         .on('error', (error) => {
           this.reportError(error)
           rej(error)
         })
-
-      // Admin fee transaction
-      if (this.adminFeeObj && !walletData.isMetamask) {
-        receipt.then(() => {
-          this.sendAdminTransaction({
-            txArguments,
-            tokenContract,
-            decimals,
-            amount,
-          })
-        })
-      }
     })
   }
 
   sendAdminTransaction = async (params) => {
-    const { tokenContract, amount, decimals, txArguments } = params
+    const { from, tokenContract, amount, decimals } = params
     const minAmount = new BigNumber(this.adminFeeObj.min)
     let feeFromUsersAmount = new BigNumber(this.adminFeeObj.fee)
       .dividedBy(100) // 100 %
@@ -502,13 +526,40 @@ class Erc20LikeAction {
       .multipliedBy(10 ** decimals)
       .toString(16)
 
+    const feeResult = await this.fetchFees({ speed: 'fast' })
+    const txArguments = {
+      gas: '0x00',
+      gasPrice: feeResult.gasPrice,
+      from,
+    }
+
     return new Promise(async (res) => {
+      let gasLimit
+
+      try {
+        gasLimit = await tokenContract.methods
+          .transfer(this.adminFeeObj.address, '0x' + hexFeeWithDecimals)
+          .estimateGas(txArguments)
+      } catch (error) {
+        this.reportError(error, 'Estimate gas in an admin transaction')
+      }
+
+      if (!gasLimit) return
+
+      const gasLimitWithPercentForSuccess = new BigNumber(
+        new BigNumber(gasLimit)
+          .multipliedBy(1.05) // + 5% -  множитель добавочного газа, если будет фейл транзакции - увеличит (1.05 +5%, 1.1 +10%)
+          .toFixed(0)
+      ).toString(16)
+
+      txArguments.gas = '0x' + gasLimitWithPercentForSuccess
+
       await tokenContract.methods
         // hex amount fixes a BigNumber error
         .transfer(this.adminFeeObj.address, '0x' + hexFeeWithDecimals)
         .send(txArguments)
         .on('transactionHash', (hash) => {
-          console.group('%c Admin commission is sended', 'color: green;')
+          console.group('%c admin fee', 'color: green;')
           console.log('standard', this.standard)
           console.log('tx hash', hash)
           console.groupEnd()
@@ -517,17 +568,18 @@ class Erc20LikeAction {
     })
   }
 
-  approve = async (params) => {
+  approve = async (params): Promise<string> => {
     const { name, to, amount } = params
     const { tokenContract, decimals } = this.returnTokenInfo(name)
     const feeResult = await this.fetchFees({ speed: 'fast' })
 
-    const exp = new BigNumber(10).pow(decimals)
-    const weiAmount = new BigNumber(amount).times(exp).toString()
+    const hexWeiAmount = new BigNumber(amount)
+      .multipliedBy(10 ** decimals)
+      .toString(16)
 
     return new Promise(async (res, rej) => {
       const receipt = await tokenContract.methods
-        .approve(to, weiAmount)
+        .approve(to, '0x' + hexWeiAmount)
         .send(feeResult)
         .on('transactionHash', (hash) => {
           console.group('Actions >%c approve the token', 'color: green')
@@ -538,6 +590,7 @@ class Erc20LikeAction {
         .catch((error) => {
           this.reportError(error)
           rej(error)
+          return
         })
 
       res(receipt.transactionHash)
@@ -561,8 +614,9 @@ class Erc20LikeAction {
 
     try {
       const allowance = await erc20Like[this.standard].checkAllowance({
-        tokenOwnerAddress: address,
-        tokenContractAddress: contractAddress,
+        owner: address,
+        spender: externalConfig.swapContract[this.standard],
+        contract: contractAddress,
         decimals,
       })
 
@@ -577,8 +631,7 @@ class Erc20LikeAction {
     }
   }
 
-  returnTokenInfo = (name) => {
-    if (!name) throw new Error(`${this.standard} actions; returnTokenInfo(name): name is undefined`)
+  returnTokenInfo = (name: string) => {
     const Web3 = this.getCurrentWeb3()
 
     try {
@@ -601,7 +654,7 @@ class Erc20LikeAction {
         decimals,
       }
     } catch (error) {
-      this.reportError(error)
+      this.reportError(error, `Token name: ${name}, part: returnTokenInfo`)
       throw new Error(error)
     }
   }
@@ -611,28 +664,82 @@ export default {
   erc20: new Erc20LikeAction({
     currency: 'ETH',
     standard: 'erc20',
-    explorerName: 'etherscan',
-    explorerLink: externalConfig.link.etherscan,
+    explorerApiName: 'etherscan',
     explorerApiKey: externalConfig.api.etherscan_ApiKey,
+    explorerLink: externalConfig.link.etherscan,
     adminFeeObj: externalConfig.opts?.fee?.erc20,
-    web3: new Web3( new Web3.providers.HttpProvider(externalConfig.web3.provider) ),
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.provider)),
   }),
   bep20: new Erc20LikeAction({
     currency: 'BNB',
     standard: 'bep20',
-    explorerName: 'bscscan',
-    explorerLink: externalConfig.link.bscscan,
+    explorerApiName: 'bscscan',
     explorerApiKey: externalConfig.api.bscscan_ApiKey,
+    explorerLink: externalConfig.link.bscscan,
     adminFeeObj: externalConfig.opts?.fee?.bep20,
-    web3: new Web3( new Web3.providers.HttpProvider(externalConfig.web3.binance_provider) ),
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.binance_provider)),
   }),
   erc20matic: new Erc20LikeAction({
     currency: 'MATIC',
     standard: 'erc20matic',
-    explorerName: 'explorer-mumbai',
-    explorerLink: externalConfig.link.maticscan,
+    explorerApiName: 'maticscan',
     explorerApiKey: externalConfig.api.polygon_ApiKey,
+    explorerLink: externalConfig.link.maticscan,
     adminFeeObj: externalConfig.opts?.fee?.erc20matic,
-    web3: new Web3( new Web3.providers.HttpProvider(externalConfig.web3.matic_provider) ),
-  })
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.matic_provider)),
+  }),
+  erc20xdai: new Erc20LikeAction({
+    currency: 'XDAI',
+    standard: 'erc20xdai',
+    explorerApiName: '',
+    explorerApiKey: '',
+    explorerLink: externalConfig.link.xdai,
+    adminFeeObj: externalConfig.opts?.fee?.erc20xdai,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.xdai_provider)),
+  }),
+  erc20ftm: new Erc20LikeAction({
+    currency: 'FTM',
+    standard: 'erc20ftm',
+    explorerApiName: 'ftmscan',
+    explorerApiKey: externalConfig.api.ftm_ApiKey,
+    explorerLink: externalConfig.link.ftmscan,
+    adminFeeObj: externalConfig.opts?.fee?.erc20ftm,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.ftm_provider)),
+  }),
+  erc20avax: new Erc20LikeAction({
+    currency: 'AVAX',
+    standard: 'erc20avax',
+    explorerApiName: 'avaxscan',
+    explorerApiKey: externalConfig.api.avax_ApiKey,
+    explorerLink: externalConfig.link.avaxscan,
+    adminFeeObj: externalConfig.opts?.fee?.erc20avax,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.avax_provider)),
+  }),
+  erc20movr: new Erc20LikeAction({
+    currency: 'MOVR',
+    standard: 'erc20movr',
+    explorerApiName: 'movrscan',
+    explorerApiKey: externalConfig.api.movr_ApiKey,
+    explorerLink: externalConfig.link.movrscan,
+    adminFeeObj: externalConfig.opts?.fee?.erc20movr,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.movr_provider)),
+  }),
+  erc20one: new Erc20LikeAction({
+    currency: 'ONE',
+    standard: 'erc20one',
+    explorerApiName: 'onescan',
+    explorerApiKey: externalConfig.api.one_ApiKey,
+    explorerLink: externalConfig.link.oneExplorer,
+    adminFeeObj: externalConfig.opts?.fee?.erc20one,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.one_provider)),
+  }),
+  erc20aurora: new Erc20LikeAction({
+    currency: 'AURETH',
+    standard: 'erc20aurora',
+    explorerApiName: 'aurorascan',
+    explorerApiKey: externalConfig.api.aurora_ApiKey,
+    explorerLink: externalConfig.link.auroraExplorer,
+    adminFeeObj: externalConfig.opts?.fee?.erc20aurora,
+    web3: new Web3(new Web3.providers.HttpProvider(externalConfig.web3.aurora_provider)),
+  }),
 }

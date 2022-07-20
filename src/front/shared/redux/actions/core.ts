@@ -4,7 +4,7 @@ import { getState } from 'redux/core'
 import SwapApp from 'swap.app'
 import Swap from 'swap.swap'
 import getCoinInfo from 'common/coins/getCoinInfo'
-import { constants } from 'helpers'
+import helpers, { constants } from 'helpers'
 import Pair from 'pages/Exchange/Orders/Pair'
 import config from 'helpers/externalConfig'
 import { BigNumber } from 'bignumber.js'
@@ -12,7 +12,7 @@ import { BigNumber } from 'bignumber.js'
 import metamask from 'helpers/metamask'
 import { AddressType } from 'domain/address'
 
-import helpers from 'helpers'
+import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 
 
 const debug = (...args) => console.log(...args)
@@ -164,13 +164,19 @@ const deletedPartialCurrency = (orderId) => {
 
   // currencies which must be all time in the drop
   const premiumCurrencies = [
-    'BTC', 
-    'ETH', 
-    'BNB', 
-    'MATIC', 
-    'ARBETH', 
-    'GHOST', 
-    'NEXT', 
+    'BTC',
+    'ETH',
+    'BNB',
+    'MATIC',
+    'ARBETH',
+    'AURETH',
+    'XDAI',
+    'FTM',
+    'AVAX',
+    'MOVR',
+    'ONE',
+    'GHOST',
+    'NEXT',
     'SWAP',
   ]
 
@@ -247,6 +253,9 @@ const sendRequestForPartial = (orderId, newValues, destination = {}, callback) =
 const createOrder = (data, isPartial = false) => {
   //@ts-ignore: strictNullChecks
   const order = SwapApp.shared().services.orders.create(data)
+
+  if (!order) return
+
   if (!isPartial) {
     return order
   }
@@ -422,10 +431,8 @@ const getWallet = (params: GetWalletParams) => {
       && wallet.currency.toLowerCase() === currency.toLowerCase()
       && (blockchain ? currencyData?.toLowerCase() === wallet.tokenKey : true)
 
-    if (address) {
-      if (wallet.address.toLowerCase() === address.toLowerCase()) {
-        return conditionOk
-      }
+    if (address && wallet.address.toLowerCase() === address.toLowerCase()) {
+      return conditionOk
     }
 
     if (addressType) {
@@ -454,7 +461,9 @@ const getWallet = (params: GetWalletParams) => {
 }
 
 const getWallets = (options: IUniversalObj = {}) => {
-  const { withInternal } = options
+  const { withInternal, withoutExternal } = options
+
+  const onlyEvmWallets = (config?.opts?.ui?.disableInternalWallet) ? true : false
 
   const {
     user: {
@@ -468,21 +477,28 @@ const getWallets = (options: IUniversalObj = {}) => {
       bnbData,
       maticData,
       arbethData,
+      aurethData,
+      xdaiData,
+      ftmData,
+      avaxData,
+      movrData,
+      oneData,
       tokensData,
       metamaskData,
-      // Sweep
-      btcMnemonicData,
-      ethMnemonicData,
-      bnbMnemonicData,
-      maticMnemonicData,
-      arbethMnemonicData,
     },
   } = getState()
 
   const metamaskConnected = metamask.isEnabled() && metamask.isConnected()
+  // if enabledCurrencies equals FALSE then all currencies is enabled
+  const enabledCurrencies = config.opts.curEnabled
+
+  if (onlyEvmWallets && !metamaskConnected) return []
 
   const tokenWallets = Object.keys(tokensData).map((k) => {
     const { coin, blockchain } = getCoinInfo(k)
+
+    if (!(coin && blockchain !== ``)) return false
+    if (!(!enabledCurrencies || enabledCurrencies[blockchain.toLowerCase()])) return false
     if (metamaskConnected) {
       return (
         coin && blockchain !== `` &&
@@ -491,65 +507,36 @@ const getWallets = (options: IUniversalObj = {}) => {
           )
     }
     return (coin && blockchain !== ``) ? tokensData[k] : false
-  }).filter((d) => d !== false)
-
-  // if enabledCurrencies equals FALSE then all currencies is enabled
-  const enabledCurrencies = config.opts.curEnabled
+  }).filter((d) => d !== false && d.currency !== undefined)
 
   const allData = [
     ...(
-      !enabledCurrencies ||
-      enabledCurrencies.eth ||
-      enabledCurrencies.bnb ||
-      enabledCurrencies.matic ||
-      enabledCurrencies.arbeth
+      !enabledCurrencies
+      || enabledCurrencies.eth
+      || enabledCurrencies.bnb
+      || enabledCurrencies.matic
+      || enabledCurrencies.arbeth
+      || enabledCurrencies.xdai
+      || enabledCurrencies.ftm
+      || enabledCurrencies.avax
+      || enabledCurrencies.movr
+      || enabledCurrencies.one
         ? metamaskData
           ? [metamaskData]
           : []
         : []
     ),
-    // Sweep ===============================
-    ...(!enabledCurrencies || enabledCurrencies.btc
-      ? btcMnemonicData && !btcData.isMnemonic
-        ? [btcMnemonicData]
-        : []
-      : []), 
-    // Sweep ===============================
-    ...(!enabledCurrencies || enabledCurrencies.eth
-      ? ethMnemonicData && !ethData.isMnemonic
-        ? [ethMnemonicData]
-        : []
-      : []),
-    // Sweep ===============================
-    ...(!enabledCurrencies || enabledCurrencies.bnb
-      ? bnbMnemonicData && !bnbData.isMnemonic
-        ? [bnbMnemonicData]
-        : []
-      : []),
-    // Sweep ===============================
-    ...(!enabledCurrencies || enabledCurrencies.matic
-      ? maticMnemonicData && !maticData.isMnemonic
-        ? [maticMnemonicData]
-        : []
-      : []),
-    // Sweep ===============================
-    ...(!enabledCurrencies || enabledCurrencies.arbeth
-      ? arbethMnemonicData && !arbethData.isMnemonic
-        ? [maticMnemonicData]
-        : []
-      : []),
-    // =====================================
-    ...(!enabledCurrencies || enabledCurrencies.btc
+    ...((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets
       ? [btcData, btcMultisigSMSData, btcMultisigUserData]
       : []
     ),
-    ...(!enabledCurrencies || enabledCurrencies.btc
+    ...((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets
       ? btcMultisigPinData && btcMultisigPinData.isRegistered
         ? [btcMultisigPinData]
         : []
       : []),
     // =====================================
-    ...(!enabledCurrencies || enabledCurrencies.btc
+    ...((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets
       ? btcMultisigUserData && btcMultisigUserData.wallets
         ? btcMultisigUserData.wallets
         : []
@@ -587,14 +574,108 @@ const getWallets = (options: IUniversalObj = {}) => {
         : [arbethData]
       : []),
     // =====================================
-    ...(!enabledCurrencies || enabledCurrencies.ghost ? [ghostData] : []),
-    ...(!enabledCurrencies || enabledCurrencies.next ? [nextData] : []),
+    ...(!enabledCurrencies || enabledCurrencies.xdai
+      ? metamaskConnected
+        ? withInternal
+          ? [xdaiData]
+          : []
+        : [xdaiData]
+      : []),
+    // =====================================
+    ...(!enabledCurrencies || enabledCurrencies.ftm
+      ? metamaskConnected
+        ? withInternal
+          ? [ftmData]
+          : []
+        : [ftmData]
+      : []),
+    // =====================================
+    ...(!enabledCurrencies || enabledCurrencies.avax
+      ? metamaskConnected
+        ? withInternal
+          ? [avaxData]
+          : []
+        : [avaxData]
+      : []),
+    // =====================================
+    ...(!enabledCurrencies || enabledCurrencies.movr
+      ? metamaskConnected
+        ? withInternal
+          ? [movrData]
+          : []
+        : [movrData]
+      : []),
+    // =====================================
+    ...(!enabledCurrencies || enabledCurrencies.one
+      ? metamaskConnected
+        ? withInternal
+          ? [oneData]
+          : []
+        : [oneData]
+      : []),
+    // =====================================
+    ...(!enabledCurrencies || enabledCurrencies.aureth
+      ? metamaskConnected
+        ? withInternal
+          ? [aurethData]
+          : []
+        : [aurethData]
+      : []),
+    // =====================================
+    ...((!enabledCurrencies || enabledCurrencies.ghost) && !onlyEvmWallets ? [ghostData] : []),
+    ...((!enabledCurrencies || enabledCurrencies.next) && !onlyEvmWallets ? [nextData] : []),
     ...tokenWallets,
   ].map(({ account, keyPair, ...data }) => ({
     ...data,
   }))
 
-  return allData.filter((item) => item?.address && item?.currency)
+  const data = allData.filter((item) => item?.address && item?.currency && withoutExternal ? !item.isMetamask : true)
+
+  return (config && config.isWidget) ? sortWallets(data) : data
+}
+
+const sortWallets = (wallets) => {
+  const sortedWallets: any[] = []
+
+  if (window?.widgetEvmLikeTokens?.length) {
+    const reverseTokens = window.widgetEvmLikeTokens.reverse()
+    let connectExternal = false
+    const connectedExternalWallets: any[] = []
+    wallets.forEach((walletData) => {
+      const {
+        isConnected,
+        isMetamask,
+        isToken,
+      } = walletData
+      let isFounded = false
+      if (!isConnected && isMetamask) {
+        connectExternal = walletData
+      } else {
+        if (isConnected && isMetamask && !isToken) {
+          connectedExternalWallets.push(walletData)
+        } else {
+          reverseTokens.forEach((token) => {
+            const name = token.name.toLowerCase()
+            const standard = token.standard.toLowerCase()
+            const baseCurrency = TOKEN_STANDARDS[standard].currency.toUpperCase()
+            if (walletData.name === name && walletData.standard === standard) {
+              isFounded = true
+            }
+          })
+          if (isFounded) {
+            sortedWallets.unshift(walletData)
+          } else {
+            sortedWallets.push(walletData)
+          }
+        }
+      }
+    })
+    if (connectExternal) sortedWallets.unshift(connectExternal)
+    connectedExternalWallets.reverse().forEach((walletData) => { sortedWallets.unshift(walletData) })
+    return sortedWallets
+  }
+
+  return wallets
 }
 
 window.getWallets = getWallets

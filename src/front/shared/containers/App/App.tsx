@@ -1,12 +1,14 @@
+import './wdyr'
 import React from "react";
-
 import { RouteComponentProps, withRouter, HashRouter } from "react-router-dom";
+import DocumentMeta from 'react-document-meta'
 import actions from "redux/actions";
 import { connect } from "redaction";
 import moment from "moment-with-locales-es6";
 import {
   constants,
   localStorage,
+  seo,
 } from "helpers";
 
 import CSSModules from "react-css-modules";
@@ -15,7 +17,7 @@ import "scss/app.scss";
 
 import { createSwapApp } from "instances/newSwap";
 import Core from "containers/Core/Core";
-
+import Transactions from 'containers/Transactions'
 import ErrorBoundary from 'components/ErrorBoundary'
 import Header from "components/Header/Header";
 import Footer from "components/Footer/Footer";
@@ -28,32 +30,18 @@ import NotificationConductor from "components/notification/NotificationConductor
 import Seo from "components/Seo/Seo";
 
 import config from "helpers/externalConfig"
-import { redirectTo, links, utils } from 'helpers'
+import { routing, links, utils } from 'helpers'
 import backupUserData from 'plugins/backupUserData'
-import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-
+import { FormattedMessage, injectIntl } from 'react-intl'
 import metamask from 'helpers/metamask'
 
 
-const userLanguage = (navigator.userLanguage || navigator.language || "en-gb").split("-")[0];
+const userLanguage = utils.getCookie('mylang') || "en"
 moment.locale(userLanguage)
-
-
-const metamaskNetworks = defineMessages({
-  mainnet: {
-    id: `MetamaskNetworkAlert_NetworkMainnet`,
-    defaultMessage: `Ethereum (Mainnet) or Binance Smart Chain (Mainnet)`,
-  },
-  testnet: {
-    id: `MetamaskNetworkAlert_NetworkTestnet`,
-    defaultMessage: `Ethereum (Ropsten) or Binance Smart Chain (Testnet)`,
-  },
-})
 
 @withRouter
 @connect(({ currencies: { items: currencies }, modals, ui: { dashboardModalsAllowed } }) => ({
   currencies,
-  isVisible: "loader.isVisible",
   ethAddress: "user.ethData.address",
   btcAddress: "user.btcData.address",
   ghostAddress: "user.ghostData.address",
@@ -66,12 +54,9 @@ const metamaskNetworks = defineMessages({
 class App extends React.Component<RouteComponentProps<any>, any> {
 
   prvMultiTab: any
-  localStorageListener: any
 
   constructor(props) {
     super(props);
-
-    this.localStorageListener = null;
 
     this.prvMultiTab = {
       reject: null,
@@ -136,12 +121,9 @@ class App extends React.Component<RouteComponentProps<any>, any> {
         const { appID } = this.state;
 
         if (appID !== switchId) {
-          //@ts-ignore
-          if (chrome && chrome.extension) {
-            //@ts-ignore
-            const extViews = chrome.extension.getViews()
-            //@ts-ignore
-            const extBgWindow = chrome.extension.getBackgroundPage()
+          if (window?.chrome?.extension) {
+            const extViews = window.chrome.extension.getViews()
+            const extBgWindow = window.chrome.extension.getBackgroundPage()
             if (extBgWindow !== window && extViews.length > 2) {
               window.close()
               return
@@ -166,23 +148,18 @@ class App extends React.Component<RouteComponentProps<any>, any> {
   }
 
   popupIncorrectNetwork() {
-    //@ts-ignore
-    const { intl } = this.props
-
-    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.AlertModal, {
       title: (
         <FormattedMessage 
           id="MetamaskNetworkAlert_Title"
-          defaultMessage="Внимание"
+          defaultMessage="Warning"
         />
       ),
       message: (
         <FormattedMessage
           id="MetamaskNetworkAlert_Message"
-          defaultMessage="Для продолжения выберите в кошельке {walletTitle} &quot;{network}&quot; или отключите кошелек"
+          defaultMessage='Wrong network, please switch to another network in {walletTitle} (or disconnect wallet).'
           values={{
-            network: intl.formatMessage(metamaskNetworks[config.entry]),
             walletTitle: metamask.web3connect.getProviderTitle(),
           }}
         />
@@ -190,7 +167,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       labelOk: (
         <FormattedMessage
           id="MetamaskNetworkAlert_OkDisconnectWallet"
-          defaultMessage="Отключить внешний кошелек"
+          defaultMessage="Disconnect external wallet"
         />
       ),
       dontClose: true,
@@ -205,19 +182,19 @@ class App extends React.Component<RouteComponentProps<any>, any> {
   async processMetamask () {
     await metamask.web3connect.onInit(() => {
       const _checkChain = () => {
-        if (metamask.isCorrectNetwork()) {
-          actions.modals.close(constants.modals.AlertModal)
-        } else {
+        const wrongNetwork = metamask.isConnected() && !metamask.isCorrectNetwork()
+
+        if (wrongNetwork) {
           this.popupIncorrectNetwork()
+        } else {
+          actions.modals.close(constants.modals.AlertModal)
         }
       }
 
       metamask.web3connect.on('chainChanged', _checkChain)
       metamask.web3connect.on('connected', _checkChain)
 
-      if (metamask.isConnected()
-        && !metamask.isCorrectNetwork()
-      ) {
+      if (metamask.isConnected() && !metamask.isCorrectNetwork()) {
         this.popupIncorrectNetwork()
       }
     })
@@ -238,10 +215,10 @@ class App extends React.Component<RouteComponentProps<any>, any> {
           console.log('is restored', isRestored, constants.localStorage.isWalletCreate)
           if (isRestored) {
             if (localStorage.getItem(constants.localStorage.isWalletCreate)) {
-              redirectTo(links.home)
+              routing.redirectTo(links.home)
               window.location.reload()
             } else {
-              redirectTo(window.location.host === 'bsc.swap.io' ? links.exchange : links.createWallet)
+              routing.redirectTo(window.location.host === 'bsc.swap.io' ? links.exchange : links.createWallet)
               if (wpLoader) wpLoader.style.display = 'none'
             }
           }
@@ -257,7 +234,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
           })
 
           if (window.location.host === 'bsc.swap.io') {
-            redirectTo('#/exchange/btc-to-btcb')
+            routing.redirectTo('#/exchange/btc-to-btcb')
           }
         } else {
           if (wpLoader) wpLoader.style.display = 'none'
@@ -335,6 +312,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       setTimeout(() => {
         this.completeAppCreation().then(() => {
           this.setState(() => ({
+            completeCreation: false,
             initialFetching: false,
           }))
         })
@@ -350,10 +328,12 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       await createSwapApp()
     }
 
-    this.setState(() => ({
-      initialFetching: false,
-      completeCreation: false,
-    }))
+    /* 
+    Currently not in use. See Exchange/Quickswap/index.tsx comments
+    */
+    // if (config.entry === 'mainnet') { 
+    //   await actions.oneinch.fetchUserOrders()
+    // }
 
     console.groupEnd()
   }
@@ -470,7 +450,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       return <PreventMultiTabs onSwitchTab={this.handleSwitchTab} />
     }
 
-    if (isFetching && localStorage.getItem('isWalletCreate') === null) {
+    if (isFetching) {
       return (
         <Loader 
           showMyOwnTip={
@@ -481,26 +461,45 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     }
 
     const isSeoDisabled = isWidget || isWidgetBuild || isCalledFromIframe
+    const widgetTitle = window.defaultWindowTitle || seo.defaultTitle
+    const widgetUrl = window.location.origin + window.location.pathname
 
     return <HashRouter>
       <div styleName="compressor">
         {!isSeoDisabled &&
           <Seo location={history.location} />
         }
-        {/* @ts-ignore */}
+        {isWidgetBuild && (
+          <DocumentMeta
+            title={widgetTitle}
+            description={seo.defaultDescription}
+            canonical={widgetUrl}
+            meta={{
+              property: {
+                'og:title': widgetTitle,
+                'og:description': seo.defaultDescription,
+                'og:url': widgetUrl,
+                'og:image': window.logoUrl,
+              },
+            }}
+          />
+        )}
+
         <ErrorBoundary>
-          {/* @ts-ignore */}
-          <WidthContainer id="swapComponentWrapper" styleName="headerAndMain">
-            <Header />
-            <main>{children}</main>
-          </WidthContainer>
-          <Core />
-          <Footer />
-          <RequestLoader />
-          {!dashboardModalsAllowed &&
-            <ModalConductor history={history}
-          />}
-          <NotificationConductor history={history} />
+          <Transactions>
+            {/* @ts-ignore */}
+            <WidthContainer id="swapComponentWrapper" styleName="headerAndMain">
+              <Header />
+              <main>{children}</main>
+            </WidthContainer>
+            <Core />
+            <Footer />
+            <RequestLoader />
+            {!dashboardModalsAllowed &&
+              <ModalConductor history={history}
+            />}
+            <NotificationConductor history={history} />
+          </Transactions>
         </ErrorBoundary>
       </div>
     </HashRouter>;

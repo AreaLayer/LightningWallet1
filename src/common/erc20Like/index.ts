@@ -1,12 +1,14 @@
 import Web3 from 'web3'
 import config from 'app-config'
-import TokenApi from 'human-standard-token-abi'
+import TokenAbi from 'human-standard-token-abi'
 import { BigNumber } from 'bignumber.js'
 import DEFAULT_CURRENCY_PARAMETERS from 'common/helpers/constants/DEFAULT_CURRENCY_PARAMETERS'
 import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 import { COIN_DATA, COIN_MODEL } from 'swap.app/constants/COINS'
 import ethLikeHelper from 'common/helpers/ethLikeHelper'
+import utils from 'common/utils'
 import { feedback, metamask } from 'helpers'
+import getCoinInfo from 'common/coins/getCoinInfo'
 
 
 class erc20LikeHelper {
@@ -69,36 +71,37 @@ class erc20LikeHelper {
 
   isToken = (params): boolean => {
     const { name } = params
+    const {
+      coin,
+      blockchain,
+    } = getCoinInfo(name)
 
+    if (!blockchain) return false
     return (
-      Object.keys(config[this.standard]).includes(name.toLowerCase()) ||
+      Object.keys(config[this.standard]).includes(coin.toLowerCase()) &&
       name.startsWith(`{${this.currencyKey}}`)
     )
   }
 
   checkAllowance = async (params: {
-    tokenOwnerAddress: string
-    tokenContractAddress: string
+    owner: string
+    spender: string
+    contract: string
     decimals: number
   }): Promise<number> => {
-    const { tokenOwnerAddress, tokenContractAddress, decimals } = params
+    const { owner, spender, contract, decimals } = params
     const Web3 = this.getCurrentWeb3()
-    const tokenContract = new Web3.eth.Contract(TokenApi, tokenContractAddress, {
-      from: tokenOwnerAddress,
+    const tokenContract = new Web3.eth.Contract(TokenAbi, contract, {
+      from: owner,
     })
 
     let allowanceAmount = 0
 
     try {
-      allowanceAmount = await tokenContract.methods
-        .allowance(tokenOwnerAddress, config.swapContract[this.standard])
-        .call({ from: tokenOwnerAddress })
-
-      // formatting without token decimals
-      allowanceAmount = new BigNumber(allowanceAmount)
-        .dp(0, BigNumber.ROUND_UP)
-        .div(new BigNumber(10).pow(decimals))
-        .toNumber()
+      allowanceAmount = await tokenContract.methods.allowance(owner, spender).call({ from: owner })
+      allowanceAmount = new BigNumber(
+        utils.amount.formatWithoutDecimals(allowanceAmount, decimals)
+      ).toNumber()
     } catch (error) {
       this.reportError({ error })
     }
@@ -109,6 +112,12 @@ class erc20LikeHelper {
 
 const isToken = (params) => {
   const { name } = params
+  const {
+    coin: coinName,
+    blockchain,
+  } = getCoinInfo(name)
+
+  if (!blockchain) return false
 
   const isUTXOModel = COIN_DATA[name.toUpperCase()] && COIN_DATA[name.toUpperCase()].model === COIN_MODEL.UTXO
   if (isUTXOModel) return false
@@ -116,11 +125,11 @@ const isToken = (params) => {
   for (const prop in TOKEN_STANDARDS) {
     const standard = TOKEN_STANDARDS[prop].standard
     const baseCurrency = TOKEN_STANDARDS[prop].currency
-    const lowerName = name.toLowerCase()
+    const lowerName = coinName.toLowerCase()
 
     if (
-      Object.keys(config[standard])?.includes(lowerName) ||
-      lowerName.startsWith(`{${baseCurrency}}`)
+      Object.keys(config[standard])?.includes(lowerName) &&
+      name.toLowerCase().startsWith(`{${baseCurrency}}`)
     ) {
       return true
     }
@@ -148,5 +157,41 @@ export default {
     currency: 'MATIC',
     defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
     web3: new Web3(new Web3.providers.HttpProvider(config.web3.matic_provider)),
+  }),
+  erc20xdai: new erc20LikeHelper({
+    standard: 'erc20xdai',
+    currency: 'XDAI',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.xdai_provider)),
+  }),
+  erc20ftm: new erc20LikeHelper({
+    standard: 'erc20ftm',
+    currency: 'FTM',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.ftm_provider)),
+  }),
+  erc20avax: new erc20LikeHelper({
+    standard: 'erc20avax',
+    currency: 'AVAX',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.avax_provider)),
+  }),
+  erc20movr: new erc20LikeHelper({
+    standard: 'erc20movr',
+    currency: 'MOVR',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.movr_provider)),
+  }),
+  erc20one: new erc20LikeHelper({
+    standard: 'erc20one',
+    currency: 'ONE',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.evmLikeToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.one_provider)),
+  }),
+  erc20aurora: new erc20LikeHelper({
+    standard: 'erc20aurora',
+    currency: 'AURETH',
+    defaultParams: DEFAULT_CURRENCY_PARAMETERS.aurethToken,
+    web3: new Web3(new Web3.providers.HttpProvider(config.web3.aurora_provider)),
   }),
 }

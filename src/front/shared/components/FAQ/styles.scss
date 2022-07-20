@@ -29,6 +29,10 @@
     @include ff-semibold;
     cursor: pointer;
     color: var(--color);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    line-height: 1.2;
   }
 
   &__content {
@@ -82,13 +86,13 @@ $chrestStripHeight: 12px;
     height: $chrestStripWidth;
     width: $chrestStripHeight;
     left: 0;
-    top: ($chrestStripHeight / 2) + ($chrestStripWidth / 2);
+    top: ($chrestStripHeight * 0.5) + ($chrestStripWidth * 0.5);
   }
 
   &::after {
     width: $chrestStripWidth;
     height: $chrestStripHeight;
-    left: ($chrestStripHeight / 2) - ($chrestStripWidth / 2);
+    left: ($chrestStripHeight * 0.5) - ($chrestStripWidth * 0.5);
     top: 0px;
   }
 }

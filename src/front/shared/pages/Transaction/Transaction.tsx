@@ -1,26 +1,21 @@
 import { withRouter } from 'react-router-dom'
-import React, { Component } from 'react'
+import { Component } from 'react'
+import { FormattedMessage } from 'react-intl'
 import actions from 'redux/actions'
 import erc20Like from 'common/erc20Like'
-import helpers, { links } from 'helpers'
-
-import getCurrencyKey from 'helpers/getCurrencyKey'
-import { defineMessages, injectIntl } from 'react-intl'
-import getWalletLink from 'helpers/getWalletLink'
+import {
+  links,
+  localStorage,
+  getCurrencyKey,
+  lsDataCache,
+} from 'helpers'
 
 import TxInfo from './TxInfo'
 import { ModalBox } from 'components/modal'
 import cssModules from 'react-css-modules'
 import styles from './styles.scss'
-import lsDataCache from 'helpers/lsDataCache'
 
-
-const labels = defineMessages({
-  Title: {
-    id: 'InfoPay_1',
-    defaultMessage: 'Transaction is completed',
-  },
-})
+import { COIN_DATA } from 'swap.app/constants/COINS'
 
 @cssModules({
   ...styles,
@@ -70,8 +65,18 @@ class Transaction extends Component<any, any> {
       }
     }
 
+    const hiddenCoinsList = localStorage.getItem('hiddenCoinsList')
+
+    const userWallet = actions.core
+      .getWallets({})
+      .filter(({ currency: walletCurrency, tokenKey }) =>
+        !hiddenCoinsList?.includes(walletCurrency) &&
+        (tokenKey?.toLowerCase() || walletCurrency.toLowerCase()) === currency.toLowerCase()
+      )[0]
+
     this.state = {
       currency,
+      userAddress: userWallet?.address,
       ticker,
       txHash,
       isFetching: !(infoTx),
@@ -85,7 +90,6 @@ class Transaction extends Component<any, any> {
       confirmations: 0,
       minerFee: 0,
       error: null,
-      finalBalances: false,
       ...rest,
     }
   }
@@ -98,21 +102,11 @@ class Transaction extends Component<any, any> {
     let infoTx
     let error = null
 
-
     try {
-      if (erc20Like.erc20.isToken({ name: currency })) {
-        infoTx = await actions.erc20.fetchTokenTxInfo(ticker, txHash)
-      }
-
-      else if (erc20Like.bep20.isToken({ name: currency })) {
-        infoTx = await actions.bep20.fetchTokenTxInfo(ticker, txHash)
-      }
-
-      else if (erc20Like.erc20matic.isToken({ name: currency })) {
-        infoTx = await actions.erc20matic.fetchTokenTxInfo(ticker, txHash)
-      }
-
-      else {
+      if (erc20Like.isToken({ name: currency })) {
+        const tokenStandard = COIN_DATA[currency.toUpperCase()].standard.toLowerCase()
+        infoTx = await actions[tokenStandard].fetchTokenTxInfo(ticker, txHash)
+      } else {
         infoTx = await actions[currency].fetchTxInfo(txHash, 5 * 60 * 1000)
       }
     } catch (err) {
@@ -180,51 +174,14 @@ class Transaction extends Component<any, any> {
     const currency = getCurrencyKey(ticker, true)
 
     this.fetchTxInfo(currency, txHash, ticker)
-    this.fetchTxFinalBalances(getCurrencyKey(ticker, true), txHash)
 
     if (typeof document !== 'undefined') {
       document.body.classList.add('overflowY-hidden-force')
     }
   }
 
-  fetchTxFinalBalances = (currency, txHash) => {
-    setTimeout(async () => {
-      const finalBalances = await helpers.transactions.fetchTxBalances(currency, txHash)
-      if (finalBalances && !this.unmounted) {
-        this.setState({
-          finalBalances,
-        })
-      }
-    })
-  }
-
   handleClose = () => {
-    const { history } = this.props
-
-    let {
-      infoTx: {
-        senderAddress: walletOne,
-        receiverAddress: walletTwo,
-      },
-      ticker,
-    } = this.state
-
-    const wallets: IUniversalObj[] = []
-
-    if (walletOne instanceof Array) {
-      walletOne.forEach((wallet) => wallets.push(wallet))
-    } else {
-      wallets.push(walletOne)
-    }
-
-    if (walletTwo instanceof Array) {
-      walletTwo.forEach((wallet) => wallets.push(wallet))
-    } else {
-      wallets.push(walletTwo)
-    }
-
-    const walletLink = getWalletLink(ticker, wallets)
-    history.push((walletLink) || '/')
+    window.history.back()
   }
 
   componentWillUnmount() {
@@ -236,12 +193,11 @@ class Transaction extends Component<any, any> {
   }
 
   render() {
-    const {
-      intl,
-    } = this.props
-
     return (
-      <ModalBox title={intl.formatMessage(labels.Title)} onClose={this.handleClose} >
+      <ModalBox
+        title={<FormattedMessage id="transacton" defaultMessage="Transaction" />}
+        onClose={this.handleClose}
+      >
         <div styleName="holder">
           <TxInfo {...this.state} />
         </div>
@@ -250,4 +206,4 @@ class Transaction extends Component<any, any> {
   }
 }
 
-export default withRouter(injectIntl(Transaction))
+export default withRouter(Transaction)

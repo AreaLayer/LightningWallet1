@@ -28,9 +28,14 @@ const isWidgetBuild = config && config.isWidget
     bnbData,
     maticData,
     arbethData,
+    aurethData,
+    xdaiData,
+    ftmData,
+    avaxData,
+    movrData,
+    oneData,
     ghostData,
     nextData,
-    multisigStatus,
     activeFiat,
   },
 }) => {
@@ -41,10 +46,15 @@ const isWidgetBuild = config && config.isWidget
       bnb: bnbData,
       matic: maticData,
       arbeth: arbethData,
+      aureth: aurethData,
+      xdai: xdaiData,
+      ftm: ftmData,
+      avax: avaxData,
+      movr: movrData,
+      one: oneData,
       ghost: ghostData,
       next: nextData,
     },
-    multisigStatus,
     activeFiat,
   }
 })
@@ -112,11 +122,13 @@ class InvoicesList extends PureComponent<any, any> {
       const invoicesData = wallets.map((wallet) => {
         const {
           currency: type,
+          tokenKey,
           address,
         } = wallet
 
         return {
           type,
+          tokenKey,
           address,
         }
       }).filter((wallet) => wallet.address !== `Not connected`)
@@ -211,7 +223,6 @@ class InvoicesList extends PureComponent<any, any> {
         {(items && items.length > 0) ? (
           <Table rows={items} styleName="currencyHistory" rowRender={this.rowRender} />
         ) : (
-          //@ts-ignore
           <ContentLoader rideSideContent empty inner />
         )}
       </div>
@@ -245,7 +256,6 @@ class InvoicesList extends PureComponent<any, any> {
                   {/* Right form holder */}
                 </div>
               ) : (
-                //@ts-ignore
                 <ContentLoader leftSideContent />
               )}
             </div>

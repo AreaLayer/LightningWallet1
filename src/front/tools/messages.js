@@ -10,10 +10,14 @@ import {
 
 const locales = {
   nl: 'Dutch',
+  de: 'German',
   en: 'English',
   ru: 'Russian',
   es: 'Spanish',
   pl: 'Polish',
+  pt: 'Portuguese', // Brasil
+  ko: 'Korean',
+  ar: 'Arabic',
 }
 
 const GLOB_PATTERN = 'src/front/shared/**/*.{js,ts,tsx}'

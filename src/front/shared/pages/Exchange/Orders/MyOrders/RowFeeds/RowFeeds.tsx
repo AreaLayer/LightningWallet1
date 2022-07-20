@@ -58,28 +58,28 @@ class RowFeeds extends Component<any, any> {
 
     return (
       <tr key={this.props.key}>
-        <td styleName="with-icon">
+        <td styleName="with-icon rowData">
           <Coins names={[sellCurrency, buyCurrency]} size={25} />
           {isTurbo &&
             <TurboIcon />
           }
         </td>
-        <td>
+        <td styleName='rowData'>
           <span className='sellAmountOrders' styleName="value">{sellAmount.toFixed(5)}</span>
           {' '}
           <span styleName="currency">{this.renderCoinName(sellCurrency)}</span>
         </td>
-        <td>
+        <td styleName='rowData'>
           <span className='buyAmountOrders' styleName="value">{buyAmount.toFixed(5)}</span>
           {' '}
           <span styleName="currency">{this.renderCoinName(buyCurrency)}</span>
         </td>
-        <td>
+        <td styleName='rowData'>
           <span styleName="value">{rate.toFixed(5)}</span>
           {' '}
           <span styleName="currency">{`${this.renderCoinName(buyCurrency)}/${this.renderCoinName(sellCurrency)}`}</span>
         </td>
-        <td>
+        <td styleName='rowData'>
           <div styleName="buttons">
             <div>
               <Copy text={this.generateOfferUrl()}>
@@ -91,7 +91,7 @@ class RowFeeds extends Component<any, any> {
             {Boolean(requests && requests.length) ?
               <div>
                 <div styleName="delete" onClick={() => declineRequest(id, requests[0].participant.peer)} >
-                  <FormattedMessage id="RowFeeds77" defaultMessage="Decline" />
+                  <FormattedMessage id="RowHistoryCancelInvoice" defaultMessage="Decline" />
                 </div>
                 <Link to={swapUri}>
                   <div styleName="accept" onClick={() => acceptRequest(id, requests[0].participant.peer)} >

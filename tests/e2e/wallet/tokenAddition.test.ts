@@ -1,11 +1,11 @@
 import puppeteer from 'puppeteer'
-import { createBrowser, addAssetToWallet, takeScreenshot, clickOn, timeOut } from '../utils'
+import { createBrowser, addTokenToWallet, takeScreenshot, clickOn, timeOut } from '../utils'
 
 jest.setTimeout(250 * 1000)
 
 describe('Adding custom tokens', () => {
-  let testBrowser: puppeteer.Browser | undefined = undefined
-  let testPage: puppeteer.Page | undefined = undefined
+  let testBrowser: puppeteer.Browser | undefined
+  let testPage: puppeteer.Page | undefined
 
   type TestCase = [
     string,
@@ -43,6 +43,15 @@ describe('Adding custom tokens', () => {
         contract: '0x220afDcaE34D63EDe6ba68d9F50fFe5632d70a28',
         titleId: 'erc20maticmono',
         walletTitle: 'MONO ERC20MATIC',
+      },
+    ],
+    [
+      'Custom xDai ERC20',
+      'xdaierc20xdai',
+      {
+        contract: '0xB81AFe27c103bcd42f4026CF719AF6D802928765',
+        titleId: 'erc20xdaiaria',
+        walletTitle: 'ARIA ERC20XDAI',
       },
     ],
   ]
@@ -101,29 +110,10 @@ describe('Adding custom tokens', () => {
       try {
         const { contract, titleId, walletTitle } = options
 
-        await addAssetToWallet(testPage, typeId)
-
-        const addressInput: puppeteer.ElementHandle | null = await testPage.$('#customTokenInput')
-
-        if (addressInput) {
-          await addressInput.type(contract)
-        }
-
-        await clickOn({
+        await addTokenToWallet({
           page: testPage,
-          selector: '#customTokenNextButton',
-        })
-
-        await testPage.waitForSelector('#customTokenAddButton')
-
-        await clickOn({
-          page: testPage,
-          selector: '#customTokenAddButton',
-        })
-
-        await clickOn({
-          page: testPage,
-          selector: '#customTokenDoneButton',
+          standardId: typeId,
+          contract,
         })
 
         await testPage.waitForSelector(`#${titleId}WalletTitle`)

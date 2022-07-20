@@ -1,22 +1,19 @@
-import erc20Like from 'common/erc20Like';
-import config from 'app-config'
+import { BigNumber } from 'bignumber.js'
+import erc20Like from 'common/erc20Like'
+import config from 'helpers/externalConfig'
 import moment from 'moment/moment'
-import { constants } from 'helpers'
 import request from 'common/utils/request'
+import getCoinInfo from 'common/coins/getCoinInfo'
 import * as mnemonicUtils from 'common/utils/mnemonic'
-import transactions from 'helpers/transactions'
+import { MnemonicKey } from 'common/types'
+import { constants, links, transactions, user, getCurrencyKey, metamask } from 'helpers'
 import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 import actions from 'redux/actions'
 import { getState } from 'redux/core'
-
 import reducers from 'redux/core/reducers'
 
-import { getActivatedCurrencies } from 'helpers/user'
-import getCurrencyKey from 'helpers/getCurrencyKey'
-import metamask from 'helpers/metamask'
-
-import { MnemonicKey } from './types'
-import { initialState as currenciesInitialState } from 'redux/reducers/currencies'
+const onlyEvmWallets = (config?.opts?.ui?.disableInternalWallet) ? true : false
+const enabledCurrencies = config.opts.curEnabled
 
 /*
   Когда добавляем reducers, для старых пользователей они не инициализированы
@@ -37,23 +34,22 @@ const initReducerState = () => {
 
 const sign_btc_multisig = async (btcPrivateKey) => {
   let btcMultisigOwnerKey = localStorage.getItem(constants.privateKeyNames.btcMultisigOtherOwnerKey)
-  //@ts-ignore: strictNullChecks
+  // @ts-ignore: strictNullChecks
   try { btcMultisigOwnerKey = JSON.parse(btcMultisigOwnerKey) } catch (e) { }
-  //@ts-ignore
-  const _btcMultisigPrivateKey = actions.btcmultisig.login_USER(btcPrivateKey, btcMultisigOwnerKey)
+  // @ts-ignore
+  actions.btcmultisig.login_USER(btcPrivateKey, btcMultisigOwnerKey)
   await actions.btcmultisig.signToUserMultisig()
 }
 
-
 const sign_btc_2fa = async (btcPrivateKey) => {
   const btcSMSServerKey = config.swapContract.protectedBtcKey
-  let btcSmsPublicKeys = [btcSMSServerKey]
-  //@ts-ignore: strictNullChecks
+  const btcSmsPublicKeys = [btcSMSServerKey]
+  // @ts-ignore: strictNullChecks
   let btcSmsMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcSmsMnemonicKey)
-  
-  try { 
-    //@ts-ignore: strictNullChecks
-    btcSmsMnemonicKey = JSON.parse(btcSmsMnemonicKey) 
+
+  try {
+    // @ts-ignore: strictNullChecks
+    btcSmsMnemonicKey = JSON.parse(btcSmsMnemonicKey)
   } catch (e) {
     console.error(e)
   }
@@ -61,31 +57,23 @@ const sign_btc_2fa = async (btcPrivateKey) => {
   if (btcSmsMnemonicKey instanceof Array && btcSmsMnemonicKey.length > 0) {
     btcSmsPublicKeys.push(btcSmsMnemonicKey[0])
   }
-  const _btcMultisigSMSPrivateKey = actions.btcmultisig.login_SMS(btcPrivateKey, btcSmsPublicKeys)
+  actions.btcmultisig.login_SMS(btcPrivateKey, btcSmsPublicKeys)
 }
 
 const sign_btc_pin = async (btcPrivateKey) => {
   const btcPinServerKey = config.swapContract.btcPinKey
-  let btcPinPublicKeys = [btcPinServerKey]
-  //@ts-ignore: strictNullChecks
-  let btcPinMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcPinMnemonicKey)
-  
-  try { 
-    //@ts-ignore: strictNullChecks
-    btcPinMnemonicKey = JSON.parse(btcPinMnemonicKey) 
-  } catch (e) {
-    console.error(e)
+  const btcPinPublicKeys = [btcPinServerKey]
+  const btcPinMnemonicKey: MnemonicKey | null = localStorage.getItem(constants.privateKeyNames.btcPinMnemonicKey)
+
+  if (btcPinMnemonicKey) {
+    btcPinPublicKeys.push(btcPinMnemonicKey)
   }
 
-  if (btcPinMnemonicKey instanceof Array && btcPinMnemonicKey.length > 0) {
-    btcPinPublicKeys.push(btcPinMnemonicKey[0])
-  }
-
-  const _btcMultisigPinPrivateKey = actions.btcmultisig.login_PIN(btcPrivateKey, btcPinPublicKeys)
+  actions.btcmultisig.login_PIN(btcPrivateKey, btcPinPublicKeys)
 }
 
 const sign = async () => {
-  await metamask.web3connect.onInit( async () => {
+  await metamask.web3connect.onInit(async () => {
     initReducerState()
 
     let mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
@@ -95,79 +83,20 @@ const sign = async () => {
       localStorage.setItem(constants.privateKeyNames.twentywords, mnemonic)
     }
 
-    const mnemonicKeys = {
-      btc: localStorage.getItem(constants.privateKeyNames.btcMnemonic),
-      btcSms: localStorage.getItem(constants.privateKeyNames.btcSmsMnemonicKeyGenerated),
-      // using ETH key for all EVM compatible chains
-      eth: localStorage.getItem(constants.privateKeyNames.ethMnemonic),
-      bnb: localStorage.getItem(constants.privateKeyNames.ethMnemonic),
-      matic: localStorage.getItem(constants.privateKeyNames.ethMnemonic),
-      arbeth: localStorage.getItem(constants.privateKeyNames.ethMnemonic),
-      ghost: localStorage.getItem(constants.privateKeyNames.ghostMnemonic),
-      next: localStorage.getItem(constants.privateKeyNames.nextMnemonic),
-    }
-
-    if (mnemonic !== `-`) {
-      //@ts-ignore
-      if (!mnemonicKeys.btc) mnemonicKeys.btc = actions.btc.sweepToMnemonic(mnemonic)
-      if (!mnemonicKeys.eth) mnemonicKeys.eth = actions.eth.sweepToMnemonic(mnemonic)
-      if (!mnemonicKeys.bnb) mnemonicKeys.bnb = actions.bnb.sweepToMnemonic(mnemonic)
-      if (!mnemonicKeys.matic) mnemonicKeys.matic = actions.matic.sweepToMnemonic(mnemonic)
-      if (!mnemonicKeys.arbeth) mnemonicKeys.arbeth = actions.arbeth.sweepToMnemonic(mnemonic)
-      //@ts-ignore
-      if (!mnemonicKeys.ghost) mnemonicKeys.ghost = actions.ghost.sweepToMnemonic(mnemonic)
-        //@ts-ignore
-      if (!mnemonicKeys.next) mnemonicKeys.next = actions.next.sweepToMnemonic(mnemonic)
-      if (!mnemonicKeys.btcSms) {
-        //@ts-ignore: strictNullChecks
-        mnemonicKeys.btcSms = actions.btcmultisig.getSmsKeyFromMnemonic(mnemonic)
-        //@ts-ignore: strictNullChecks
-        localStorage.setItem(constants.privateKeyNames.btcSmsMnemonicKeyGenerated, mnemonicKeys.btcSms)
-      }
-    }
-    // Sweep-Switch
-    //@ts-ignore: strictNullChecks
-    let btcNewSmsMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcSmsMnemonicKeyMnemonic)
-    
-    try { 
-      //@ts-ignore: strictNullChecks
-      btcNewSmsMnemonicKey = JSON.parse(btcNewSmsMnemonicKey) 
-    } catch (e) {
-      console.error(e)
-    }
-
-    if (!(btcNewSmsMnemonicKey instanceof Array)) {
-      localStorage.setItem(constants.privateKeyNames.btcSmsMnemonicKeyMnemonic, JSON.stringify([]))
-    }
-
-    //@ts-ignore: strictNullChecks
-    let btcNewMultisigOwnerKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcMultisigOtherOwnerKeyMnemonic)
-    
-    try { 
-      //@ts-ignore: strictNullChecks
-      btcNewMultisigOwnerKey = JSON.parse(btcNewMultisigOwnerKey) 
-    } catch (e) {
-      console.error(e)
-    }
-
-    if (!(btcNewMultisigOwnerKey instanceof Array)) {
-      localStorage.setItem(constants.privateKeyNames.btcMultisigOtherOwnerKeyMnemonic, JSON.stringify([]))
-    }
-
     const btcPrivateKey = localStorage.getItem(constants.privateKeyNames.btc)
-    const btcMultisigPrivateKey = localStorage.getItem(constants.privateKeyNames.btcMultisig)
     const ghostPrivateKey = localStorage.getItem(constants.privateKeyNames.ghost)
     const nextPrivateKey = localStorage.getItem(constants.privateKeyNames.next)
     // using ETH key for all EVM compatible chains
     const ethPrivateKey = localStorage.getItem(constants.privateKeyNames.eth)
 
-    actions.eth.login(ethPrivateKey, mnemonic, mnemonicKeys)
-    actions.bnb.login(ethPrivateKey, mnemonic, mnemonicKeys)
-    actions.matic.login(ethPrivateKey, mnemonic, mnemonicKeys)
-    actions.arbeth.login(ethPrivateKey, mnemonic, mnemonicKeys)
-    const _btcPrivateKey = actions.btc.login(btcPrivateKey, mnemonic, mnemonicKeys)
-    const _ghostPrivateKey = actions.ghost.login(ghostPrivateKey, mnemonic, mnemonicKeys)
-    const _nextPrivateKey = actions.next.login(nextPrivateKey, mnemonic, mnemonicKeys)
+    Object.keys(config.enabledEvmNetworks).forEach((evmNetworkKey) => {
+      const actionKey = evmNetworkKey?.toLowerCase()
+      if (actionKey) actions[actionKey]?.login(ethPrivateKey, mnemonic)
+    })
+
+    const _btcPrivateKey = actions.btc.login(btcPrivateKey, mnemonic)
+    actions.ghost.login(ghostPrivateKey, mnemonic)
+    actions.next.login(nextPrivateKey, mnemonic)
 
     // btc multisig with 2fa (2of3)
     await sign_btc_2fa(_btcPrivateKey)
@@ -179,8 +108,6 @@ const sign = async () => {
     await sign_btc_pin(_btcPrivateKey)
 
     loginWithTokens()
-
-    await getReputation()
   })
 }
 
@@ -196,7 +123,7 @@ const loginWithTokens = () => {
         config[standardName][tokenName].address,
         tokenName,
         config[standardName][tokenName].decimals,
-        config[standardName][tokenName].fullName
+        config[standardName][tokenName].fullName,
       )
     })
   })
@@ -204,68 +131,56 @@ const loginWithTokens = () => {
   reducers.user.setTokenSigned(true)
 }
 
-const getReputation = async () => {
-
-  const btcReputationPromise = actions.btc.getReputation()
-  const ethReputationPromise = actions.eth.getReputation()
-  const ghostReputationPromise = actions.ghost.getReputation()
-  const nextReputationPromise = actions.next.getReputation()
-
-  Promise.all([
-    btcReputationPromise,
-    ethReputationPromise,
-    ghostReputationPromise,
-    nextReputationPromise,
-  ])
-    .then(([btcReputation, ethReputation, ghostReputation, nextReputation]) => {
-      const totalReputation = Number(btcReputation) + Number(ethReputation) + Number(ghostReputation) + Number(nextReputation)
-
-      if (Number.isInteger(totalReputation)) {
-        reducers.pubsubRoom.set({ reputation: totalReputation })
-      } else {
-        reducers.pubsubRoom.set({ reputation: null })
-      }
-    })
-    .catch((error) => {
-      console.error(`unknown reputation`, error)
-    })
-}
-
-
 const getBalances = () => {
   const {
     user: {
       isTokenSigned,
+      isBalanceFetching,
     },
   } = getState()
 
+  if (isBalanceFetching) return true
+
   reducers.user.setIsBalanceFetching({ isBalanceFetching: true })
+
+  const evmBalancesFuncs: Array<any> = []
+  Object.keys(config.enabledEvmNetworks).forEach((evmType) => {
+    if (!enabledCurrencies || enabledCurrencies[evmType.toLowerCase()]) {
+      if ((onlyEvmWallets && metamask.isEnabled() && metamask.isConnected()) || !onlyEvmWallets) {
+        evmBalancesFuncs.push({
+          func: actions[evmType.toLowerCase()].getBalance,
+          name: evmType.toLowerCase(),
+        })
+      }
+    }
+  })
 
   return new Promise(async (resolve) => {
     const balances = [
       ...(metamask.isEnabled() && metamask.isConnected() && metamask.isAvailableNetwork())
         ? [ { func: metamask.getBalance, name: 'metamask' } ]
         : [],
-      { func: actions.btc.getBalance, name: 'btc' },
-      { func: actions.eth.getBalance, name: 'eth' },
-      { func: actions.bnb.getBalance, name: 'bnb' },
-      { func: actions.matic.getBalance, name: 'matic' },
-      { func: actions.arbeth.getBalance, name: 'arbeth' },
-      { func: actions.ghost.getBalance, name: 'ghost' },
-      { func: actions.next.getBalance, name: 'next' },
-      { func: actions.btcmultisig.getBalance, name: 'btc-sms' },
-      { func: actions.btcmultisig.getBalanceUser, name: 'btc-ms-main' },
-      { func: actions.btcmultisig.getBalancePin, name: 'btc-pin' },
-      { func: actions.btcmultisig.fetchMultisigBalances, name: 'btc-ms' }
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [{ func: actions.btc.getBalance, name: 'btc' }] : []),
+
+      ...evmBalancesFuncs,
+
+      ...(((!enabledCurrencies || enabledCurrencies.ghost) && !onlyEvmWallets) ? [{ func: actions.ghost.getBalance, name: 'ghost' }] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.next) && !onlyEvmWallets) ? [{ func: actions.next.getBalance, name: 'next' }] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [{ func: actions.btcmultisig.getBalance, name: 'btc-sms' }] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [{ func: actions.btcmultisig.getBalanceUser, name: 'btc-ms-main' }] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [{ func: actions.btcmultisig.getBalancePin, name: 'btc-pin' }] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [{ func: actions.btcmultisig.fetchMultisigBalances, name: 'btc-ms' }] : []),
     ]
 
-    balances.forEach(async (obj) => {
-      try {
-        await obj.func()
-      } catch (e) {
-        console.error('Fail fetch balance for ', obj.name)
-      }
-    })
+    await Promise.all(
+      balances.map(async (obj) => {
+        try {
+          await obj.func()
+        } catch (e) {
+          console.error('Fail fetch balance for ', obj.name)
+        }
+      }),
+    )
 
     if (isTokenSigned) {
       await getTokensBalances()
@@ -277,28 +192,36 @@ const getBalances = () => {
 }
 
 const getTokensBalances = async () => {
-  Object.keys(TOKEN_STANDARDS).forEach((key) => {
-    const standardObj = TOKEN_STANDARDS[key]
-    const standardName = standardObj.standard
+  await Promise.all(
+    Object.keys(TOKEN_STANDARDS).map(async (key) => {
+      const standardObj = TOKEN_STANDARDS[key]
+      const standardName = standardObj.standard
+      const baseBlockchain = standardObj.currency.toLowerCase()
 
-    Object.keys(config[standardName]).forEach(async (tokenName) => {
-      try {
-        await actions[standardName].getBalance(tokenName)
-      } catch (error) {
-        console.group('Actions >%c user > getTokensBalances', 'color: red;')
-        console.error(`Fail fetch balance for ${tokenName.toUpperCase()} token`, error)
-        console.groupEnd()
+      if (!enabledCurrencies || enabledCurrencies[baseBlockchain]) {
+        if ((onlyEvmWallets && metamask.isEnabled() && metamask.isConnected()) || !onlyEvmWallets) {
+          await Promise.all(
+            Object.keys(config[standardName]).map(async (tokenName) => {
+              try {
+                await actions[standardName].getBalance(tokenName)
+              } catch (error) {
+                console.group('Actions >%c user > getTokensBalances', 'color: red;')
+                console.error(`Fail fetch balance for ${tokenName.toUpperCase()} token`, error)
+                console.groupEnd()
+              }
+            }),
+          )
+        }
       }
-    })
-  })
+    }),
+  )
 }
 
 const customRate = (cur) => {
   const widgetTokens = window.widgetEvmLikeTokens
 
-  const targetToken = widgetTokens?.length && widgetTokens.find((token) => {
-    return token.name.toLowerCase() === cur.toLowerCase()
-  })
+  const targetToken = widgetTokens?.length
+    && widgetTokens.find((token) => token.name.toLowerCase() === cur.toLowerCase())
 
   return targetToken ? (targetToken || { customExchangeRate: null }).customExchangeRate : null
 }
@@ -319,27 +242,21 @@ const getExchangeRate = (sellCurrency, buyCurrency): Promise<number> => {
     }
 
     if (buyDataRate) {
-      resolve(1 / buyDataRate)
+      resolve(new BigNumber(1).div(buyDataRate).toNumber())
       return
     }
 
     let dataKey = sellCurrency.toLowerCase()
     switch (sellCurrency.toLowerCase()) {
-      case 'btc (sms-protected)':
       case 'btc (multisig)':
       case 'btc (pin-protected)':
         dataKey = 'btc'
         break
     }
 
-    if ((user[`${dataKey}Data`]
-      && user[`${dataKey}Data`].infoAboutCurrency
-      && user[`${dataKey}Data`].infoAboutCurrency.price_fiat
-    ) || (
-        user.tokensData[dataKey]
-        && user.tokensData[dataKey].infoAboutCurrency
-        && user.tokensData[dataKey].infoAboutCurrency.price_fiat
-      )
+    if (
+      (user[`${dataKey}Data`]?.infoAboutCurrency?.price_fiat)
+      || (user.tokensData[dataKey]?.infoAboutCurrency?.price_fiat)
     ) {
       const currencyData = (user.tokensData[dataKey] && user.tokensData[dataKey].infoAboutCurrency)
         ? user.tokensData[dataKey]
@@ -347,111 +264,112 @@ const getExchangeRate = (sellCurrency, buyCurrency): Promise<number> => {
 
       resolve(currencyData.infoAboutCurrency.price_fiat)
     } else {
-      resolve(1)
+      resolve(0)
     }
   })
 }
 
 const customTokenExchangeRate = (name) => {
-  let customRate = false
+  for (const key in TOKEN_STANDARDS) {
+    const { standard } = TOKEN_STANDARDS[key]
 
-  outsideLabel: {
-    for (const key in TOKEN_STANDARDS) {
-      const standard = TOKEN_STANDARDS[key].standard
-
-      for (const tokenName in config[standard]) {
-        const exRate = config[standard][tokenName].customExchangeRate
-
-        if (tokenName === name && exRate) {
-          customRate = exRate
-          break outsideLabel
-        }
-      }
+    if (config[standard][name.toLowerCase()]) {
+      return config[standard][name.toLowerCase()].customExchangeRate || ''
     }
   }
 
-  return customRate
+  return ''
 }
 
-const getInfoAboutCurrency = (currencyNames) => {
-  return new Promise((resolve, reject) => {
-    const url = 'https://noxon.wpmix.net/cursAll.php'
-    reducers.user.setIsFetching({ isFetching: true })
+const getInfoAboutCurrency = (currencyNames) => new Promise((resolve, reject) => {
+  reducers.user.setIsFetching({ isFetching: true })
 
-    const fiat = (config && config.opts && config.opts.activeFiat) ? config.opts.activeFiat : `USD`
+  const fiat = config?.opts?.activeFiat || `USD`
 
-    request.get(url, {
-      cacheResponse: 60 * 60 * 1000, // cache for 1 hour
-      query: {
-        fiat,
-        tokens: currencyNames.join(`,`),
-      }
-    }).then((answer: any) => {
-      let infoAboutBTC = answer.data.filter(currencyInfo => {
-        return currencyInfo.symbol.toLowerCase() === 'btc'
-      })
+  request.get(links.currencyCourses, {
+    cacheResponse: 60 * 60 * 1000, // cache for 1 hour
+    query: {
+      fiat,
+      tokens: currencyNames.map(currencyNames => {
+        let { coin } = getCoinInfo(currencyNames)
+        if (coin === 'XDAI') coin = 'DAI'
 
-      const btcPrice = infoAboutBTC?.length && infoAboutBTC[0]?.quote[fiat]?.price
+        return coin
+      }).join(`,`),
+    },
+  }).then((answer: any) => {
+    const infoAboutBTC = answer.data.filter(currencyInfo => currencyInfo.symbol.toLowerCase() === 'btc')
 
-      answer.data.map(currencyInfoItem => {
-        if (currencyNames.includes(currencyInfoItem.symbol)) {
-          if (currencyInfoItem.quote && currencyInfoItem.quote[fiat]) {
-            const priceInBtc = btcPrice && currencyInfoItem.quote[fiat].price / btcPrice
-            const ownPrice = customTokenExchangeRate(currencyInfoItem.symbol)
+    const btcPrice = infoAboutBTC?.length && infoAboutBTC[0]?.quote[fiat]?.price
 
-            const currencyInfo = {
-              ...currencyInfoItem.quote[fiat],
-              price_fiat: (ownPrice) ? ownPrice : currencyInfoItem.quote[fiat].price,
-              price_btc: priceInBtc,
-            }
+    const { user } = getState()
 
-            const { user } = getState()
-            const targetDataKey = `${currencyInfoItem.symbol.toLowerCase()}Data`
-            const targetMnemonicDataKey = `${currencyInfoItem.symbol.toLowerCase()}MnemonicData`
+    currencyNames.map((name) => {
+      const {
+        coin,
+        blockchain,
+      } = getCoinInfo(name)
 
-            if (user[targetDataKey]) {
-              reducers.user.setInfoAboutCurrency({ name: targetDataKey, infoAboutCurrency: currencyInfo })
-              // Sweep (for future)
-              reducers.user.setInfoAboutCurrency({ name: targetMnemonicDataKey, infoAboutCurrency: currencyInfo })
+      const currencyName = coin.toLowerCase()
 
-              if (currencyInfoItem.symbol === 'BTC') {
-                reducers.user.setInfoAboutCurrency({ name: 'btcMultisigSMSData', infoAboutCurrency: currencyInfo })
-                reducers.user.setInfoAboutCurrency({ name: 'btcMultisigUserData', infoAboutCurrency: currencyInfo })
-                reducers.user.setInfoAboutCurrency({ name: 'btcMultisigG2FAData', infoAboutCurrency: currencyInfo })
-                reducers.user.setInfoAboutCurrency({ name: 'btcMultisigPinData', infoAboutCurrency: currencyInfo })
-              }
-            } else if (erc20Like.isToken({ name: currencyInfoItem.symbol })) {
-              const baseCurrency = tokenCurrencyByPlatform(currencyInfoItem.platform?.name)
+      const currencyInfoItem = answer.data.filter(currencyInfo => (
+        (currencyInfo.symbol.toLowerCase() === currencyName)
+        || (currencyName === 'xdai' && currencyInfo.symbol.toLowerCase() === 'dai')
+        || (config?.L2_EVM_KEYS?.includes(currencyName) && currencyInfo.symbol.toLowerCase() === 'eth')
+      ))[0]
 
-              if (baseCurrency) {
-                reducers.user.setInfoAboutToken({
-                  baseCurrency,
-                  name: currencyInfoItem.symbol.toLowerCase(),
-                  infoAboutCurrency: currencyInfo,
-                })
-              }
-            }
-          }
+      const customFiatPrice = customTokenExchangeRate(currencyName)
+
+      if (currencyInfoItem?.quote[fiat]) {
+        const priceInFiat =  customFiatPrice || currencyInfoItem.quote[fiat].price
+        const priceInBtc = btcPrice && priceInFiat / btcPrice
+
+        const currencyInfo = {
+          ...currencyInfoItem.quote[fiat],
+          price_fiat: priceInFiat,
+          price_btc: priceInBtc,
         }
-      })
-      resolve(true)
-    }).catch((error) => {
-      reject(error)
-    }).finally(() => reducers.user.setIsFetching({ isFetching: false }))
-  })
-}
 
-const tokenCurrencyByPlatform = (platform): string | undefined => {
-  let baseCurrency= undefined
+        const targetDataKey = `${currencyName}Data`
 
-  Object.keys(TOKEN_STANDARDS).forEach((key) => {
-    if (TOKEN_STANDARDS[key].platform === platform?.toLowerCase()) {
-      baseCurrency = TOKEN_STANDARDS[key].currency
-    }
-  })
+        if (user[targetDataKey]) {
+          reducers.user.setInfoAboutCurrency({ name: targetDataKey, infoAboutCurrency: currencyInfo })
 
-  return baseCurrency
-}
+          if (currencyInfoItem.symbol === 'BTC') {
+            reducers.user.setInfoAboutCurrency({ name: 'btcMultisigUserData', infoAboutCurrency: currencyInfo })
+            reducers.user.setInfoAboutCurrency({ name: 'btcMultisigG2FAData', infoAboutCurrency: currencyInfo })
+            reducers.user.setInfoAboutCurrency({ name: 'btcMultisigPinData', infoAboutCurrency: currencyInfo })
+          }
+        } else if (user.tokensData[name.toLowerCase()] && blockchain) {
+          reducers.user.setInfoAboutToken({
+            baseCurrency: blockchain.toLowerCase(),
+            name: currencyName,
+            infoAboutCurrency: currencyInfo,
+          })
+        }
+      }
+
+      if (!currencyInfoItem && customFiatPrice && blockchain) {
+        const priceInFiat = +customFiatPrice
+        const priceInBtc = btcPrice && priceInFiat / btcPrice
+
+        const currencyInfo = {
+          price_fiat: priceInFiat,
+          price_btc: priceInBtc,
+        }
+
+        reducers.user.setInfoAboutToken({
+          baseCurrency: blockchain.toLowerCase(),
+          name: currencyName,
+          infoAboutCurrency: currencyInfo,
+        })
+      }
+    })
+    resolve(true)
+  }).catch((error) => {
+    reject(error)
+  }).finally(() => reducers.user.setIsFetching({ isFetching: false }))
+})
 
 const clearTransactions = () => {
   reducers.history.setTransactions([])
@@ -466,17 +384,14 @@ const mergeTransactions = (mergeTxs: IUniversalObj[]) => {
 
   const allTransactions = transactions
     .concat(mergeTxs)
-    .sort((a, b) => b.date - a.date)
     .filter((item) => item)
 
-  reducers.history.setTransactions(allTransactions)
+  actions.history.pullTransactions(allTransactions)
 }
 
 const pullActiveCurrency = (currency) => {
   reducers.user.setActiveCurrency({ activeCurrency: currency })
 }
-
-const delay = (ms) => new Promise(resolve => setTimeout(() => resolve(true), ms))
 
 const fetchMultisigStatus = async () => {
   const {
@@ -497,43 +412,38 @@ const fetchMultisigStatus = async () => {
   }
 }
 
-type ObjCurrencyType = {
-  currency: {
-    isBalanceFetched: boolean
-  }
-}
+const setTransactions = async () => {
+  clearTransactions()
 
-//@ts-ignore: strictNullChecks
-const setTransactions = async (objCurrency: ObjCurrencyType | {} = null) => {
-  const isBtcSweeped = actions.btc.isSweeped()
-  const isEthSweeped = actions.eth.isSweeped()
-  const isBnbSweeped = actions.bnb.isSweeped()
-  const isMaticSweeped = actions.matic.isSweeped()
-  const isArbitrumSweeped = actions.arbeth.isSweeped()
-
+  const evmTransactions: any = []
+  Object.keys(config.enabledEvmNetworks).forEach((evmType) => {
+    if (!enabledCurrencies || enabledCurrencies[evmType.toLowerCase()]) {
+      if (onlyEvmWallets) {
+        if (metamask.isEnabled() && metamask.isConnected()) {
+          evmTransactions.push( actions[evmType.toLowerCase()].getTransaction(metamask.getAddress()) )
+        }
+      } else {
+        evmTransactions.push( actions[evmType.toLowerCase()].getTransaction() )
+        if (metamask.isEnabled() && metamask.isConnected()) {
+          evmTransactions.push( actions[evmType.toLowerCase()].getTransaction(metamask.getAddress()) )
+        }
+      }
+    }
+  })
   try {
-    clearTransactions()
-
     const fetchTxsPromises = [
-      actions.btc.getTransaction(),
-      ...(isBtcSweeped) ? [] : [actions.btc.getTransaction(actions.btc.getSweepAddress())],
-      actions.btcmultisig.getTransactionSMS(),
-      actions.btcmultisig.getTransactionPIN(),
-      actions.btcmultisig.getTransactionUser(),
-      actions.eth.getTransaction(),
-      actions.bnb.getTransaction(),
-      actions.matic.getTransaction(),
-      actions.arbeth.getTransaction(),
-      //@ts-ignore: strictNullChecks
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [actions.btc.getTransaction()] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [actions.btcmultisig.getTransactionSMS()] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [actions.btcmultisig.getTransactionPIN()] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.btc) && !onlyEvmWallets) ? [actions.btcmultisig.getTransactionUser()] : []),
+      ...evmTransactions,
+      ...(((!enabledCurrencies || enabledCurrencies.ghost) && !onlyEvmWallets) ? [actions.ghost.getTransaction()] : []),
+      ...(((!enabledCurrencies || enabledCurrencies.next) && !onlyEvmWallets) ? [actions.next.getTransaction()] : []),
+      // @to-do - other metamask wallets? need check
+      /*
       ...(metamask.isEnabled() && metamask.isConnected()) ? [actions.eth.getTransaction(metamask.getAddress())] : [],
-      //@ts-ignore: strictNullChecks
       ...(metamask.isEnabled() && metamask.isConnected()) ? [actions.bnb.getTransaction(metamask.getAddress())] : [],
-      ...(isEthSweeped) ? [] : [actions.eth.getTransaction(actions.eth.getSweepAddress())],
-      ...(isBnbSweeped) ? [] : [actions.bnb.getTransaction(actions.bnb.getSweepAddress())],
-      ...(isMaticSweeped) ? [] : [actions.matic.getTransaction(actions.matic.getSweepAddress())],
-      ...(isArbitrumSweeped) ? [] : [actions.arbeth.getTransaction(actions.arbeth.getSweepAddress())],
-      ...objCurrency && objCurrency['GHOST'] ? [actions.ghost.getTransaction()] : [],
-      ...objCurrency && objCurrency['NEXT'] ? [actions.next.getTransaction()] : [],
+      */
     ]
 
     fetchTxsPromises.forEach((txPromise: Promise<any[]>) => {
@@ -551,32 +461,22 @@ const setTransactions = async (objCurrency: ObjCurrencyType | {} = null) => {
 }
 
 const setTokensTransaction = async () => {
-  const { core: { hiddenCoinsList } } = getState()
-  const enabledCurrencies = getActivatedCurrencies()
-  const tokens: { [key: string]: string[] } = {}
-
   Object.keys(TOKEN_STANDARDS).forEach((key) => {
-    const standard = TOKEN_STANDARDS[key].standard
-    const standardTokens = Object.keys(config[standard]).filter((name) => {
-      return (
-        !hiddenCoinsList.includes(name.toUpperCase()) &&
-        enabledCurrencies.includes(name.toUpperCase())
-      )
-    })
+    const { standard } = TOKEN_STANDARDS[key]
+    const baseCurrency = TOKEN_STANDARDS[standard].currency.toUpperCase()
+    const baseBlockchain = TOKEN_STANDARDS[standard].currency.toLowerCase()
 
-    tokens[standard] = standardTokens
-  })
+    if (!enabledCurrencies || enabledCurrencies[baseBlockchain]) {
+      Object.keys(config[standard]).filter((name) => {
+        const tokenKey = `{${baseCurrency}}${name}`.toUpperCase()
 
-  Object.keys(tokens).forEach((standard) => {
-    tokens[standard].forEach((tokenName, index) => {
-      const customMs = 650
-
-      delay(customMs * index).then(() => {
-        actions[standard].getTransaction(null, tokenName).then((tokenTxs) => {
-          mergeTransactions(tokenTxs)
-        })
+        if (user.isAllowedCurrency(tokenKey)) {
+          actions[standard].getTransaction(false, name).then((trx) => {
+            if (trx.length) mergeTransactions(trx)
+          })
+        }
       })
-    })
+    }
   })
 }
 
@@ -587,13 +487,19 @@ const getText = () => {
       bnbData,
       maticData,
       arbethData,
+      aurethData,
+      xdaiData,
+      ftmData,
+      avaxData,
+      movrData,
+      oneData,
       btcData,
       ghostData,
       nextData,
-    }
+    },
   } = getState()
 
-  let text = `
+  const text = `
     You will need this instruction only in case of emergency (if you lost your keys)\r\n
     please do NOT waste your time and go back to swap.online
     \r\n
@@ -624,6 +530,36 @@ const getText = () => {
     \r\n
     ARBITRUM address: ${arbethData.address}\r\n
     Private key: ${arbethData.privateKey}\r\n
+    \r\n
+    # AURORA CHAIN
+    \r\n
+    AURORA address: ${aurethData.address}\r\n
+    Private key: ${aurethData.privateKey}\r\n
+    \r\n
+    # XDAI CHAIN
+    \r\n
+    XDAI address: ${xdaiData.address}\r\n
+    Private key: ${xdaiData.privateKey}\r\n
+    \r\n
+    # FTM CHAIN
+    \r\n
+    FTM address: ${ftmData.address}\r\n
+    Private key: ${ftmData.privateKey}\r\n
+    \r\n
+    # AVAX CHAIN
+    \r\n
+    AVAX address: ${avaxData.address}\r\n
+    Private key: ${avaxData.privateKey}\r\n
+    \r\n
+    # MOVR CHAIN
+    \r\n
+    MOVR address: ${movrData.address}\r\n
+    Private key: ${movrData.privateKey}\r\n
+    \r\n
+    # ONE CHAIN
+    \r\n
+    ONE address: ${oneData.address}\r\n
+    Private key: ${oneData.privateKey}\r\n
     \r\n
     # BITCOIN
     \r\n
@@ -660,8 +596,8 @@ export const getWithdrawWallet = (currency, addressOwner) => {
     const walletType = getCurrencyKey(walletName, true).toUpperCase()
 
     return (
-      (walletType === needType && addressOwner === wallet.address) ||
-      (!addressOwner && (walletType === needType))
+      (walletType === needType && addressOwner === wallet.address)
+      || (!addressOwner && (walletType === needType))
     )
   })
 
@@ -705,7 +641,6 @@ export const isOwner = (addr, currency) => {
   return lowerAddr === addrFromStore.toLowerCase()
 }
 
-
 const downloadPrivateKeys = () => {
   const element = document.createElement('a')
   const text = getText()
@@ -745,7 +680,6 @@ export default {
   getText,
   isOwner,
   getExchangeRate,
-  getReputation,
   getInfoAboutCurrency,
   getAuthData,
   getWithdrawWallet,

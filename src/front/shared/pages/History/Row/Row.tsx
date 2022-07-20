@@ -1,10 +1,10 @@
-import React, { PureComponent } from 'react'
+import { PureComponent } from 'react'
 import cx from 'classnames'
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
 import { FormattedMessage } from 'react-intl'
 import actions from 'redux/actions'
-import { constants, links } from 'helpers'
+import { constants, links, utils } from 'helpers'
 import { Link } from 'react-router-dom'
 import { getFullOrigin } from 'helpers/links'
 
@@ -23,39 +23,23 @@ export default class Row extends PureComponent<any, any> {
     const { hash, type, hiddenList, invoiceData, viewType } = props
     const dataInd = invoiceData && invoiceData.id
     const ind = `${dataInd || hash}-${type}`
-    const userWallets = actions.core.getWallets()
 
     this.state = {
-      userWallets,
       viewType: (viewType || 'transaction'),
       exCurrencyRate: 0,
       comment: actions.comments.returnDefaultComment(hiddenList, ind),
       cancelled: false,
       payed: false,
-      showFiat: true,
+      showFiat: false,
     }
   }
 
   componentDidMount() {
-    const { type } = this.props
-    const { userWallets } = this.state
-
-    // request fiat balance if wallet has fiat price
-    userWallets.forEach((wallet) => {
-      if (wallet.currency.toLowerCase() === type.toLowerCase()) {
-        if (wallet.infoAboutCurrency) {
-          this.getFiatBalance(type)
-        } else {
-          this.setState(() => ({
-            showFiat: false
-          }))
-        }
-      }
-    })
+    this.fetchFiatBalance()
   }
 
-  getFiatBalance = async (type) => {
-    const { activeFiat } = this.props
+  fetchFiatBalance = async () => {
+    const { activeFiat, type } = this.props
 
     if (activeFiat) {
       actions.user.getExchangeRate(type, activeFiat.toLowerCase()).then((exCurrencyRate) => {
@@ -194,16 +178,15 @@ export default class Row extends PureComponent<any, any> {
       tokenPart,
       name,
       hash,
-      tokenBaseCurrency,
     } = params
 
-    if (erc20Like.isToken({ name }) && tokenBaseCurrency) {
+    if (erc20Like.isToken({ name })) {
       // react router doesn't rewrite url
       // it fix problem with token transaction info url
       if (location.pathname.includes(tokenPart)) {
         targetPath = `tx/${hash}`
       } else {
-        targetPath = `token/{${tokenBaseCurrency}}${name}/tx/${hash}`
+        targetPath = `token/${name}/tx/${hash}`
       }
     }
 
@@ -237,7 +220,10 @@ export default class Row extends PureComponent<any, any> {
     const hash = (invoiceData && invoiceData.txInfo) ? invoiceData.txInfo : propsHash
 
     const { exCurrencyRate, cancelled, payed } = this.state
-    const fiatValue = value * exCurrencyRate
+    const fiatValue = exCurrencyRate ? utils.toMeaningfulFloatValue({
+      rate: exCurrencyRate,
+      value,
+    }) : false
 
     const paymentAddress = invoiceData
       ? invoiceData.destAddress
@@ -319,9 +305,8 @@ export default class Row extends PureComponent<any, any> {
                         location,
                         targetPath: txLink,
                         tokenPart: `token/{${tokenBaseCurrency}}${type}/`,
-                        name: type,
+                        name: tokenBaseCurrency ? `{${tokenBaseCurrency}}${type}` : type,
                         hash: hash,
-                        tokenBaseCurrency,
                       })}
                     >
                       {(txType === 'CONFIRM') ? (
@@ -460,12 +445,16 @@ export default class Row extends PureComponent<any, any> {
 
             {/* Currency amount */}
             <div styleName={statusStyleAmount}>
-              {invoiceData ? this.parseFloat(direction, value, 'out', type) : this.parseFloat(direction, value, 'in', type)}
-              {
-                showFiat
-                  ? <span styleName='amountUsd'>{`~${fiatValue.toFixed(2)}`}{` `}{activeFiat}</span>
-                  : null
-              }
+              {invoiceData
+                ? this.parseFloat(direction, value, 'out', type)
+                : this.parseFloat(direction, value, 'in', type)}
+              {showFiat && fiatValue ? (
+                <span styleName="amountUsd">
+                  ~{fiatValue}
+                  {` `}
+                  {activeFiat}
+                </span>
+              ) : null}
             </div>
           </td>
         </tr>

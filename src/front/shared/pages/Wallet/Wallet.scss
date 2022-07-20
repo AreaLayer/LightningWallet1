@@ -24,7 +24,7 @@
 .yourAssets {
   box-shadow: var(--box-shadow);
   background: var(--color-background-elements);
-  border-radius: 4px;
+  border-radius: var(--main-component-border-radius);
   padding: 25px;
   margin-top: 20px;
 }
@@ -46,7 +46,7 @@
 .yourBalance {
   box-shadow: var(--box-shadow);
   background: var(--color-background-elements);
-  border-radius: 4px;
+  border-radius: var(--main-component-border-radius);
   height: fit-content;
   @include ff-regular;
 
@@ -57,8 +57,8 @@
     color: var(--color-f-error);
     cursor: pointer;
     text-decoration: underline;
-    padding-left: 10px;
-    padding-right: 10px;
+    margin-left: 10px;
+    margin-right: 10px;
   }
 }
 
@@ -177,6 +177,10 @@
 
 .addCurrencyBtnWrapper {
   width: calc(100% - 28px);
+
+  :not(:last-child) {
+    margin-bottom: 0.5rem;
+  }
 }
 
 @media all and (min-width: 993px) {
@@ -296,4 +300,11 @@
       }
     }
   }
+}
+
+.alertTooltipWrapper {
+  font-size: 0.8em;
+  padding: 0.3em 0.5em;
+  background: rgba(var(--color-bad), 0.6);
+  border-radius: 2px;
 }

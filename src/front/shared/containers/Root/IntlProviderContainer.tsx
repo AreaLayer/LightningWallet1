@@ -5,10 +5,14 @@ import { Switch, Route, HashRouter } from 'react-router-dom'
 import { getCookie } from 'helpers/utils'
 
 import myNl from 'localisation/nl.json'
+import myDe from 'localisation/de.json'
 import myEn from 'localisation/en.json'
 import myRu from 'localisation/ru.json'
 import myEs from 'localisation/es.json'
 import myPl from 'localisation/pl.json'
+import myPt from 'localisation/pt.json'
+import myKo from 'localisation/ko.json'
+import myAr from 'localisation/ar.json'
 
 
 import { reduceMessages, defaultLocale } from 'helpers/locale'
@@ -16,10 +20,14 @@ import { reduceMessages, defaultLocale } from 'helpers/locale'
 
 const translations = {
   nl: reduceMessages(myNl),
+  de: reduceMessages(myDe),
   en: reduceMessages(myEn),
   ru: reduceMessages(myRu),
   es: reduceMessages(myEs),
   pl: reduceMessages(myPl),
+  pt: reduceMessages(myPt),
+  ko: reduceMessages(myKo),
+  ar: reduceMessages(myAr),
 }
 
 export default class IntlProviderContainer extends React.Component<any, any> {

@@ -1,4 +1,5 @@
 ﻿[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+ noxonsu-patch-24
 ![Deploy to swaponline.github.io](https://github.com/swaponline/MultiCurrencyWallet/workflows/Deploy%20to%20swaponline.github.io/badge.svg)
 [![About SWAP token](https://img.shields.io/badge/ERC20-SWAP-green)](https://github.com/swaponline/MultiCurrencyWallet/blob/master/docs/SWAPTOKEN.md)
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
@@ -77,4 +78,6 @@ Developer? Start with [ONBOARDING](https://github.com/swaponline/MultiCurrencyWa
 ---
 
 Any questions [are welcome](https://t.me/swaponline)
+
+master
 

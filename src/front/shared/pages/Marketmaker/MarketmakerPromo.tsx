@@ -10,7 +10,7 @@ import actions from 'redux/actions'
 import Button from 'components/controls/Button/Button'
 import Expandable from 'components/ui/Expandable/Expandable'
 import FAQ from './FAQ'
-import redirectTo from 'helpers/redirectTo'
+import { routing } from 'helpers'
 
 import extensionPromoLight from './images/extensionPromoLight.png'
 import extensionPromoDark from './images/extensionPromoDark.png'
@@ -54,9 +54,9 @@ export default class MarketmakerPromo extends React.Component<{}, ComponentState
   // onSelectBrowser() {
   //   feedback.marketmaking.selected('browser')
   //   if (config.binance) {
-  //     redirectTo(`${links.marketmaker}/BTCB`)
+  //     routing.redirectTo(`${links.marketmaker}/BTCB`)
   //   } else {
-  //     redirectTo(`${links.marketmaker}/WBTC`)
+  //     routing.redirectTo(`${links.marketmaker}/WBTC`)
   //   }
   // }
 
@@ -72,12 +72,12 @@ export default class MarketmakerPromo extends React.Component<{}, ComponentState
 
   // onSelectFarm() {
   //   feedback.marketmaking.selected('farm')
-  //   redirectTo(`${links.farm}`)
+  //   routing.redirectTo(`${links.farm}`)
   // }
 
   openChromeStore() {
     feedback.marketmaking.selected('installExtension')
-    window.open('https://chrome.google.com/webstore/detail/multicurrencywallet/oldojieloelkkfeacfinhcngmbkepnlm')
+    window.open(links.extension)
   }
 
   render() {
@@ -98,7 +98,7 @@ export default class MarketmakerPromo extends React.Component<{}, ComponentState
           <p styleName="promoDescription">
             <FormattedMessage
               id="MM_Promo_TitleBody"
-              defaultMessage="On swap.io users exchange {utxoCoin} for {token} (a token that costs like {utxoCoin}, but works on {Ab_Title}), and vice versa. You get min. 10% APY (annual percentage yield) as a commission from exchanges with low impermanent loss {link}."
+              defaultMessage="On swap.io users exchange {utxoCoin} for {token} (a token that costs like {utxoCoin}, but works on {Ab_Title}), and vice versa."
               values={{
                 utxoCoin: 'BTC',
                 token: (config.binance) ? `BTCB` : `WBTC`,

@@ -1,5 +1,4 @@
-import * as React from 'react'
-import { Fragment, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import CSSModules from 'react-css-modules'
 import actions from 'redux/actions'
 import cx from 'classnames'
@@ -8,12 +7,13 @@ import styles from 'pages/Wallet/Wallet.scss'
 import Button from 'components/controls/Button/Button'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import { BigNumber } from 'bignumber.js'
-import config from 'app-config'
+import config from 'helpers/externalConfig'
+import metamask from 'helpers/metamask'
 import { FormattedMessage } from 'react-intl'
 import dollar from './images/dollar.svg'
 import btc from './images/btcIcon.svg'
 
-function BalanceForm({
+const BalanceForm = function ({
   activeFiat,
   activeCurrency,
   fiatBalance,
@@ -29,7 +29,6 @@ function BalanceForm({
   multisigPendingCount = 10,
 }) {
   const [selectedCurrency, setActiveCurrency] = useState(activeCurrency)
-  const isDark = document.body.dataset.scheme === 'dark'
   const isWidgetBuild = config && config.isWidget
 
   useEffect(() => {
@@ -48,14 +47,12 @@ function BalanceForm({
   // Use flags in currency data (isUserProtected and isSMSProtected)
   // eslint-disable-next-line default-case
   switch (currency) {
-    case 'btc (sms-protected)':
     case 'btc (multisig)':
     case 'btc (pin-protected)':
       currency = 'BTC'
       break
   }
 
-  
   const handleClickCurrency = (currency) => {
     setActiveCurrency(currency)
     actions.user.pullActiveCurrency(currency)
@@ -65,8 +62,12 @@ function BalanceForm({
     actions.multisigTx.goToLastWallet()
   }
 
+  const buttonsDisabled = !((config.opts.ui.disableInternalWallet && metamask.isConnected()) || !config.opts.ui.disableInternalWallet)
+
+  const sendButtonDisabled = !currencyBalance || buttonsDisabled
+
   return (
-    <div 
+    <div
       styleName={
         `${isWidgetBuild && !config.isFullBuild ? 'yourBalance widgetBuild' : 'yourBalance'}`
       }
@@ -74,9 +75,8 @@ function BalanceForm({
       <div styleName="yourBalanceTop" className="data-tut-widget-balance">
         <p styleName="yourBalanceDescr">
           {singleWallet
-            ? <FormattedMessage id="YourWalletbalance" defaultMessage="Баланс" />
-            : <FormattedMessage id="Yourtotalbalance" defaultMessage="Ваш общий баланс" />
-          }
+            ? <FormattedMessage id="YourWalletbalance" defaultMessage="Balance" />
+            : <FormattedMessage id="Yourtotalbalance" defaultMessage="Ваш общий баланс" />}
         </p>
         <div styleName="yourBalanceValue">
           {isFetching && (
@@ -102,6 +102,7 @@ function BalanceForm({
         </div>
         <div styleName="yourBalanceCurrencies">
           <button
+            type="button"
             styleName={selectedCurrency === active ? 'active' : undefined}
             onClick={() => handleClickCurrency(active)}
           >
@@ -109,6 +110,7 @@ function BalanceForm({
           </button>
           <span styleName="separator" />
           <button
+            type="button"
             styleName={selectedCurrency === currency ? 'active' : undefined}
             onClick={() => handleClickCurrency(currency)}
           >
@@ -117,8 +119,8 @@ function BalanceForm({
         </div>
       </div>
       {multisigPendingCount > 0 && (
-        <div>
-          <p styleName="multisigWaitCount" onClick={handleGoToMultisig}>
+        <div onClick={handleGoToMultisig}>
+          <p styleName="multisigWaitCount">
             <FormattedMessage
               id="Balance_YouAreHaveNotSignegTx"
               defaultMessage="{count} transaction needs your confirmation"
@@ -137,10 +139,10 @@ function BalanceForm({
         <div styleName="yourBalanceBottom">
           {showButtons ? (
             <div styleName="btns" className="data-tut-withdraw-buttons">
-              <Button blue id="depositBtn" onClick={() => handleReceive('Deposit')}>
+              <Button blue disabled={buttonsDisabled} id="depositBtn" onClick={() => handleReceive('Deposit')}>
                 <FormattedMessage id="YourtotalbalanceDeposit" defaultMessage="Пополнить" />
               </Button>
-              <Button blue disabled={!currencyBalance} id="sendBtn" onClick={() => handleWithdraw('Send')}>
+              <Button blue disabled={sendButtonDisabled} id={!sendButtonDisabled ? 'sendBtn' : ''} onClick={() => handleWithdraw('Send')}>
                 <FormattedMessage id="YourtotalbalanceSend" defaultMessage="Отправить" />
               </Button>
             </div>

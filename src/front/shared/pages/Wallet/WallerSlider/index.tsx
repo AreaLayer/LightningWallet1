@@ -3,7 +3,8 @@ import * as React from 'react'
 import { connect } from 'redaction'
 
 import Swiper from 'swiper'
-import 'swiper/swiper-bundle.css'
+import 'swiper/css/bundle'
+import config from 'helpers/externalConfig'
 
 import { constants, getItezUrl } from 'helpers'
 import actions from 'redux/actions'
@@ -15,6 +16,8 @@ import ContentLoader from 'components/loaders/ContentLoader/ContentLoader'
 import { FormattedMessage, injectIntl } from 'react-intl'
 import linksManager from 'helpers/links'
 
+
+const disableInternalWallet = (config?.opts?.ui?.disableInternalWallet) ? true : false
 
 type WallerSliderProps = {
   intl?: { [key: string]: any }
@@ -123,8 +126,9 @@ class WallerSlider extends React.Component<WallerSliderProps, WallerSliderState>
       )
     } else {
       try {
+        const bannersSource = config.opts.ui.bannersSource
         return axios
-          .get('https://noxon.wpmix.net/swapBanners/banners.php')
+          .get(bannersSource)
           .then(({ data }) => {
             const banners = this.processItezBanner(data).filter((el) => el && el.length)
 
@@ -200,8 +204,8 @@ class WallerSlider extends React.Component<WallerSliderProps, WallerSliderState>
         ) : (
           <div
             id="swiper_banners"
-            className={`swiper-container ${styles.swiperContainer}`}
-            style={{ marginTop: '20px', marginBottom: '30px' }}
+            className={`swiper ${styles.swiperContainer}`}
+            style={{ marginTop: '20px', marginBottom: '30px', overflow: 'hidden' }}
           >
             <div className="swiper-wrapper">
               {multisigPendingCount > 0 && (
@@ -215,7 +219,7 @@ class WallerSlider extends React.Component<WallerSliderProps, WallerSliderState>
                   />
                 </div>
               )}
-              {!isPrivateKeysSaved && !mnemonicDeleted && (
+              {!isPrivateKeysSaved && !mnemonicDeleted && !disableInternalWallet && (
                 <div className="swiper-slide">
                   <NotifyBlock
                     className="notifyBlockSaveKeys"
@@ -234,8 +238,8 @@ class WallerSlider extends React.Component<WallerSliderProps, WallerSliderState>
               )}
               {banners &&
                 banners.length > 0 &&
-                banners.map((banner) => (
-                  <div key={banner[0]} className="swiper-slide">
+                banners.map((banner, index) => (
+                  <div key={index} className="swiper-slide">
                     <NotifyBlock
                       background={`${banner[3]}`}
                       icon={banner[5]}

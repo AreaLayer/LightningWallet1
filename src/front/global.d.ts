@@ -10,7 +10,7 @@ declare module 'react' {
 }
 
 declare global {
-  interface IEtheriumProvider {
+  interface EthereumProvider {
     [key: string]: any
     isLiquality?: boolean
     isTrust?: boolean
@@ -19,7 +19,7 @@ declare global {
 
   interface Window {
     [key: string]: any
-    ethereum?: IEtheriumProvider
+    ethereum?: EthereumProvider
   }
 
   interface Navigator {
@@ -39,4 +39,14 @@ declare global {
     syscall?: string
     stack?: string
   }
+
+  interface EvmNetworkConfig {
+    currency: string
+    chainId: string
+    networkVersion: number
+    chainName: string
+    rpcUrls: string[]
+    blockExplorerUrls: string[]
+  }
+
 }

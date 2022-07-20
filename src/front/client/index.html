@@ -5,9 +5,10 @@
     <title><%= htmlWebpackPlugin.options.title %></title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:image:type" content="image/svg+xml" />
     <meta
       property="og:image"
-      content="https://screenshots.wpmix.net/chrome_2019-03-28_18-55-506746c4c5-44e6-4bb5-89cb-52ce8fabcedf.png"
+      content="https://wiki.swaponline.io/assets/swaponline_io.svg"
     />
     <meta http-equiv="refresh" content="3600">
     <link
@@ -30,15 +31,23 @@
     <meta name="google" content="notranslate" />
     <meta property="og:url" content="https://swaponline.io" />
 
-    <link rel="stylesheet" href="colors.css">
+    <link rel="stylesheet" href="variables.css">
 
     <!-- ERC20 Tokens hot plug for widget-build (Dont remove this) -->
     <script src="erc20tokens.js"></script>
-
+    <link rel="stylesheet" href="customStyles.css" />
     <!-- Use OwnBuffer for bn.js package in bitcore-lib -->
     <script type="text/javascript" src="ownBuffer.js"></script>
 
     <%= htmlWebpackPlugin.options.firebugScript %>
+
+    <script>
+      const isWidgetBuild = '<%= htmlWebpackPlugin.options.isWidget %>'
+
+      if (window.defaultWindowTitle && isWidgetBuild) {
+        document.title = window.defaultWindowTitle;
+      }
+    </script>
 
     <style>
       .overflowY-default {
@@ -572,9 +581,8 @@
 
     <div id="portal"></div>
 
-    <script type="text/javascript" src="https://unpkg.com/react@16.10.2/umd/react.production.min.js"></script>
-    <script type="text/javascript" src="https://unpkg.com/react-dom@16.10.2/umd/react-dom.production.min.js"></script>
-
+    <script crossorigin type="text/javascript" src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script crossorigin type="text/javascript" src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
 
     <!--
       * Please use only one inline script in this file (each additional script requires an additional hash in the extension manifest).
@@ -584,16 +592,23 @@
 
     <script>
       const isDark = localStorage.getItem('isDark')
+      const isLight = localStorage.getItem('isLight')
+      const isSystemDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
       const dataset = document.body.dataset
 
-      if (isDark) {
+      if (!isDark && !isLight && isSystemDark) {
+        localStorage.setItem('isDark', 'true')
         dataset.scheme = "dark"
       } else {
-        dataset.scheme = "default"
+        if (isDark) {
+          dataset.scheme = "dark"
+        } else {
+          dataset.scheme = "default"
+        }
       }
 
       // Extension: prevent 2 tabs
-      if (window.chrome && window.chrome.extension) {
+      if (window?.chrome?.extension) {
         var extViews = chrome.extension.getViews()
         var extBgWindow = chrome.extension.getBackgroundPage()
         if (window !== extBgWindow) {
@@ -611,7 +626,7 @@
       }
 
       // Extension: icon click => open tab
-      if (window.chrome && window.chrome.browserAction) {
+      if (window?.chrome?.browserAction) {
         if (!chrome.browserAction.isClickListenerAdded) {
           console.log('Extension: add click listener')
           chrome.browserAction.onClicked.addListener(function(tab) {
@@ -633,11 +648,13 @@
         console.log("warning: caching backend is down")
       }
 
-      let localStorageIsOk = true;
+      let hasCriticalProblems = false
+
       try {
         const testLocalStorage = window.localStorage;
       } catch (e) {
-        localStorageIsOk = false;
+        hasCriticalProblems = true
+
         document.getElementById('onFailLocalStorageLink').href = window.location.href;
         document.getElementById('onFailLocalStorageMessage').classList.remove('d-none');
 
@@ -647,7 +664,7 @@
 
           let url = 'https://noxon.wpmix.net/counter.php?msg=' + encodeURI(msg);
 
-          if (!window?.STATISTIC_DISABLED) {
+          if (!isWidgetBuild || window?.STATISTICS_ENABLED) {
             window.jQuery.ajax({
               type: 'POST',
               url: url,
@@ -674,6 +691,15 @@
         } else {
           sendErrorFeedback();
         }
+      }
+
+      // if it's iframe show a message about new window
+      if (
+        !isWidgetBuild &&
+        (window.location !== window.parent.location || window.self !== window.top)
+      ) {
+        document.getElementById('onFailLocalStorageLink').href = window.location.href
+        document.getElementById('onFailLocalStorageMessage').classList.remove('d-none')
       }
 
       function setCookie(name, value, options = {}) {
@@ -734,14 +760,37 @@
 
       let lang = getCookie('mylang');
 
-      if (!lang) {
-        const browserLang = getNavigatorLanguage();
-        lang = browserLang.includes('ru') ? 'ru' : 'en'
+      const availableLangs = [
+        'en',
+        'ru',
+        'nl',
+        'de',
+        'es',
+        'pl',
+        'pt',
+        'ko',
+        'ar',
+      ]
+
+      const isLangAvailable = lang ? availableLangs.includes(lang.toLowerCase()) : false
+      const defaultLanguage = window.defaultLanguage
+
+      if (!lang || !isLangAvailable) {
+        if (defaultLanguage) {
+          lang = defaultLanguage
+        } else {
+          const browserLang = getNavigatorLanguage().split("-")[0];
+
+          lang = availableLangs.includes(browserLang) ? browserLang : (function () {
+            console.log('Set English by default')
+            return 'en';
+          })()
+        }
+
         setCookie('mylang', lang);
       }
 
       const locale = lang.toLowerCase();
-      const locationName = lang.toUpperCase();
 
       (function () {
         // set tip
@@ -750,52 +799,71 @@
             {
               en: 'Loading...',
               ru: 'Загрузка...',
+              nl: 'Bezig met laden...',
+              de: 'Wird geladen...',
+              es: 'Cargando...',
+              pl: 'Ładowanie...',
+              pt: 'Carregamento...',
+              ko: '로드 중...',
+              ar: 'تحميل...',
             },
           ],
           afterBackup: [
             {
               en: 'Keep your recovery phrase in&nbsp;a&nbsp;safe place',
               ru: 'Держите вашу фразу восстановления в&nbsp;безопасном месте',
+              nl: 'Bewaar uw herstelzin op een &nbsp;&nbsp;veilige plaats',
+              de: 'Bewahren Sie Ihren Wiederherstellungssatz an einem&nbsp;&nbsp;sicheren Ort auf',
+              es: 'Mantenga su frase de recuperación en&nbsp;&nbsp;lugar seguro',
+              pl: 'Przechowuj frazę odzyskiwania w&nbsp;&nbsp;bezpiecznym miejscu',
+              pt: 'Mantenha a sua frase de recuperação dentro&nbsp;seguro',
+              ko: '복구 문구를 &nbsp;안전한 장소에 보관하십시오.',
+              ar: 'احتفظ بعبارة الاسترداد في مكان آمن',
             },
             {
               en: "Don't forget where your recovery phrase is&nbsp;saved",
               ru: 'Не забудьте, где&nbsp;хранится ваша фраза восстановления',
+              nl: 'Vergeet niet waar uw herstelzin is&nbsp;opgeslagen',
+              de: 'Vergessen Sie nicht, wo Ihre&nbsp;Wiederherstellungsphrase gespeichert ist',
+              es: 'No olvide dónde está guardada&nbsp;su frase de recuperación',
+              pl: 'Nie zapomnij, gdzie&nbsp;jest zapisana fraza odzyskiwania',
+              pt: 'Não te esqueças onde está a tua frase de recuperação&nbsp;salva',
+              ko: "복구 문구가 저장된 위치를 잊지 마세요.",
+              ar: 'لا تنس مكان حفظ عبارة الاسترداد الخاصة بك',
             },
           ],
         };
         // Determine if the passphrase is saved
-        if (locale === 'en' || locale === 'ru') {
-          const mnemonic = window.localStorage.getItem('testnet:twentywords') || window.localStorage.getItem('mainnet:twentywords');
-          const isBackup = mnemonic === `-`;
-          const relevantTips = tips[!isBackup ? 'beforeBackup' : 'afterBackup'];
-          const currentTip = relevantTips[Math.floor(Math.random() * relevantTips.length)][locale];
-          const tipNode = document.getElementById('beforeJSTip');
-          tipNode.innerHTML = currentTip;
-        } else {
-          console.error('Unknown locale', locale);
-        }
+        const mnemonic = window.localStorage.getItem('testnet:twentywords') || window.localStorage.getItem('mainnet:twentywords');
+        const isBackup = mnemonic === `-`;
+        const relevantTips = tips[!isBackup ? 'beforeBackup' : 'afterBackup'];
+        const currentTip = relevantTips[Math.floor(Math.random() * relevantTips.length)][locale];
+        const tipNode = document.getElementById('beforeJSTip');
+        tipNode.innerHTML = currentTip;
       })();
 
-      const information = document.getElementById('usersInform');
-
-      if ((locationName === 'ru' || (locale === 'ru' && locationName !== 'en')) && localStorage.length === 0) {
-        information.innerText = 'Генерация приватных ключей для вашего мультивалютного кошелька прямо сейчас, \n это может занять одну минуту'
-      }
-
       if (localStorage.length === 0) {
-        information.innerText =
-          locationName !== 'ru' || locale !== 'ru'
-            ? 'Please wait while the application is loading,\n it may take one minute...'
-            : 'Пожалуйста подождите пока приложение запускается,\n это не займет больше минуты...';
+        const informationTexts = {
+          nl: 'Even geduld a.u.b. terwijl de applicatie wordt geladen,\n het kan een minuut duren...',
+          de: 'Bitte warten Sie, während die Anwendung geladen wird,\n es kann eine Minute dauern...',
+          en: 'Please wait while the application is loading,\n it may take one minute...',
+          ru: 'Пожалуйста подождите пока приложение запускается,\n это не займет больше минуты...',
+          es: 'Espere mientras se carga la aplicación,\n puede tardar un minuto...',
+          pl: 'Poczekaj na wczytywanie aplikacji,\n może to potrwać minutę...',
+          pt: 'Espere por favor enquanto a aplicação está a carregar,\npode demorar um minuto...',
+          ko: '애플리케이션이 로드되는 동안 잠시 기다려 주십시오.\n 1분 정도 걸릴 수 있습니다...',
+          ar: 'الرجاء الانتظار أثناء تحميل التطبيق ، \n قد يستغرق الأمر دقيقة واحدة ...',
+        }
+        const information = document.getElementById('usersInform');
+        information.innerText = informationTexts[locale]
       }
-
 
       window.prerenderReady = false;
       window.isUserRegisteredAndLoggedIn = false;
       window.DEFAULT_FIAT = 'USD';
       window.DefaultCountryCode = '+1';
       window.widgetName = 'own widget name';
-      window.buyViaCreditCardLink = 'https://buy.itez.com/swaponline';
+      window.buyViaCreditCardLink = 'https://buy.itez.com/'; // need replace at 'https://buy.itez.com/swaponline' by default
 
       if (window.brandColor) {
         document.documentElement.style.setProperty("--color-brand", window.brandColor);
@@ -829,7 +897,7 @@
         }
         return false;
       }
-     
+
       function swapIsWalletCreate() {
         const swapLocalStorageWallet = localStorage.getItem('isWalletCreate');
         return swapLocalStorageWallet !== null
@@ -837,8 +905,6 @@
 
       // Swap Modal
       const startedSplashScreenIsDisabled = getCookie('startedSplashScreenIsDisabled');
-
-      const isWidgetBuild = '<%= htmlWebpackPlugin.options.isWidget %>';
       const isBinanceBuild = ('<%= htmlWebpackPlugin.options.isBinanceBuild %>' === 'true') ? true : false;
 
       // Open modal if cookie false
@@ -848,7 +914,7 @@
         !isWidgetBuild &&
         !swapIsWalletCreate() &&
         !isBinanceBuild &&
-        localStorageIsOk
+        !hasCriticalProblems
       ) {
         document.getElementById('starter-modal').classList.remove('d-none');
       }
@@ -884,7 +950,7 @@
       })
 
       btnSkip.addEventListener('click', function () {
-        redirectionTo('#/exchange')
+        redirectionTo('#/exchange/quick')
       });
 
       function redirectionTo(urlPath) {
@@ -896,9 +962,9 @@
         });
       }
 
-      window.logoUrl = '#';
-      window.darkLogoUrl = '';
-      window.loaderLogoUrl = '';
+      window.logoUrl = window.logoUrl || '#';
+      window.darkLogoUrl = window.darkLogoUrl || '';
+      window.loaderLogoUrl = window.loaderLogoUrl || '';
 
       if (window.localStorage.getItem('isDark')) {
         window.logoUrl = window.darkLogoUrl || window.logoUrl;

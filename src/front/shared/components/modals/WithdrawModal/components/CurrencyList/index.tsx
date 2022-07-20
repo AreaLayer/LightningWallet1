@@ -1,10 +1,10 @@
-import React, { Component } from 'react'
+import { Component } from 'react'
 import cssModules from 'react-css-modules'
 import styles from './index.scss'
 import cx from 'classnames'
 import PartOfAddress from 'pages/Wallet/PartOfAddress'
 import { isMobile } from 'react-device-detect'
-import { constants, user } from 'helpers'
+import { user, utils } from 'helpers'
 import { localisedUrl } from 'helpers/locale'
 import getCurrencyKey from 'helpers/getCurrencyKey'
 import Coin from 'components/Coin/Coin'
@@ -34,16 +34,17 @@ export default class CurrencyList extends Component<any, any> {
 
       switch (currency.toLowerCase()) {
         case 'btc (multisig)':
-        case 'btc (sms-protected)':
         case 'btc (pin-protected)':
           currency = 'btc'
       }
 
-      const firstUrlPart = tokenKey ? `/token/${tokenKey}` : `/${currency}`
+      const newPathName = `${tokenKey ? `/token/${tokenKey}` : `/${currency}`}/${address}/send`
 
-      history.push(
-        localisedUrl(locale, `${firstUrlPart}/${address}/send`)
-      )
+      if (history.location.pathname !== newPathName) {
+        history.push(
+          localisedUrl(locale, newPathName)
+        )
+      }
     })
   }
 
@@ -57,6 +58,13 @@ export default class CurrencyList extends Component<any, any> {
     this.setState((state) => ({
       isAssetsOpen: !state.isAssetsOpen,
     }))
+  }
+
+  returnFiatBalance = (cryptoBalance, rate) => {
+    return utils.toMeaningfulFloatValue({
+      value: cryptoBalance,
+      rate,
+    })
   }
 
   render() {
@@ -74,9 +82,11 @@ export default class CurrencyList extends Component<any, any> {
     } = this.state
 
     const standard = selectedCurrency.itemCurrency?.standard
+    const fiatBalance = selectedCurrency?.infoAboutCurrency?.price_fiat
+      ? this.returnFiatBalance(currentBalance, selectedCurrency.infoAboutCurrency.price_fiat)
+      : false
 
     return (
-      //@ts-ignore: strictNullChecks
       <OutsideClick outsideAction={this.closeList}>
         <div
           id='withdrawCurrencyList'
@@ -99,14 +109,20 @@ export default class CurrencyList extends Component<any, any> {
           </div>
 
           <div styleName="amount">
-            <span>
-              {currentBalance} {getCurrencyKey(currency, true).toUpperCase()}
-            </span>
+            <>
+              {utils.toMeaningfulFloatValue({
+                value: currentBalance,
+                meaningfulDecimals: 5,
+              })}{' '}
+              {getCurrencyKey(currency, true).toUpperCase()}
+            </>
+            {/* save the element anyway for UI paddings */}
             <span styleName="usd">
-              {selectedCurrency.infoAboutCurrency && selectedCurrency.infoAboutCurrency.price_fiat
-                ? <span>{(currentBalance * selectedCurrency.infoAboutCurrency.price_fiat).toFixed(2)} {activeFiat}</span>
-                : null
-              }
+              {fiatBalance && (
+                <>
+                  {fiatBalance} {activeFiat}
+                </>
+              )}
             </span>
           </div>
           <div styleName={cx('customSelectArrow', { active: isAssetsOpen })}></div>
@@ -116,16 +132,30 @@ export default class CurrencyList extends Component<any, any> {
           <div styleName="customSelectList">
             {tableRows.map((item, index) => {
               if (!user.isCorrectWalletToShow(item)) return
+              
+              const {
+                baseCurrency,
+                currency,
+                balance,
+                balanceError,
+                fullName,
+                standard,
+                address,
+                infoAboutCurrency,
+              } = item
 
-              const baseCurrency = item.baseCurrency
+              const itemFiatBalance = infoAboutCurrency?.price_fiat
+                ? this.returnFiatBalance(balance, infoAboutCurrency?.price_fiat)
+                : false
+
               const itemId = `${
                 baseCurrency ? baseCurrency.toLowerCase() : ''
-              }${item.currency.toLowerCase()}Send`
+              }${currency.toLowerCase()}`
 
               return (
-                <div id={itemId} key={index}
+                <div id={`${itemId}Send`} key={index}
                   styleName={cx('customSelectListItem customSelectValue', {
-                    disabled: !item.balance || item.balanceError,
+                    disabled: !balance || balanceError,
                   })}
                   onClick={() => this.openModal({ target: item })}
                 >
@@ -133,24 +163,34 @@ export default class CurrencyList extends Component<any, any> {
 
                   <div>
                     <a>
-                      {item.fullName}
-                      {item.standard && <span styleName="tokenStandard">{item.standard.toUpperCase()}</span>}
+                      {fullName}
+                      {standard && <span styleName="tokenStandard">{standard.toUpperCase()}</span>}
                     </a>
-                    <span styleName="address">{item.address}</span>
+                    <span styleName="address">{address}</span>
                     <span styleName="mobileAddress">
-                      {isMobile ? <PartOfAddress address={item.address} withoutLink /> : ''}
+                      {isMobile ? <PartOfAddress address={address} withoutLink /> : ''}
                     </span>
                   </div>
    
                   <div styleName="amount">
                     <span>
-                      {item.balance} {getCurrencyKey(item.currency, true).toUpperCase()}
+                      <span id={`${itemId}CryptoBalance`}>
+                        {!balanceError
+                          ? utils.toMeaningfulFloatValue({
+                              value: balance,
+                              meaningfulDecimals: 5,
+                            })
+                          : '-'}
+                      </span>{' '}
+                      {getCurrencyKey(currency, true).toUpperCase()}
                     </span>
+                    {/* save the element anyway for UI paddings */}
                     <span styleName="usd">
-                      {item.infoAboutCurrency && item.infoAboutCurrency.price_fiat
-                        ? <span>{(item.balance * item.infoAboutCurrency.price_fiat).toFixed(2)} {activeFiat}</span>
-                        : null
-                      }
+                      {itemFiatBalance && (
+                        <>
+                          {itemFiatBalance} {activeFiat}
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>

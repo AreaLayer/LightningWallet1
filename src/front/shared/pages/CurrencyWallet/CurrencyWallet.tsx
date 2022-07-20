@@ -57,7 +57,7 @@ const isWidgetBuild = config && config.isWidget
 @withRouter
 @CSSModules({ ...styles, ...stylesHere }, { allowMultiple: true })
 class CurrencyWallet extends Component<any, any> {
-  _mounted = false
+  mounted = false
 
   constructor(props) {
     super(props)
@@ -80,12 +80,13 @@ class CurrencyWallet extends Component<any, any> {
 
     if (!itemCurrency.length) {
       itemCurrency = items.filter((item) => {
-        if (item.balance > 0 && item.currency.toLowerCase() === ticker.toLowerCase()) return true
-      })
-    }
-    if (!itemCurrency.length) {
-      itemCurrency = items.filter((item) => {
-        if (item.balance >= 0 && item.currency.toLowerCase() === ticker.toLowerCase()) return true
+        if (
+          (item.balance >= 0)
+          && (
+            (item.currency.toLowerCase() === ticker.toLowerCase())
+            || (item.tokenKey && item.tokenKey.toLowerCase() === ticker.toLowerCase())
+          )
+        ) return true
       })
     }
 
@@ -94,7 +95,7 @@ class CurrencyWallet extends Component<any, any> {
 
       //@ts-ignore
       const { currency, address, contractAddress, decimals, balance, infoAboutCurrency } = itemCurrency
-      const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`)
+      const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${walletAddress}`)
 
       this.state = {
         itemCurrency,
@@ -116,7 +117,7 @@ class CurrencyWallet extends Component<any, any> {
   }
 
   componentDidMount() {
-    this._mounted = true
+    this.mounted = true
     
     const {
       currency,
@@ -126,32 +127,41 @@ class CurrencyWallet extends Component<any, any> {
       infoAboutCurrency,
       hiddenCoinsList,
       ticker,
+      walletAddress,
     } = this.state
-
-    actions.user.getBalances()
 
     let {
       match: {
-        params: { address = null },
+        params: {
+          address = null,
+          action,
+        },
       },
       activeCurrency,
       activeFiat
     } = this.props
 
-    if (token && itemCurrency.standard) {
-      actions[itemCurrency.standard].getBalance(currency.toLowerCase())
+    if (action == 'send') {
+      actions.user.getBalances()
     }
 
-    const actionName = itemCurrency.standard || currency.toLowerCase()
+    if (token && itemCurrency.standard) {
+      actions[itemCurrency.standard].getBalance(currency.toLowerCase(), walletAddress).then((balance) => {
+        this.setState({
+          balance,
+        })
+      })
+    } else {
+      const actionName = currency.toLowerCase()
 
-    address && actions[getCurrencyKey(actionName, false)]
-      .fetchBalance(address)
-      .then((balance) => this.setState({ balance }))
+      address && actions[getCurrencyKey(actionName, false)]
+        .fetchBalance(address)
+        .then((balance) => this.setState({ balance }))
+    }
 
-    // if address is null, take transactions from current user
-    address
-      ? actions.history.setTransactions(address, ticker.toLowerCase(), this.pullTransactions)
-      : actions.user.setTransactions()
+    if (action !== 'send') {
+      actions.history.setTransactions(walletAddress, ticker.toLowerCase())
+    }
 
     if (!address) {
       actions.core.getSwapHistory()
@@ -187,25 +197,26 @@ class CurrencyWallet extends Component<any, any> {
   }
 
   componentDidUpdate(prevProps) {
-    const { currency } = this.state
-    const { activeFiat } = this.props
-
     let {
-      match: {
-        params: { address = null, ticker = null, action = null },
-      },
-      activeCurrency
-    } = this.props
-
-    let {
+      txHistory: prevTransactions,
       match: {
         params: { address: prevAddress = null },
       },
     } = prevProps
-    if (prevAddress !== address) {
-      address
-        ? actions.history.setTransactions(address, currency.toLowerCase(), this.pullTransactions)
-        : actions.user.setTransactions()
+
+    let {
+      txHistory,
+      match: {
+        params: { address = null, ticker = null, action = null },
+      },
+      activeCurrency,
+      activeFiat,
+    } = this.props
+
+    const { currency } = this.state
+
+    if (JSON.stringify(txHistory) !== JSON.stringify(prevTransactions)) {
+      this.updateTransactions()
     }
 
     if (
@@ -221,12 +232,23 @@ class CurrencyWallet extends Component<any, any> {
         walletAddress,
       })
 
+      if (!itemCurrency.length) {
+        itemCurrency = items.filter((item) => {
+          if (
+            (item.balance >= 0)
+            && (
+              (item.currency.toLowerCase() === ticker.toLowerCase())
+              || (item.tokenKey && item.tokenKey.toLowerCase() === ticker.toLowerCase())
+            )
+          ) return true
+        })
+      }
+
       if (itemCurrency.length) {
         itemCurrency = itemCurrency[0]
 
         const {
           currency,
-          address,
           contractAddress,
           decimals,
           balance,
@@ -238,6 +260,9 @@ class CurrencyWallet extends Component<any, any> {
         } = this.state
 
         const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`)
+
+        if (!this.mounted) return
+        const token = erc20Like.isToken({ name: ticker })
 
         this.setState(
           {
@@ -251,12 +276,33 @@ class CurrencyWallet extends Component<any, any> {
             isLoading: false,
             infoAboutCurrency,
             filterValue: address || '',
-            token: erc20Like.isToken({ name: currency }),
+            token,
           },
           () => {
             if (prevProps.location.pathname !== this.props.location.pathname) {
               if (activeCurrency.toUpperCase() !== activeFiat) {
                 actions.user.pullActiveCurrency(currency.toLowerCase())
+              }
+              if (token && itemCurrency.standard) {
+                actions[itemCurrency.standard].getBalance(currency.toLowerCase(), address).then((balance) => {
+                  this.setState({
+                    balance,
+                  })
+                })
+              } else {
+                const actionName = currency.toLowerCase()
+
+                address && actions[getCurrencyKey(actionName, false)]
+                  .fetchBalance(address)
+                  .then((balance) => this.setState({ balance }))
+              }
+
+              if (action !== 'send') {
+                actions.history.setTransactions(address, ticker.toLowerCase())
+              }
+
+              if (!address) {
+                actions.core.getSwapHistory()
               }
             }
             const targetCurrency = getCurrencyKey(currency.toLowerCase(), true)
@@ -288,7 +334,7 @@ class CurrencyWallet extends Component<any, any> {
   }
 
   componentWillUnmount() {
-    this._mounted = false
+    this.mounted = false
   }
 
   filterCurrencies = (params) => {
@@ -309,7 +355,11 @@ class CurrencyWallet extends Component<any, any> {
           currencyName = 'btc'
       }
 
-      const blockchainOk = (blockchain && item.blockchain) ? item.blockchain.toLowerCase() === blockchain.toLowerCase() : true
+      const blockchainOk = (blockchain && item.blockchain)
+        ? item.blockchain.toLowerCase() === blockchain.toLowerCase()
+        : ((blockchain && !item.blockchain) || (!blockchain && item.blockchain))
+          ? false
+          : true
 
       if (
         currencyName.toLowerCase() === coin.toLowerCase() &&
@@ -321,26 +371,19 @@ class CurrencyWallet extends Component<any, any> {
     })
   }
 
-  getRows = (txHistory) => {
-    this.setState(() => ({ rows: txHistory }))
-  }
+  updateTransactions = () => {
+    if (!this.mounted) return
 
-  pullTransactions = (transactions) => {
-    if (!this._mounted) return
-    //@ts-ignore: strictNullChecks
-    let data = [].concat([], ...transactions).sort((a, b) => b.date - a.date)
-    this.setState({
-      txItems: data,
-    })
+    const { txHistory } = this.props
+    const { currency, address } = this.state
 
-    const {
-      currency,
-      address,
-    } = this.state
+    this.setState(() => ({
+      txItems: txHistory,
+    }))
 
     lsDataCache.push({
       key: `TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`,
-      data,
+      data: txHistory,
       time: 3600,
     })
   }
@@ -348,7 +391,6 @@ class CurrencyWallet extends Component<any, any> {
   handleReceive = () => {
     const { currency, address } = this.state
 
-    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.ReceiveModal, {
       currency,
       address,
@@ -358,7 +400,6 @@ class CurrencyWallet extends Component<any, any> {
   handleInvoice = () => {
     const { currency, address } = this.state
 
-    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.InvoiceModal, {
       currency: currency.toUpperCase(),
       toAddress: address,
@@ -420,7 +461,7 @@ class CurrencyWallet extends Component<any, any> {
     this.loading()
     const { address, currency } = this.state
     this.setState(() => ({ filterValue: address }))
-    actions.history.setTransactions(address, currency.toLowerCase(), this.pullTransactions)
+    actions.history.setTransactions(address, currency.toLowerCase())
   }
 
   render() {
@@ -449,14 +490,21 @@ class CurrencyWallet extends Component<any, any> {
       isLoading,
     } = this.state
 
-    let currencyKey = getCurrencyKey(currency, true)
+    let currencyName = currency.toLowerCase()
+
+    switch (currencyName) {
+      case 'btc (multisig)':
+      case 'btc (sms-protected)':
+      case 'btc (pin-protected)':
+        currencyName = 'btc'
+    }
 
     txHistory = txItems || txHistory
 
     if (txHistory) {
       txHistory = txHistory.filter((tx) => {
-        if (tx && tx.type) {
-          return tx.type.toLowerCase() === currencyKey.toLowerCase()
+        if (tx?.type) {
+          return tx.type.toLowerCase() === currencyName
         }
         return false
       })
@@ -524,32 +572,24 @@ class CurrencyWallet extends Component<any, any> {
         <DashboardLayout
           page="history"
           BalanceForm={
-            txHistory
-              ?
-              <BalanceForm
-                type="currencyWallet"
-                activeFiat={activeFiat}
-                currencyBalance={balance}
-                fiatBalance={currencyFiatBalance}
-                activeCurrency={activeCurrency}
-                isFetching={isBalanceFetching}
-                handleReceive={this.handleReceive}
-                handleWithdraw={this.handleWithdraw}
-                handleInvoice={this.handleInvoice}
-                showButtons={actions.user.isOwner(
-                  address,
-                  itemCurrency.tokenKey || currency
-                )}
-                currency={currency.toLowerCase()}
-                singleWallet={true}
-                multisigPendingCount={multisigPendingCount}
-              />
-              :
-              <Fragment>
-                {/*
-                //@ts-ignore */}
-                <ContentLoader leftSideContent />
-              </Fragment>
+            <BalanceForm
+              type="currencyWallet"
+              activeFiat={activeFiat}
+              currencyBalance={balance}
+              fiatBalance={currencyFiatBalance}
+              activeCurrency={activeCurrency}
+              isFetching={isBalanceFetching}
+              handleReceive={this.handleReceive}
+              handleWithdraw={this.handleWithdraw}
+              handleInvoice={this.handleInvoice}
+              showButtons={actions.user.isOwner(
+                address,
+                itemCurrency.tokenKey || currencyName
+              )}
+              currency={currency.toLowerCase()}
+              singleWallet={true}
+              multisigPendingCount={multisigPendingCount}
+            />
           }
         >
           <div styleName="currencyWalletActivity">
@@ -568,23 +608,18 @@ class CurrencyWallet extends Component<any, any> {
                 <Table rows={txHistory} styleName="currencyHistory" rowRender={this.rowRender} />
               ) : (
                   <div styleName="historyContent">
-                    {/*
-                    //@ts-ignore */}
                     <ContentLoader rideSideContent empty nonHeader inner />
                   </div>
                 ))}
             {(!txHistory || isLoading) && (
               <div styleName="historyContent">
-                {/*
-                //@ts-ignore */}
                 <ContentLoader rideSideContent nonHeader />
               </div>
             )}
           </div>
           {showSwapHistory && (
             <>
-              {!actions.btcmultisig.isBTCSMSAddress(`${address}`) &&
-                !actions.btcmultisig.isBTCMSUserAddress(`${address}`) &&
+              {!actions.btcmultisig.isBTCMSUserAddress(`${address}`) &&
                 (swapHistory.filter((item) => item.step >= 1).length > 0 ? (
                     <SwapsHistory orders={swapHistory.filter((item) => item.step >= 4)} />
                   ) : (

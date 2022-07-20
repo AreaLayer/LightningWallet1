@@ -404,12 +404,8 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
         (value) => new BigNumber(value).isLessThanOrEqualTo(balance),
         <div style={{ width: '340px', fontSize: '12px' }}>
           <FormattedMessage
-            id="Withdrow170"
+            id="amountNoMoreThenBalance"
             defaultMessage="The amount must be no more than your balance"
-            values={{
-              min,
-              currency: `${currency}`,
-            }}
           />
         </div>
       )
@@ -429,7 +425,7 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
       },
       ownTxPlaceholder: {
         id: 'withdrawOwnTxPlaceholder',
-        defaultMessage: 'Если оплатили с другого источника',
+        defaultMessage: 'If paid from another source',
       },
     })
 
@@ -491,7 +487,7 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
                 {balance} {currency.toUpperCase()}
               </p>
               <FieldLabel>
-                <FormattedMessage id="Withdrow118" defaultMessage="Amount " />
+                <FormattedMessage id="orders102" defaultMessage="Amount" />
               </FieldLabel>
 
               <div styleName="group">
@@ -512,7 +508,10 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
                   <ReactTooltip id="Withdrow134" type="light" effect="solid" styleName="r-tooltip">
                     <FormattedMessage
                       id="WithdrawButton32"
-                      defaultMessage="when you click this button, in the field, an amount equal to your balance minus the miners commission will appear"
+                      defaultMessage="When you click this button, in the field, an amount{br}equal to your balance minus the miners commission will appear"
+                      values={{
+                        br: <br />,
+                      }}
                     />
                   </ReactTooltip>
                 )}
@@ -536,7 +535,7 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
                     </Fragment>
                   ) : (
                     <Fragment>
-                      <FormattedMessage id="WithdrawModal111" defaultMessage="Send" />
+                      <FormattedMessage id="withdrowTitle271" defaultMessage="Send" />
                     </Fragment>
                   )}
                 </Button>
@@ -636,7 +635,6 @@ class WithdrawModalMultisigUser extends React.Component<any, any> {
       </Fragment>
     )
     return (
-      //@ts-ignore: strictNullChecks
       <Modal
         name={name}
         title={`${intl.formatMessage(labels.withdrawModal)}${' '}${currency.toUpperCase()}`}

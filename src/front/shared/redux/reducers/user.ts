@@ -47,6 +47,54 @@ export const initialState = {
     balanceError: null,
     infoAboutCurrency: null,
   },
+  aurethData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'AURETH',
+    fullName: 'Aurora ETH',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  xdaiData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'XDAI',
+    fullName: 'xDai',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  ftmData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'FTM',
+    fullName: 'Fantom',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  avaxData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'AVAX',
+    fullName: 'Avalanche',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  movrData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'MOVR',
+    fullName: 'Moonriver',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  oneData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'ONE',
+    fullName: 'Harmony One',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
   btcData: {
     balance: 0,
     isBalanceFetched: false,
@@ -87,6 +135,7 @@ export const initialState = {
     balanceError: null,
     infoAboutCurrency: null,
   },
+  /*
   usdtData: {
     address: '0x0', // ? for what
     publicKey: '0x0', // ?
@@ -96,6 +145,7 @@ export const initialState = {
     fullName: 'Tether',
     balanceError: null,
   },
+  */
   tokensData: {},
   isFetching: false,
   isBalanceFetching: false,

@@ -3,12 +3,24 @@ export const COIN_TYPE = Object.freeze({
   ETH_TOKEN: 'ETH_TOKEN',
   BNB_TOKEN: 'BNB_TOKEN',
   MATIC_TOKEN: 'MATIC_TOKEN',
+  XDAI_TOKEN: 'XDAI_TOKEN',
+  FTM_TOKEN: 'FTM_TOKEN',
+  AVAX_TOKEN: 'AVAX_TOKEN',
+  MOVR_TOKEN: 'MOVR_TOKEN',
+  ONE_TOKEN: 'ONE_TOKEN',
+  AURORA_TOKEN: 'AURORA_TOKEN',
 })
 
 export const TOKEN_STANDARD = Object.freeze({
   ERC20: 'ERC20',
   BEP20: 'BEP20',
-  ERC20MATIC: 'ERC20MATIC'
+  ERC20MATIC: 'ERC20MATIC',
+  ERC20XDAI: 'ERC20XDAI',
+  ERC20FTM: 'ERC20FTM',
+  ERC20AVAX: 'ERC20AVAX',
+  ERC20MOVR: 'ERC20MOVR',
+  ERC20ONE: 'ERC20ONE',
+  ERC20AURORA: 'ERC20AURORA',
 })
 
 export const BLOCKCHAIN = Object.freeze({
@@ -19,12 +31,24 @@ export const BLOCKCHAIN = Object.freeze({
   BNB: 'BNB', // TODO: rename with BSC
   MATIC: 'MATIC',
   ARBITRUM: 'ARBITRUM',
+  XDAI: 'XDAI',
+  FTM: 'FTM',
+  AVAX: 'AVAX',
+  MOVR: 'MOVR',
+  ONE: 'ONE',
+  AURETH: 'AURETH', // AURORA
 })
 
 export const BASE_TOKEN_CURRENCY = Object.freeze({
   ETH: 'ETH',
   BNB: 'BNB',
-  MATIC: 'MATIC'
+  MATIC: 'MATIC',
+  XDAI: 'XDAI',
+  FTM: 'FTM',
+  AVAX: 'AVAX',
+  MOVR: 'MOVR',
+  ONE: 'ONE',
+  AURETH: 'AURETH',
 })
 
 export const COIN_MODEL = Object.freeze({
@@ -70,6 +94,54 @@ export const COIN_DATA = {
     name: 'Arbitrum ETH',
     type: COIN_TYPE.NATIVE,
     blockchain: BLOCKCHAIN.ARBITRUM,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'AURETH': {
+    ticker: 'AURETH',
+    name: 'Aurora ETH',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.AURETH,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'XDAI': {
+    ticker: 'XDAI',
+    name: 'xDai',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.XDAI,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'FTM': {
+    ticker: 'FTM',
+    name: 'Fantom',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.FTM,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'AVAX': {
+    ticker: 'AVAX',
+    name: 'Avalanche',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.AVAX,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'MOVR': {
+    ticker: 'MOVR',
+    name: 'Moonriver',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.MOVR,
+    model: COIN_MODEL.AB,
+    precision: 18,
+  },
+  'ONE': {
+    ticker: 'ONE',
+    name: 'Harmony One',
+    type: COIN_TYPE.NATIVE,
+    blockchain: BLOCKCHAIN.ONE,
     model: COIN_MODEL.AB,
     precision: 18,
   },
@@ -145,6 +217,12 @@ export const NATIVE = {
   bnb: 'BNB',
   matic: 'MATIC',
   arbeth: 'ARBETH',
+  aureth: 'AURETH',
+  xdai: 'XDAI',
+  ftm: 'FTM',
+  avax: 'AVAX',
+  movr: 'MOVR',
+  one: 'ONE',
   ghost: 'GHOST',
   next: 'NEXT',
 }

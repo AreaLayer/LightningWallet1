@@ -1,14 +1,13 @@
-import React, { Component, Fragment } from 'react'
+import { Component, Fragment } from 'react'
 import actions from 'redux/actions'
 import { connect } from 'redaction'
 import erc20Like from 'common/erc20Like'
-import { constants } from 'helpers'
+import { constants, metamask, utils, externalConfig } from 'helpers'
 import config from 'helpers/externalConfig'
 import { isMobile } from 'react-device-detect'
 
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
-import metamask from 'helpers/metamask'
 import Coin from 'components/Coin/Coin'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import DropdownMenu from 'components/ui/DropdownMenu/DropdownMenu'
@@ -262,10 +261,6 @@ class Row extends Component<RowProps, RowState> {
     })
   }
 
-  handleActivateProtected = async () => {
-    actions.modals.open(constants.modals.RegisterSMSProtected, {})
-  }
-
   handleActivatePinProtected = async () => {
     actions.modals.open(constants.modals.RegisterPINProtected, {})
   }
@@ -293,12 +288,13 @@ class Row extends Component<RowProps, RowState> {
 
   handleCreateInvoiceLink = () => {
     const {
-      itemData: { currency, address },
+      itemData: { currency, address, tokenKey },
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceLinkModal, {
       currency,
       address,
+      tokenKey,
     })
   }
 
@@ -314,13 +310,15 @@ class Row extends Component<RowProps, RowState> {
         contractAddress,
         unconfirmedBalance,
         currency,
+        tokenKey,
         address,
         balance,
       },
+      itemData
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceModal, {
-      currency,
+      currency: ((tokenKey) ? tokenKey : currency).toUpperCase(),
       address,
       contractAddress,
       decimals,
@@ -446,7 +444,7 @@ class Row extends Component<RowProps, RowState> {
     } = itemData
 
     let nodeDownErrorShow = true
-    let currencyFiatBalance = 0
+    let currencyFiatBalance
     let currencyView = currency
 
     switch (currencyView) {
@@ -458,7 +456,10 @@ class Row extends Component<RowProps, RowState> {
     }
 
     if (itemData?.infoAboutCurrency?.price_fiat) {
-      currencyFiatBalance = new BigNumber(balance).multipliedBy(itemData.infoAboutCurrency.price_fiat).dp(2, BigNumber.ROUND_FLOOR).toNumber()
+      currencyFiatBalance = utils.toMeaningfulFloatValue({
+        value: balance,
+        rate: itemData.infoAboutCurrency.price_fiat,
+      })
     }
 
     let hasHowToWithdraw = false
@@ -499,7 +500,7 @@ class Row extends Component<RowProps, RowState> {
             id: 10021,
             title: (
               <FormattedMessage
-                id="WalletRow_Menu_HowToWithdraw"
+                id="HowToWithdrawModal_Title"
                 defaultMessage="How to withdraw"
               />
             ),
@@ -519,7 +520,7 @@ class Row extends Component<RowProps, RowState> {
         id: 1004,
         title: (
           <FormattedMessage
-            id="WalletRow_Menu_Exchange"
+            id="menu.exchange"
             defaultMessage="Exchange"
           />
         ),
@@ -621,7 +622,7 @@ class Row extends Component<RowProps, RowState> {
           title: (
             <FormattedMessage
               id="MetamaskDisconnect"
-              defaultMessage="Отключить кошелек"
+              defaultMessage="Disconnect wallet"
             />
           ),
           action: metamask.handleDisconnectWallet,
@@ -674,36 +675,6 @@ class Row extends Component<RowProps, RowState> {
       && multisigStatus[itemData.address].count
     ) ? multisigStatus[itemData.address].count : false
 
-    if (
-      itemData.isSmsProtected &&
-      !itemData.isRegistered
-    ) {
-      statusInfo = 'Not activated'
-      showBalance = false
-      nodeDownErrorShow = false
-      dropDownMenuItems = [
-        {
-          id: 1,
-          title: (
-            <FormattedMessage
-              id="WalletRow_Menu_ActivateSMSProtected"
-              defaultMessage="Activate"
-            />
-          ),
-          action: this.handleActivateProtected,
-          disabled: false,
-        },
-        {
-          id: 1011,
-          title: (
-            <FormattedMessage id="WalletRow_Menu_Hide" defaultMessage="Hide" />
-          ),
-          action: this.hideCurrency,
-          disabled: false,
-        },
-      ]
-    }
-
     if (itemData.isUserProtected) {
       if (!itemData.active) {
         statusInfo = 'Not joined'
@@ -755,6 +726,11 @@ class Row extends Component<RowProps, RowState> {
     const isAvailableMetamaskNetwork = isMetamask && metamask.isAvailableNetwork()
     const isNotAvailableMetamaskNetwork = isMetamask && !metamask.isAvailableNetwork()
     const currencyTitleId = `${standard ? standard.toLowerCase() : ''}${currency.toLowerCase()}`
+    const showFiatBalance =
+      currencyFiatBalance !== undefined &&
+      !Number.isNaN(currencyFiatBalance) &&
+      showBalance &&
+      !balanceError
 
     return (
       !ethRowWithoutExternalProvider
@@ -842,7 +818,7 @@ class Row extends Component<RowProps, RowState> {
                       isNotAvailableMetamaskNetwork
                         ? (
                           <Button small empty onClick={metamask.handleDisconnectWallet}>
-                            <FormattedMessage id="MetamaskDisconnect" defaultMessage="Отключить кошелек" />
+                            <FormattedMessage id="MetamaskDisconnect" defaultMessage="Disconnect wallet" />
                           </Button>
                         )
                         : !isBalanceFetched || isBalanceFetching ? (
@@ -869,8 +845,10 @@ class Row extends Component<RowProps, RowState> {
                             <span id="walletRowCryptoBalance">
                               {balanceError
                                 ? '?'
-                                : new BigNumber(balance).dp(5, BigNumber.ROUND_FLOOR).toString()
-                              }{' '}
+                                : utils.toMeaningfulFloatValue({
+                                    value: balance,
+                                    meaningfulDecimals: 5,
+                                  })}{' '}
                             </span>
                             <span styleName="assetsTableCurrencyBalance">
                               {currencyView}
@@ -952,7 +930,7 @@ class Row extends Component<RowProps, RowState> {
             </Fragment>
 
             {/* Fiat amount */}
-            {(currencyFiatBalance && showBalance && !balanceError) || msConfirmCount ? (
+            {showFiatBalance || msConfirmCount ? (
               <div styleName="assetsTableValue">
                 {msConfirmCount && !isMobile && (
                   <p styleName="txWaitConfirm" onClick={this.goToCurrencyHistory}>
@@ -964,16 +942,14 @@ class Row extends Component<RowProps, RowState> {
                     )}
                   </p>
                 )}
-                {currencyFiatBalance && showBalance && !balanceError && (
+                {showFiatBalance && (
                   <>
                     <p>{currencyFiatBalance}</p>
                     <strong>{activeFiat}</strong>
                   </>
                 )}
               </div>
-            ) : (
-                ''
-              )}
+            ) : null}
           </div>
 
           {/* Additional option. Ethereum row with external wallet */}

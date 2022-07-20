@@ -1,15 +1,11 @@
-import React from 'react'
-
 import CSSModules from 'react-css-modules'
-import styles from '../CreateWallet.scss'
-
 import { isMobile } from 'react-device-detect'
-
 import { FormattedMessage } from 'react-intl'
-import Coin from 'components/Coin/Coin'
-
-import Explanation from '../Explanation'
 import config from 'helpers/externalConfig'
+import Coin from 'components/Coin/Coin'
+import Button from 'components/controls/Button/Button'
+import styles from '../CreateWallet.scss'
+import Explanation from '../Explanation'
 
 import Cupture, {
   subHeaderText1,
@@ -19,20 +15,19 @@ import Cupture, {
 
 const isWidgetBuild = config && config.isWidget
 
-
 function FirstStep(props) {
-  const { onClick, error, curState, startPack, handleClick } = props
+  const { onClick, error, curState, startPack, handleClick, showPinContent } = props
 
   return (
-    <div>
-      <div>
-        <div>
+    <>
+      <>
+        <>
           <Explanation step={1} subHeaderText={subHeaderText1()}>
             {!isWidgetBuild && (
               <Cupture />
             )}
           </Explanation>
-          <div styleName={`currencyChooserWrapper ${startPack.length < 4 ? "smallArr" : ""}`}>
+          <div styleName={`currencyChooserWrapper ${startPack.length < 4 ? 'smallArr' : ''}`}>
             {startPack.map((el, index) => {
               const { name, capture, baseCurrency } = el
               const firstIdPart = `${baseCurrency ? `${baseCurrency}${name}` : `${name}`}`
@@ -53,26 +48,31 @@ function FirstStep(props) {
                   </div>
                   <ul styleName="currencyInfoList">
                     <li><b>{name}</b></li>
-                    <li>{baseCurrency && `(${baseCurrency}) `}{capture}</li>
+                    <li>
+                      {baseCurrency && `(${baseCurrency}) `}
+                      {capture}
+                    </li>
                   </ul>
                 </div>
               )
             })}
           </div>
-        </div>
-        <button id='continueBtn' styleName="continue" onClick={onClick} disabled={error}>
-          <FormattedMessage id="createWalletButton1" defaultMessage="Продолжить" />
-        </button>
-      </div>
+        </>
+        <Button id="continueBtn" styleName="stepButton" disabled={error} onClick={onClick}>
+          <FormattedMessage id="createWalletButton1" defaultMessage="Continue" />
+        </Button>
+      </>
       {
-        !isMobile &&
-        <div>
-          <Explanation step={2} subHeaderText={subHeaderText2()} notMain>
-            {cupture2()}
-          </Explanation>
-        </div>
+        !isMobile && curState?.BTC && showPinContent
+        && (
+          <div>
+            <Explanation step={2} subHeaderText={subHeaderText2()} notMain>
+              {cupture2()}
+            </Explanation>
+          </div>
+        )
       }
-    </div>
+    </>
   )
 }
 
