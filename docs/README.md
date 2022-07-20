@@ -9,7 +9,6 @@
 - ⚛️ P2P exchange – atomic swaps
 - 💡 Open-source, client-side
 - 📦 Embeddable into your site!
-- Marketmaker extention https://chrome.google.com/webstore/detail/multicurrencywallet/oldojieloelkkfeacfinhcngmbkepnlm
   
 Live version here: 
 Soon. 
