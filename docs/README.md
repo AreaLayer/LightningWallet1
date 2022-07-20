@@ -4,7 +4,7 @@
    
 ## Lightning Wallet
      
-- 👛 Crypto wallet: BTC
+- 👛 Lightning Wallet: BTC
 - 💵 Fiat gateway: USD, EUR, RUB, UAH... via itez.com
 - ⚛️ P2P exchange – atomic swaps
 - 💡 Open-source, client-side
