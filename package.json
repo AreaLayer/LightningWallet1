@@ -256,7 +256,7 @@
     "patch-package": "^6.4.7",
     "postcss": "^8.2.4",
     "puppeteer": "^11.0.0",
-    "react": "^17.0.1",
+    "react": "^18.2.0",
     "react-copy-to-clipboard": "^5.0.2",
     "react-css-modules": "^4.7.11",
     "react-device-detect": "^2.0.0",
