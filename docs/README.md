@@ -12,8 +12,5 @@
 - Marketmaker extention https://chrome.google.com/webstore/detail/multicurrencywallet/oldojieloelkkfeacfinhcngmbkepnlm
   
 Live version here: 
-SOON
-
-
-No coding skills? Use :package: [WordPress plugin with admin panel](https://codecanyon.net/item/multicurrency-crypto-wallet-and-exchange-widgets-for-wordpress/23532064) :package: 
+Soon. 
 
