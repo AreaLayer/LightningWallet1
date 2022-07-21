@@ -1,6 +1,9 @@
 name: Node CI
 
+ sorentobot-patch-3
+on: [push]
 on: [pull_request]
+master
 
 jobs:
   build:
@@ -9,15 +12,28 @@ jobs:
 
     strategy:
       matrix:
+sorentobot-patch-3
+        node-version: [10.x]
+
+    steps:
+    - uses: actions/checkout@v1
         node-version: [14.x]
 
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+ master
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+sorentobot-patch-3
+    - name: npm install, build, and test
+      run: |
+        npm i
+        npm run build:testnet
+      env:
+        CI: true
     - name: Decrypt testWallets.json.gpg file
       shell: bash
       env:
@@ -54,3 +70,4 @@ jobs:
       env:
         CI: true
 
+ master
