@@ -12,12 +12,10 @@ plugins:
   - react
   - import
   - babel
-  - reactintl
 
 env:
   browser: true
   es6: true
-
 
 parserOptions:
   ecmaVersion: 8
@@ -52,8 +50,8 @@ rules:
     - never
 
   import/newline-after-import:
-      - error
-      - count: 2
+    - error
+    - count: 1
 
   # rewrite airbnb config
 
@@ -84,7 +82,7 @@ rules:
   no-cond-assign: 0
   no-use-before-define: 0
   no-template-curly-in-string: 0
-  no-unused-vars: 0
+  no-unused-vars: 2
 
   func-names: 0
   padded-blocks: 0
@@ -128,5 +126,10 @@ rules:
   jsx-a11y/anchor-is-valid: 0
   jsx-a11y/interactive-supports-focus: 0
 
-  reactintl/default-message: 2
-  reactintl/contains-hardcoded-copy: 2
+overrides:
+  - files: '**/*.+(ts|tsx)'
+    parser: '@typescript-eslint/parser'
+    parserOptions:
+      project: './tsconfig.json'
+    plugins: ['@typescript-eslint/eslint-plugin']
+    extends: ['plugin:@typescript-eslint/eslint-recommended', 'plugin:@typescript-eslint/recommended']

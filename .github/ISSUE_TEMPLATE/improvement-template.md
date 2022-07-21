@@ -1,40 +1,14 @@
 ---
 name: Improvement Template
-about: Improvement Template. Every correct-formed issue gets +1 token bonus.
+about: Something needs to be improved
 title: ''
 labels: ''
 assignees: ''
 
 ---
+<!-- Please use English -->
 
-# Problem
+## Suggestion for improvement
 
-(What is wrong now? What is working not well?)
+(What is working not well? What we need to do in order to implement this feature?)
 
-
-
-# Task
-
-(What we need to do in order to implement this feature?)
-
-
-
-# Purpose
-
-(What this feature is intended to do or solve?)
-
-
-
-# Area
-
-(What part of our tech resources this feature intercourse: backend, frontend etc.)
-
-(Where’ll we implement this feature: project, space etc.)
-
-
-
-# Estimate time of implementation
-
-
-
-# Additional data
