@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import moment from 'moment/moment'
 import cx from 'classnames'
 
-import { links, localStorage } from 'helpers'
+import { links } from 'helpers'
 import actions from 'redux/actions'
 import { Link } from 'react-router-dom'
 
@@ -11,14 +11,13 @@ import CSSModules from 'react-css-modules'
 import styles from './RowHistory.scss'
 
 import Timer from 'pages/Swap/Timer/Timer'
-import Avatar from 'components/Avatar/Avatar'
 import { FormattedMessage, injectIntl } from 'react-intl'
-import { localisedUrl } from 'helpers/locale'
 import BigNumber from 'bignumber.js'
 
-@injectIntl
+import { COIN_DATA, COIN_MODEL } from 'swap.app/constants/COINS'
+
 @CSSModules(styles, { allowMultiple: true })
-export default class RowHistory extends Component<any, any> {
+class RowHistory extends Component<any, any> {
   static propTypes = {
     row: PropTypes.object,
   }
@@ -28,9 +27,7 @@ export default class RowHistory extends Component<any, any> {
       row: { id },
     } = this.props
 
-    if (timeLeft > 0) {
-      return
-    }
+    if (timeLeft > 0) return
 
     try {
       const { flow } = actions.core.getSwapById(id)
@@ -39,25 +36,18 @@ export default class RowHistory extends Component<any, any> {
         state: { isFinished, isRefunded, step, scriptBalance, isEthContractFunded },
         swap: { sellCurrency },
       } = flow
-      let isPayed = 5,
-        isEmptyBalance = false
-      if (sellCurrency === 'BTC') {
-        isPayed = sellCurrency === 'BTC' ? 4 : 5
-        isEmptyBalance = sellCurrency === 'BTC' ? scriptBalance === 0 : !isEthContractFunded
-      }
 
-      if (sellCurrency === 'GHOST') {
-        isPayed = sellCurrency === 'GHOST' ? 4 : 5
-        isEmptyBalance = sellCurrency === 'GHOST' ? scriptBalance === 0 : !isEthContractFunded
-      }
+      if (isFinished || isRefunded) return
 
-      if (sellCurrency === 'NEXT') {
-        isPayed = sellCurrency === 'NEXT' ? 4 : 5
-        isEmptyBalance = sellCurrency === 'NEXT' ? scriptBalance === 0 : !isEthContractFunded
-      }
+      const isUTXOModel = COIN_DATA[sellCurrency] && COIN_DATA[sellCurrency].model === COIN_MODEL.UTXO
 
-      if (isFinished || isRefunded || (step === isPayed && isEmptyBalance)) {
-        console.error(`Refund of swap ${id} is not available`)
+      const isPayed = isUTXOModel ? 4 : 5
+      const isEmptyBalance = isUTXOModel ? scriptBalance === 0 : !isEthContractFunded
+
+      if (step === isPayed && isEmptyBalance) {
+        console.group('HISTORY ROW > %c Refund of swap', 'color: red;')
+        console.log(`Refund of swap ${id} is not available`)
+        console.groupEnd()
         return
       }
 
@@ -69,26 +59,27 @@ export default class RowHistory extends Component<any, any> {
     }
   }
 
+  getSwapStatusText = (isFinished: boolean, isRefunded: boolean, isStoppedSwap: boolean) => {
+    if (isFinished) {
+      return <FormattedMessage id="RowHistory94" defaultMessage="Finished" />
+    }
+    if (isRefunded) {
+      return <FormattedMessage id="RowHistory77" defaultMessage="Refunded" />
+    }
+    if (isStoppedSwap) {
+      return <FormattedMessage id="RowHistory139" defaultMessage="Stopped" />
+    }
+
+    return ''
+  }
+
   closeIncompleted = () => {
     actions.modals.close('IncompletedSwaps')
   }
   componentDidMount() {
     const {
-      btcScriptValues,
-      ltcScriptValues,
-      usdtScriptValues,
-      scriptValues,
-      ghostScriptValues,
-      nextScriptValues,
+      utxoScriptValues: values,
     } = this.props.row
-
-    const values =
-      btcScriptValues ||
-      ltcScriptValues ||
-      usdtScriptValues ||
-      ghostScriptValues ||
-      nextScriptValues ||
-      scriptValues
 
     if (!values) return
 
@@ -102,7 +93,6 @@ export default class RowHistory extends Component<any, any> {
   render() {
     const {
       row,
-      intl: { locale },
     } = this.props
 
     if (row === 'undefined') {
@@ -113,23 +103,18 @@ export default class RowHistory extends Component<any, any> {
       buyAmount,
       buyCurrency,
       sellAmount,
-      btcScriptValues,
+      utxoScriptValues: values,
       scriptBalance,
-      ghostScriptValues,
-      nextScriptValues,
       isRefunded,
-      isMy,
+      isTurbo,
       sellCurrency,
       isFinished,
       id,
-      scriptValues,
       isStoppedSwap,
     } = row
 
-    const values = btcScriptValues || scriptValues || ghostScriptValues || nextScriptValues
-
     const canBeRefunded = values && scriptBalance > 0
-    const isDeletedSwap = isFinished || isRefunded || isStoppedSwap
+    const isDeletedSwap = isFinished || isRefunded
 
     const date = Date.now() / 1000
 
@@ -139,7 +124,10 @@ export default class RowHistory extends Component<any, any> {
 
     const lockDateAndTime = moment.unix(values.lockTime || date).format('HH:mm:ss DD/MM/YYYY')
 
-    const linkToTheSwap = `${localisedUrl(locale, links.swap)}/${sellCurrency}-${buyCurrency}/${id}`
+    const swapUri = isTurbo ?
+      `${links.turboSwap}/${id}`
+      :
+      `${links.atomicSwap}/${id}`
 
     buyAmount = new BigNumber(buyAmount)
     sellAmount = new BigNumber(sellAmount)
@@ -148,15 +136,11 @@ export default class RowHistory extends Component<any, any> {
       <tr key={id}>
         <td>
           <span>You buy</span>
-          {isMy
-            ? `${sellAmount.toFixed(5)} ${sellCurrency.toUpperCase()}`
-            : `${buyAmount.toFixed(5)} ${buyCurrency.toUpperCase()}`}
+          {`${buyAmount.toFixed(5)} ${buyCurrency.toUpperCase()}`}
         </td>
         <td>
           <span>You sell</span>
-          {isMy
-            ? `${buyAmount.toFixed(5)} ${buyCurrency.toUpperCase()}`
-            : `${sellAmount.toFixed(5)} ${sellCurrency.toUpperCase()}`}
+          {`${sellAmount.toFixed(5)} ${sellCurrency.toUpperCase()}`}
         </td>
         <td>
           <span>Lock time</span>
@@ -170,23 +154,24 @@ export default class RowHistory extends Component<any, any> {
             className={cx({
               [styles.statusFinished]: isFinished,
               [styles.statusRefunded]: isRefunded,
-              [styles.statusStopped]: isStoppedSwap,
+              [styles.statusStopped]: isStoppedSwap && (isFinished || isRefunded) ? false : true,
             })}
           >
-            {isFinished && <FormattedMessage id="RowHistory94" defaultMessage="Finished" />}
-            {isRefunded && <FormattedMessage id="RowHistory77" defaultMessage="Refunded" />}
-            {isStoppedSwap && <FormattedMessage id="RowHistory139" defaultMessage="Stopped" />}
-            {!isDeletedSwap &&
-              (canBeRefunded ? (
-                <Timer lockTime={values.lockTime * 1000} enabledButton={this.tryRefund} />
-              ) : (
-                <FormattedMessage id="RowHistory76" defaultMessage="Refund not available" />
-              ))}
+            {this.getSwapStatusText(isFinished, isRefunded, isStoppedSwap)}
+
+            {!isDeletedSwap && (
+              <div styleName="refundStatus">
+                {canBeRefunded ? (
+                  <Timer lockTime={values.lockTime * 1000} enabledButton={this.tryRefund} />
+                ) : (
+                  <FormattedMessage id="RowHistory76" defaultMessage="Refund not available" />
+                )}
+              </div>
+            )}
           </p>
         </td>
         <td>
-          <span>Link</span>
-          <Link to={`${linkToTheSwap}`} onClick={this.closeIncompleted}>
+          <Link to={swapUri} onClick={this.closeIncompleted}>
             <FormattedMessage id="RowHistory91" defaultMessage="Link" />
           </Link>
         </td>
@@ -194,3 +179,5 @@ export default class RowHistory extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(RowHistory)

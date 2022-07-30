@@ -1,6 +1,5 @@
 import config from 'app-config'
 import autoprefixer from 'autoprefixer'
-import { AUTOPREFIXER } from '../util'
 
 
 const compile         = config.env === 'development' ? 'sourceMap' : 'minimize'
@@ -11,16 +10,12 @@ const _sccsDefaultConfig = '@import "./scss/config/index.scss";'
 const _sccsWidgetConfig = '@import "./scss/config/widget.scss";'
 const _sccsConfig = (isWidgetBuild) ? _sccsWidgetConfig : _sccsDefaultConfig
 
+
 export default [
   {
     test: /\.scss$/,
     use: [
-      {
-        loader: 'style-loader',
-      },
-      {
-        loader: 'cache-loader',
-      },
+      'style-loader',
       {
         loader: 'css-loader',
         options: {
@@ -32,21 +27,35 @@ export default [
         loader: 'postcss-loader',
         options: {
           sourceMap: true,
-          plugins: () => [
-            autoprefixer(AUTOPREFIXER),
-          ],
+          postcssOptions: {
+            hideNothingWarning: true,
+            plugins: () => [
+              autoprefixer([
+                'Android >= 4',
+                'iOS >= 8',
+                'Chrome >= 30',
+                'Firefox >= 30',
+                'Explorer >= 10',
+                'Safari >= 8',
+                'Opera >= 20',
+              ]),
+              require('postcss-import')
+            ],
+          }
         },
       },
       {
         loader: 'sass-loader',
         options: {
           sourceMap: true,
-          data: _sccsConfig,
-          includePaths: [
-            config.paths.base('node_modules'),
-            config.paths.front('shared'),
-            config.paths.front('client'),
-          ],
+          additionalData: _sccsConfig,
+          sassOptions:{
+            includePaths: [
+              config.paths.base('node_modules'),
+              config.paths.front('shared'),
+              config.paths.front('client'),
+            ]
+          }
         },
       },
     ],

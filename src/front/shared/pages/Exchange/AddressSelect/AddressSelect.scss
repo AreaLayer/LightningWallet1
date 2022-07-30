@@ -1,31 +1,6 @@
 .addressSelect {
   position: relative;
 
-  &.--dark {
-    color: white;
-
-    .dropDown {
-      width: 100%;
-
-      & > div {
-        background: #2b2b2b;
-
-        & > span {
-          display: block;
-          font-size: 12pt;
-          font-weight: bold;
-          width: 100%;
-          text-align: left;
-          margin-left: 1em;
-
-          @media screen and (max-width: 480px) {
-            font-size: 8pt;
-          }
-        }
-      }
-    }
-  }
-
   .label {
     font-size: 15px;
     @include ff-semibold;
@@ -35,20 +10,12 @@
     position: absolute;
     top: -18px;
     left: 10px;
-    background: #fff;
+    background: var(--color-background-elements);
     white-space: nowrap;
     @include media-mobile {
       top: -14px;
       font-size: 12px;
     }
-  }
-
-  &.--dark .label {
-    background: none;
-  }
-
-  &_error .walletToggle {
-    border: 2px solid #a90101;
   }
 
   .dropDown {
@@ -68,7 +35,7 @@
 
   & > div {
     padding-left: 0px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--color-border);
     border-radius: 2px;
 
     div > {
@@ -85,7 +52,7 @@
 
   &_error {
     .dropDown > div > span {
-      color: #a90101;
+      color: var(--color-f-error);
     }
   }
 }
@@ -97,6 +64,16 @@
   height: 100%;
   width: 58%;
   z-index: 1;
+  background-color: var(--color-background-elements);
+
+  &.connectWrapper {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    padding: 5px;
+    background-color: transparent;
+    border: none;
+  }
 
   &_connectBtn {
     border: transparent !important;
@@ -111,23 +88,6 @@
   }
 }
 
-.readonlyValue {
-  height: 100%;
-
-  input {
-    display: block;
-    width: 100%;
-    height: 100%;
-    vertical-align: middle;
-    padding: 0.7em;
-    border: none;
-    font-size: 1em;
-    text-overflow: ellipsis;
-    background: #8882;
-    color: #777;
-  }
-}
-
 .customWallet {
   position: relative;
   height: 100%;
@@ -137,7 +97,7 @@
   }
 
   &_focus {
-    border: 2px solid $primary !important;
+    border: 1px solid var(--color-brand) !important;
   }
 
   .customAddressInput {
@@ -161,35 +121,6 @@
       }
     }
   }
-
-  .qrCode {
-    position: absolute;
-    right: -13px;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #fff;
-    border: 6px solid #fff;
-    display: block;
-    cursor: pointer;
-  }
-}
-
-.addressSelect {
-  &.--dark {
-    .customWallet {
-      .qrCode {
-        background-color: #222427;
-        border-color: #222427;
-      }
-    }
-  }
-}
-
-.buttonContainer {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  padding: 5px;
 }
 
 .button {
@@ -208,14 +139,6 @@
 }
 
 @include media-mobile {
-  .--dark {
-    .readonlyValue {
-      input {
-        color: white;
-      }
-    }
-  }
-
   .addressSelect {
     .dropDown {
       & > div {

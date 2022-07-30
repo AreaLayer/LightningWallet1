@@ -35,7 +35,7 @@ class NEXT2BTC extends Flow {
       'wait-lock-btc': 2,
       'verify-script': 3,
       'sync-balance': 4,
-      'lock-next': 5,
+      'lock-utxo': 5,
       'wait-withdraw-next': 6, // aka getSecret
       'withdraw-btc': 7,
       'finish': 8,
@@ -79,7 +79,7 @@ class NEXT2BTC extends Flow {
       secret: null,
 
       isNextWithdrawn: false,
-      isBtcWithdrawn: false,
+      isbtcWithdrawn: false,
 
       refundTransactionHash: null,
       isRefunded: false,
@@ -96,6 +96,7 @@ class NEXT2BTC extends Flow {
     super._persistState()
   }
 
+  //@ts-ignore: strictNullChecks
   _getSteps() {
     const flow = this
 
@@ -149,6 +150,7 @@ class NEXT2BTC extends Flow {
 
         const scriptCheckResult = await flow.btcSwap.checkScript(flow.state.btcScriptValues, {
           value: buyAmount,
+          //@ts-ignore: strictNullChecks
           recipientPublicKey: this.app.services.auth.accounts.btc.getPublicKey(),
           lockTime: getLockTime(),
         })
@@ -161,6 +163,7 @@ class NEXT2BTC extends Flow {
 
         const scriptValues = {
           secretHash:         flow.state.secretHash,
+          //@ts-ignore: strictNullChecks
           ownerPublicKey:     this.app.services.auth.accounts.next.getPublicKey(),
           recipientPublicKey: participant.next.publicKey,
           lockTime:           getLockTime(),
@@ -207,7 +210,7 @@ class NEXT2BTC extends Flow {
         flow.finishStep({
           isNextScriptFunded: true,
           nextScriptValues: scriptValues,
-        }, { step: 'lock-next' })
+        }, { step: 'lock-utxo' })
       },
 
       // 6. Wait participant withdraw
@@ -254,7 +257,7 @@ class NEXT2BTC extends Flow {
         })
 
         flow.finishStep({
-          isBtcWithdrawn: true,
+          isbtcWithdrawn: true,
         }, { step: 'withdraw-btc' })
       },
 
@@ -281,6 +284,7 @@ class NEXT2BTC extends Flow {
     const { participant } = this.swap
 
     const swapData = {
+      //@ts-ignore: strictNullChecks
       ownerAddress:       this.app.services.auth.accounts.next.address,
       participantAddress: participant.next.address
     }
@@ -345,6 +349,7 @@ class NEXT2BTC extends Flow {
       isBalanceFetching: true,
     })
 
+    //@ts-ignore: strictNullChecks
     const balance = await this.nextSwap.fetchBalance(this.app.services.auth.accounts.next.getAddress())
 
     const isEnoughMoney = sellAmount.isLessThanOrEqualTo(balance)
@@ -377,8 +382,6 @@ class NEXT2BTC extends Flow {
   }
 
   tryRefund() {
-    const { participant } = this.swap
-
     return this.nextSwap.refund({
       scriptValues: this.state.nextScriptValues,
       secret: this.state.secret,
@@ -404,7 +407,7 @@ class NEXT2BTC extends Flow {
   }
 
   async tryWithdraw(_secret) {
-    const { secret, secretHash, isNextWithdrawn, isBtcWithdrawn, btcScriptValues } = this.state
+    const { secret, secretHash, isNextWithdrawn, isbtcWithdrawn, btcScriptValues } = this.state
     if (!_secret)
       throw new Error(`Withdrawal is automatic. For manual withdrawal, provide a secret`)
 
@@ -414,7 +417,7 @@ class NEXT2BTC extends Flow {
     if (secret && secret != _secret)
       console.warn(`Secret already known and is different. Are you sure?`)
 
-    if (isBtcWithdrawn)
+    if (isbtcWithdrawn)
       console.warn(`Looks like money were already withdrawn, are you sure?`)
 
     debug('swap.core:flow')(`WITHDRAW using secret = ${_secret}`)
@@ -430,7 +433,7 @@ class NEXT2BTC extends Flow {
 
     if (balance === 0) {
       this.finishStep({
-        isBtcWithdrawn: true,
+        isbtcWithdrawn: true,
       }, { step: 'withdraw-btc' })
       throw new Error(`Already withdrawn: address=${scriptAddress},balance=${balance}`)
     }
@@ -447,7 +450,7 @@ class NEXT2BTC extends Flow {
     debug('swap.core:flow')(`TX withdraw sent: ${this.state.btcSwapWithdrawTransactionHash}`)
 
     this.finishStep({
-      isBtcWithdrawn: true,
+      isbtcWithdrawn: true,
     }, { step: 'withdraw-btc' })
   }
 

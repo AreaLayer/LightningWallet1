@@ -1,46 +1,73 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { constants } from 'helpers'
 import cx from "classnames";
-
+import { FormattedMessage } from 'react-intl'
 import cssModules from 'react-css-modules'
 import styles from './Button.scss'
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-const Button = props => {
+type ButtonProps = {
+  dataTut?: any
+  children?: any
+  fullWidth?: boolean
+  center?: boolean
+  autoHeight?: boolean
+  transparent?: boolean
+  brand?: boolean
+  blue?: boolean
+  gray?: boolean
+  big?: boolean
+  small?: boolean
+  empty?: boolean
+  link?: boolean
+  fill?: boolean
+  flex?: boolean
+  disabled?: boolean
+  dangerous?: boolean
+  pending?: boolean
+  className?: string
+  id?: string
+  onClick?: () => void
+}
+
+const Button = (props: ButtonProps) => {
   const {
     children,
     className,
     fullWidth,
+    center,
     brand,
     transparent,
     blue,
-    green,
-    white,
     gray,
     disabled,
+    dangerous,
+    pending,
     big,
+    small,
+    empty,
+    link,
     autoHeight,
     onClick,
     id = '',
     fill,
+    flex,
     dataTut,
   } = props
 
   const styleName = cx('button', {
     fill,
+    flex,
     fullWidth,
+    center,
     brand,
     transparent,
-    green,
     blue,
-    white,
     gray,
     big,
+    small,
+    empty,
+    link,
     autoHeight,
     disabled,
-    "darkTheme-white": isDark && white,
-    "darkTheme-gray": isDark && gray,
+    dangerous,
   })
 
   return (
@@ -54,27 +81,14 @@ const Button = props => {
       data-tip
       data-for={id}
     >
-      {children}
+      {pending ? (
+          <span styleName="pending">
+            <FormattedMessage id="ButtonPendingState" defaultMessage="Pending" />
+          </span>
+        ) : children
+      }
     </button>
   )
-}
-
-Button.propTypes = {
-  children: PropTypes.any,
-  className: PropTypes.string,
-  fullWidth: PropTypes.bool,
-  autoHeight: PropTypes.bool,
-  transparent: PropTypes.bool,
-  brand: PropTypes.bool,
-  green: PropTypes.bool,
-  white: PropTypes.bool,
-  blue: PropTypes.bool,
-  gray: PropTypes.bool,
-  big: PropTypes.bool,
-  id: PropTypes.string,
-  fill: PropTypes.bool,
-  disabled: PropTypes.bool,
-  onClick: PropTypes.func,
 }
 
 export default cssModules(Button, styles, { allowMultiple: true })

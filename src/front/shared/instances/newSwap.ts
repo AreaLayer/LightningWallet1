@@ -1,11 +1,12 @@
-/* eslint-disable import/no-mutable-exports,max-len */
 import 'abortcontroller-polyfill/dist/abortcontroller-polyfill-only'
-import { getWeb3 } from 'helpers/web3'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as ghost from 'bitcoinjs-lib'
 import * as next from 'bitcoinjs-lib'
 
 import abi from 'human-standard-token-abi'
+import ethLikeHelper from 'common/helpers/ethLikeHelper'
+import EVM_CONTRACTS_ABI from 'common/helpers/constants/EVM_CONTRACTS_ABI'
+import erc20Like from 'common/erc20Like'
 
 import config, { initExternalConfig } from 'helpers/externalConfig'
 
@@ -17,6 +18,9 @@ import SwapAuth from 'swap.auth'
 import SwapRoom from 'swap.room'
 import SwapOrders from 'swap.orders'
 import {
+  TurboMaker,
+  TurboTaker,
+
   ETH2BTC,
   BTC2ETH,
   ETHTOKEN2BTC,
@@ -35,8 +39,35 @@ import {
   NEXT2ETHTOKEN,
   //NEXT2BTC,
   //BTC2NEXT,
+
+
+  BNB2BTC,
+  BTC2BNB,
+  BSCTOKEN2BTC,
+  BTC2BSCTOKEN,
+
+  MATIC2BTC,
+  BTC2MATIC,
+  MATICTOKEN2BTC,
+  BTC2MATICTOKEN,
+
+  ARBITRUM2BTC,
+  BTC2ARBITRUM,  
 } from 'swap.flows'
-import { EthSwap, EthTokenSwap, BtcSwap, GhostSwap, NextSwap } from 'swap.swaps'
+import {
+  BtcSwap,
+  EthSwap,
+  BnbSwap,
+  MaticSwap,
+  ArbitrumSwap,
+  GhostSwap,
+  NextSwap,
+
+  EthTokenSwap,
+  BscTokenSwap,
+  MaticTokenSwap,
+
+} from 'swap.swaps'
 
 import metamask from 'helpers/metamask'
 
@@ -56,18 +87,15 @@ const onInit = (cb) => {
     if (_inited) {
       cb()
     } else {
-      setTimeout( _wait, 100)
+      setTimeout(_wait, 100)
     }
   }
   _wait()
 }
 
 const createSwapApp = async () => {
-  metamask.web3connect.onInit(async () => {
-    const web3 = (metamask.isEnabled() && metamask.isConnected())
-      ? await metamask.getWeb3()
-      : await getWeb3()
-
+  await metamask.web3connect.onInit(async () => {
+    const web3 = actions.eth.getWeb3()
     const NETWORK = process.env.MAINNET ? `MAINNET` : `TESTNET`
 
     SwapApp.setup({
@@ -75,7 +103,13 @@ const createSwapApp = async () => {
 
       env: {
         web3,
-        getWeb3,
+        getWeb3: actions.eth.getWeb3,
+        web3bnb: actions.bnb.getWeb3(),
+        getWeb3Bnb: actions.bnb.getWeb3,
+        web3Matic: actions.matic.getWeb3(),
+        getWeb3Matic: actions.matic.getWeb3,
+        web3Arbitrum: actions.arbeth.getWeb3(),
+        getWeb3Arbitrum: actions.arbeth.getWeb3,
         bitcoin,
         ghost,
         next,
@@ -92,16 +126,21 @@ const createSwapApp = async () => {
         storage: window.localStorage,
         sessionStorage: window.sessionStorage,
         metamask,
+        isBinance: !!config.binance,
+        isTest: !!config.isTest,
       },
 
       // White list (Список адресов btc довереных продавцов)
       // whitelistBtc: [],
 
       services: [
-        //@ts-ignore
         new SwapAuth({
           // TODO need init swapApp only after private keys created!!!!!!!!!!!!!!!!!!!
           eth: localStorage.getItem(privateKeys.privateKeyNames.eth),
+          // for evm compatible blockchains use eth private key
+          bnb: localStorage.getItem(privateKeys.privateKeyNames.eth),
+          matic: localStorage.getItem(privateKeys.privateKeyNames.eth),
+          arbeth: localStorage.getItem(privateKeys.privateKeyNames.eth),
           btc: localStorage.getItem(privateKeys.privateKeyNames.btc),
           ghost: localStorage.getItem(privateKeys.privateKeyNames.ghost),
           next: localStorage.getItem(privateKeys.privateKeyNames.next),
@@ -121,13 +160,36 @@ const createSwapApp = async () => {
       swaps: [
         new EthSwap({
           address: config.swapContract.eth,
-          /* eslint-disable */
-          abi: [{ "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "_ownerAddress", "type": "address" }], "name": "withdraw", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "_participantAddress", "type": "address" }], "name": "getSecret", "outputs": [{ "name": "", "type": "bytes32" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "", "type": "address" }, { "name": "", "type": "address" }], "name": "participantSigns", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "participantAddress", "type": "address" }], "name": "withdrawNoMoney", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "owner", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secretHash", "type": "bytes20" }, { "name": "_participantAddress", "type": "address" }, { "name": "_targetWallet", "type": "address" }], "name": "createSwapTarget", "outputs": [], "payable": true, "stateMutability": "payable", "type": "function" }, { "constant": true, "inputs": [{ "name": "", "type": "address" }, { "name": "", "type": "address" }], "name": "swaps", "outputs": [{ "name": "targetWallet", "type": "address" }, { "name": "secret", "type": "bytes32" }, { "name": "secretHash", "type": "bytes20" }, { "name": "createdAt", "type": "uint256" }, { "name": "balance", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_ownerAddress", "type": "address" }, { "name": "_participantAddress", "type": "address" }], "name": "closeSwapByAdminAfterOneYear", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secretHash", "type": "bytes20" }, { "name": "_participantAddress", "type": "address" }], "name": "createSwap", "outputs": [], "payable": true, "stateMutability": "payable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "_ownerAddress", "type": "address" }, { "name": "participantAddress", "type": "address" }], "name": "withdrawOther", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "ratingContractAddress", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "_ownerAddress", "type": "address" }], "name": "getTargetWallet", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "admin", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "_ownerAddress", "type": "address" }], "name": "getBalance", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_participantAddress", "type": "address" }], "name": "refund", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_value", "type": "uint256" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }, { "indexed": false, "name": "createdAt", "type": "uint256" }], "name": "CreateSwap", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }, { "indexed": false, "name": "withdrawnAt", "type": "uint256" }], "name": "Withdraw", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }], "name": "Close", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }], "name": "Refund", "type": "event" }],
-          /* eslint-enable */
+          abi: EVM_CONTRACTS_ABI.NATIVE_COIN_SWAP,
           fetchBalance: (address) => actions.eth.fetchBalance(address),
-          //@ts-ignore
-          estimateGasPrice: ({ speed } = {}) => helpers.eth.estimateGasPrice({ speed }),
+          estimateGasPrice: () => ethLikeHelper.eth.estimateGasPrice(),
+          sendTransaction: ({ to, amount }) => actions.eth.send({ to, amount }),
         }),
+        new BnbSwap({
+          address: config.swapContract.bnb,
+          abi: EVM_CONTRACTS_ABI.NATIVE_COIN_SWAP,
+          fetchBalance: (address) => actions.bnb.fetchBalance(address),
+          estimateGasPrice: () => ethLikeHelper.bnb.estimateGasPrice(),
+          sendTransaction: ({ to, amount }) => actions.bnb.send({ to, amount }),
+        }),
+        ...((config?.opts?.blockchainSwapEnabled?.matic) ? [
+          new MaticSwap({
+            address: config.swapContract.matic,
+            abi: EVM_CONTRACTS_ABI.NATIVE_COIN_SWAP,
+            fetchBalance: (address) => actions.matic.fetchBalance(address),
+            estimateGasPrice: () => ethLikeHelper.matic.estimateGasPrice(),
+            sendTransaction: ({ to, amount }) => actions.matic.send({ to, amount }),
+          })
+        ] : []),
+        ...((config?.opts?.blockchainSwapEnabled?.arbeth) ? [
+          new ArbitrumSwap({
+            address: config.swapContract.arbitrum,
+            abi: EVM_CONTRACTS_ABI.NATIVE_COIN_SWAP,
+            fetchBalance: (address) => actions.arbeth.fetchBalance(address),
+            estimateGasPrice: () => ethLikeHelper.arbeth.estimateGasPrice(),
+            sendTransaction: ({ to, amount }) => actions.arbeth.send({ to, amount }),
+          })
+        ] : []),
         new BtcSwap({
           fetchBalance: (address) => bitcoinUtils.fetchBalance({
             address,
@@ -153,12 +215,16 @@ const createSwapApp = async () => {
             ...options,
             NETWORK,
           }),
+          fetchTxInputScript: (options) => bitcoinUtils.fetchTxInputScript({
+            ...options,
+            NETWORK,
+          }),
+          sendTransaction: ({ to, amount }) => actions.btc.sendTransaction({ to, amount }),
         }),
         new GhostSwap({
           fetchBalance: (address) => actions.ghost.fetchBalance(address),
           fetchUnspents: (scriptAddress) => actions.ghost.fetchUnspents(scriptAddress),
           broadcastTx: (txRaw) => actions.ghost.broadcastTx(txRaw),
-          //@ts-ignore
           fetchTxInfo: (txid) => actions.ghost.fetchTxInfo(txid),
           checkWithdraw: (scriptAddress) => actions.ghost.checkWithdraw(scriptAddress),
           estimateFeeValue: ({ inSatoshis, speed, address, txSize }) => helpers.ghost.estimateFeeValue({ inSatoshis, speed, address, txSize }),
@@ -188,7 +254,12 @@ const createSwapApp = async () => {
             ...options,
             NETWORK,
           }),
+          fetchTxInputScript: (options) => nextUtils.fetchTxInputScript({
+            ...options,
+            NETWORK,
+          }),
         }),
+        // Ether
         ...(Object.keys(config.erc20)
           .map(key =>
             new EthTokenSwap({
@@ -198,18 +269,62 @@ const createSwapApp = async () => {
               //@ts-ignore
               decimals: config.erc20[key].decimals,
               tokenAddress: config.erc20[key].address,
-              fetchBalance: (address) => actions.token.fetchBalance(address, config.erc20[key].address, config.erc20[key].decimals),
+              fetchBalance: (address) => actions.erc20.fetchBalance(address, config.erc20[key].address, config.erc20[key].decimals),
               //@ts-ignore
-              estimateGasPrice: ({ speed } = {}) => helpers.ethToken.estimateGasPrice({ speed }),
-              /* eslint-disable */
-              abi: [{ "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "_ownerAddress", "type": "address" }], "name": "withdraw", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "_participantAddress", "type": "address" }], "name": "getSecret", "outputs": [{ "name": "", "type": "bytes32" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secretHash", "type": "bytes20" }, { "name": "_participantAddress", "type": "address" }, { "name": "_targetWallet", "type": "address" }, { "name": "_value", "type": "uint256" }, { "name": "_token", "type": "address" }], "name": "createSwapTarget", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "participantAddress", "type": "address" }], "name": "withdrawNoMoney", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "owner", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "", "type": "address" }, { "name": "", "type": "address" }], "name": "swaps", "outputs": [{ "name": "token", "type": "address" }, { "name": "targetWallet", "type": "address" }, { "name": "secret", "type": "bytes32" }, { "name": "secretHash", "type": "bytes20" }, { "name": "createdAt", "type": "uint256" }, { "name": "balance", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_ownerAddress", "type": "address" }, { "name": "_participantAddress", "type": "address" }], "name": "closeSwapByAdminAfterOneYear", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secretHash", "type": "bytes20" }, { "name": "_participantAddress", "type": "address" }, { "name": "_value", "type": "uint256" }, { "name": "_token", "type": "address" }], "name": "createSwap", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_secret", "type": "bytes32" }, { "name": "_ownerAddress", "type": "address" }, { "name": "participantAddress", "type": "address" }], "name": "withdrawOther", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "tokenOwnerAddress", "type": "address" }], "name": "getTargetWallet", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "admin", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "_ownerAddress", "type": "address" }], "name": "getBalance", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_participantAddress", "type": "address" }], "name": "refund", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "token", "type": "address" }, { "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_value", "type": "uint256" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }, { "indexed": false, "name": "createdAt", "type": "uint256" }], "name": "CreateSwap", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }, { "indexed": false, "name": "withdrawnAt", "type": "uint256" }], "name": "Withdraw", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "_buyer", "type": "address" }, { "indexed": false, "name": "_seller", "type": "address" }, { "indexed": false, "name": "_secretHash", "type": "bytes20" }], "name": "Refund", "type": "event" }],
-              /* eslint-enable */
+              estimateGasPrice: ({ speed } = {}) => erc20Like.erc20.estimateGasPrice({ speed }),
+              abi: EVM_CONTRACTS_ABI.TOKEN_SWAP,
             })
           )),
+        // Binance
+        ...(Object.keys(config.bep20)
+          .map(key =>
+            new BscTokenSwap({
+              name: key,
+              tokenAbi: abi,
+              address: config.swapContract.bep20,
+              //@ts-ignore
+              decimals: config.bep20[key].decimals,
+              tokenAddress: config.bep20[key].address,
+              fetchBalance: (address) => actions.bep20.fetchBalance(address, config.bep20[key].address, config.bep20[key].decimals),
+              //@ts-ignore
+              estimateGasPrice: ({ speed } = {}) => erc20Like.bep20.estimateGasPrice({ speed }),
+              abi: EVM_CONTRACTS_ABI.TOKEN_SWAP,
+            })
+          )),
+        // Matic
+        ...(Object.keys(config.erc20matic)
+        .map(key =>
+          new MaticTokenSwap({
+            name: key,
+            tokenAbi: abi,
+            address: config.swapContract.erc20matic,
+            //@ts-ignore
+            decimals: config.erc20matic[key].decimals,
+            tokenAddress: config.erc20matic[key].address,
+            fetchBalance: (address) => actions.erc20matic.fetchBalance(address, config.erc20matic[key].address, config.erc20matic[key].decimals),
+            //@ts-ignore
+            estimateGasPrice: ({ speed } = {}) => erc20Like.erc20matic.estimateGasPrice({ speed }),
+            abi: EVM_CONTRACTS_ABI.TOKEN_SWAP,
+          })
+        )),
       ],
       flows: [
+        TurboMaker,
+        TurboTaker,
+
         ETH2BTC,
         BTC2ETH,
+
+        BNB2BTC,
+        BTC2BNB,
+
+        ...((config?.opts?.blockchainSwapEnabled?.matic) ? [
+          MATIC2BTC,
+          BTC2MATIC,
+        ] : []),
+
+        ARBITRUM2BTC,
+        BTC2ARBITRUM,
 
         // GHOST2BTC,
         // BTC2GHOST,
@@ -222,6 +337,16 @@ const createSwapApp = async () => {
 
         NEXT2ETH,
         ETH2NEXT,
+
+        ...(Object.keys(config.bep20))
+          .map(key => BSCTOKEN2BTC(key)),
+        ...(Object.keys(config.bep20))
+          .map(key => BTC2BSCTOKEN(key)),
+
+          ...(Object.keys(config.erc20matic))
+          .map(key => MATICTOKEN2BTC(key)),
+        ...(Object.keys(config.erc20matic))
+          .map(key => BTC2MATICTOKEN(key)),
 
         ...(Object.keys(config.erc20))
           .map(key => ETHTOKEN2BTC(key)),
@@ -241,24 +366,9 @@ const createSwapApp = async () => {
         ...(Object.keys(config.erc20))
           .map(key => NEXT2ETHTOKEN(key)),
 
-        // ...(Object.keys(config.erc20))
-        //   .map(key => ETHTOKEN2USDT(key)),
-        //
-        // ...(Object.keys(config.erc20))
-        //   .map(key => USDT2ETHTOKEN(key)),
       ],
     }, true)
 
-    // eslint-disable-next-line
-    // process.env.MAINNET ? SwapApp.shared()._addSwap(
-    //   new UsdtSwap({
-    //     assetId: 31, // USDT
-    //     fetchBalance: (address) => actions.usdt.fetchBalance(address, 31).then(res => res.balance),
-    //     fetchUnspents: (scriptAddress) => actions.btc.fetchUnspents(scriptAddress),
-    //     broadcastTx: (txRaw) => actions.btc.broadcastTx(txRaw),
-    //     fetchTx: (hash) => actions.btc.fetchTx(hash),
-    //   }),
-    // ) : null
 
     window.SwapApp = SwapApp.shared()
     _inited = true

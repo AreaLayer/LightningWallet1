@@ -1,30 +1,41 @@
-# NEXT.coin node - HOWTO
-
+# NEXT.coin node
 
 ## Terms
 
 - `nextd` - NEXT.coin node daemon (3rd side)
 - `nextp` - http RPC proxy
 
+## Connection scheme
+
+```
+                        -----[server]------  
+nextcoin_blockchain <-> | nextd <-> nextp | (public API) <-> front
+                        -------------------
+```
+## API endpoints
+|  | API url |
+|---|---|
+| network status | https://next.swaponline.io/mainnet |
+| balance | https://next.swaponline.io/mainnet/addr/XQmHsxbzoxVd2Jux373iWMsPV26YVTMocz |
+| transactions | https://next.swaponline.io/mainnet/txs/XQmHsxbzoxVd2Jux373iWMsPV26YVTMocz |
+| UTXOs | https://next.swaponline.io/mainnet/addr/XQmHsxbzoxVd2Jux373iWMsPV26YVTMocz/utxo |
+
 
 ## Dependencies
 
+- `node`
 - `pm2`
 
-
-## Install
+## Installation
 
 ### Install `nextd`
 
 <!-- can't sync precompiled nextd binaries, use manual install -->
 
-<!-- 
 ```sh
 sudo sh nextd-install.sh
 ```
-or install it manually (download `nextd` from https://chain.next.exchange/#downloads)
-
-or -->build it from sources (by request)
+or download from https://github.com/NextExchange/next-wallet-desktop-app/releases/
 
 ### Install `nextp` dependencies
 

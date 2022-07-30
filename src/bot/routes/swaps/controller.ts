@@ -9,6 +9,7 @@ import Pair from '../../microbot/Pair'
 import * as flows from 'swap.flows'
 import { default as Swap } from 'swap.swap'
 
+
 //const Orders = app.services.orders
 
 const history = helpers.history
@@ -33,43 +34,16 @@ const runSwap = (swap) => {
 
   swap.on('enter step', (step) => {
     console.log('enter step', step)
-    switch (swap.flow._flowName) {
-      case "BTC2ETH":
-      case "BCH2ETH":
-      case "BTC2NOXON":
-      case "BTC2SWAP":
-      case "BTC2XSAT":
-      case "BTC2HDP":
-      case "USDT2NOXON":
-      case "USDT2SWAP":
 
-        if ( step == 2 ) swap.flow.submitSecret(genSecret())
-
-        if ( step + 1 === swap.flow.steps.length ) {
-          console.log(new Date().toISOString(), '[FINISHED] tx', swap.flow.state.ethSwapWithdrawTransactionHash)
-
-          // Orders.remove(swap.id)
-        }
-        return
-
-      case "ETH2BTC":
-      case "ETH2BCH":
-      case "NOXON2BTC":
-      case "SWAP2BTC":
-      case "XSAT2BTC":
-      case "HDP2BTC":
-      case "NOXON2USDT":
-      case "SWAP2USDT":
-
-        if ( step == 1 ) swap.flow.sign()
-        if ( step == 3 ) swap.flow.verifyBtcScript()
-
-        if ( step + 1 === swap.flow.steps.length ) {
-          console.log(new Date().toISOString(), '[FINISHED] tx', swap.flow.state.btcSwapWithdrawTransactionHash)
-
-          // Orders.remove(swap.id)
-        }
+    if ( step + 1 === swap.flow.steps.length ) {
+      console.log(new Date().toISOString(), '[FINISHED] tx', swap.flow.state.ethSwapWithdrawTransactionHash)
     }
+  })
+}
+
+const getSwapFormated = (req, res) => {
+  findSwap(app)(req, res).then((swap) => {
+    res.send(`<pre>${JSON.stringify(swapView(swap), null, '    ')}</pre>`)
   })
 }
 
@@ -88,7 +62,7 @@ const getState = (req, res) => {
 const goSwap = async (req, res) => {
   const swap = await findSwap(app)(req, res)
 
-  if ( swap.flow && swap.flow.state.step )
+  if (swap.flow && swap.flow.state.step)
     return res.json(swapView(swap))
 
   runSwap(swap)
@@ -110,7 +84,8 @@ const withSwap = (swapHandler) => async (req, res) => {
       type: swap.type, swap: swap.id,
       stack,
       state: swap.flow.state,
-      error }
+      error
+    }
     console.error(info)
     res.status(500).json(info)
   }
@@ -131,11 +106,11 @@ const sign = async (swap) => {
   await until(2, swap)
 }
 
-const verifyBtcScript = async (swap) => {
-  if (swap.flow.state.btcScriptVerified) throw new Error(`Already verified`)
+const verifyScript = async (swap) => {
+  if (swap.flow.state.utxoScriptVerified) throw new Error(`Already verified`)
 
   await until(3, swap)
-  await swap.flow.verifyBtcScript()
+  await swap.flow.verifyScript()
   await until(4, swap)
 }
 
@@ -163,7 +138,7 @@ const tryRefund = async (swap) => {
   } catch (err) {
     if (err.error == '64: non-final. Code:-26')
       err.message =
-        `Can't be mined until lockTime = ${swap.flow.state.btcScriptValues.lockTime}, now = ${Date.now()/1000}, secondsLeft = ${Math.ceil(swap.flow.state.btcScriptValues.lockTime - Date.now()/1000)}`
+        `Can't be mined until lockTime = ${swap.flow.state.utxoScriptValues.lockTime}, now = ${Date.now()/1000}, secondsLeft = ${Math.ceil(swap.flow.state.utxoScriptValues.lockTime - Date.now()/1000)}`
 
     throw err
   }
@@ -171,8 +146,7 @@ const tryRefund = async (swap) => {
 
 const refund = (req, res) => {
   findSwap(app)(req, res).then(async (swap) => {
-
-    if ( !swap.flow || !swap.flow.state || !swap.flow.state.step )
+    if (!swap.flow || !swap.flow.state || !swap.flow.state.step)
       return res.status(403).json({ error: 'not started' })
 
     try {
@@ -180,8 +154,8 @@ const refund = (req, res) => {
       res.json({ status: 'refund', result })
     } catch (err) {
       if (err.error == '64: non-final. Code:-26') {
-        const { usdtScriptValues, btcScriptValues } = swap.flow.state
-        const scriptValues = usdtScriptValues || btcScriptValues
+        const { usdtScriptValues, utxoScriptValues } = swap.flow.state
+        const scriptValues = usdtScriptValues || utxoScriptValues
 
         err.description =
           `Can't be mined until lockTime = ${scriptValues.lockTime}, now = ${Date.now()/1000}, secondsLeft = ${Math.ceil(scriptValues.lockTime - Date.now()/1000)}`
@@ -195,9 +169,7 @@ const refund = (req, res) => {
       })
       throw err
     }
-
   })
-
 }
 
 const tryWithdraw = async (swap, { secret }) => {
@@ -213,7 +185,10 @@ const getInProgress = ({ query: { parsed, withFees }}, res) => {
     .map((id) => {
       try {
         const swapData = new Swap(id, app)
-      } catch (e) { return false }
+        return swapData
+      } catch (e) {
+        return false
+      }
     })
     .filter((swapData: Swap | boolean) => { return swapData !== false })
 
@@ -248,7 +223,9 @@ const getFinished = ({ query: { parsed, withFees }}, res) => {
     try {
       const pair = Pair.fromOrder(swap)
       return { id: swap.id, pair, swap: swapView(swap) }
-    } catch (e) { return false }
+    } catch (e) {
+      return false
+    }
   }).filter((pair: any) => { return pair !== false })
 
   return res.json(pairs)
@@ -256,6 +233,8 @@ const getFinished = ({ query: { parsed, withFees }}, res) => {
 
 export {
   getSwap,
+  getSwapFormated,
+
   getState,
   goSwap,
   refund,
@@ -264,7 +243,7 @@ export {
   withSwap,
   sign,
   submitSecret,
-  verifyBtcScript,
+  verifyScript,
   syncBalance,
   tryWithdraw,
 

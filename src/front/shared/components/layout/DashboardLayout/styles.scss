@@ -3,25 +3,13 @@
 }
 
 .faqWrapper {
-  background: $l-background-elements;
-  box-shadow: $l-box-shadow;
-  border-radius: 4px;
+  background: var(--color-background-elements);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--main-component-border-radius);
   height: fit-content;
   padding: 25px;
   margin-top: 23px;
   @include ff-bold;
-}
-
-.wallet.dark {
-  .faqWrapper {
-    box-shadow: $d-box-shadow;
-    background: $d-background-elements;
-
-    @media screen and (max-width: 480px) {
-      box-shadow: none;
-      background: #222528;
-    }
-  }
 }
 
 .hasCusomLogo {
@@ -29,19 +17,6 @@
 
   ul {
     margin-top: 0
-  }
-}
-
-.sweepInfo {
-  background: 0% 0% / cover rgb(97, 68, 229);
-  color: #fff;
-  padding: 1em;
-
-  button {
-    float: right;
-    border: 3px solid #fff;
-    color: $primary;
-    background: #fff;
   }
 }
 
@@ -123,10 +98,6 @@
     margin-top: 0;
   }
 
-  .walletNav {
-    display: none;
-  }
-
   .walletContent {
     flex-direction: column;
     margin: 0px -20px;
@@ -153,10 +124,18 @@
 
 @media all and (max-width: $media-mobile-end) {
   .mobileEnabledViewForFaq {
-    display: none;
+    display: block;
   }
 
   .desktopEnabledViewForFaq {
     display: none;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .faqWrapper {
+    box-shadow: none;
+    background: var(--color-background);
+    margin-top: 0;
   }
 }

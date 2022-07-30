@@ -1,5 +1,6 @@
 import WebSocket from 'ws'
 import http from 'http'
+
 import { util } from 'swap.app'
 
 
@@ -15,17 +16,18 @@ const init = (app, SwapApp, router, port) => {
 
   const json = (obj) => JSON.stringify(obj)
 
-  const cleanOrder = (order) => util.pullProps(
-    order,
-    'id',
-    'owner',
-    'buyCurrency',
-    'sellCurrency',
-    'buyAmount',
-    'sellAmount',
-    'isRequested',
-    'isProcessing'
-  )
+  const cleanOrder = (order) =>
+    util.pullProps(
+      order,
+      'id',
+      'owner',
+      'buyCurrency',
+      'sellCurrency',
+      'buyAmount',
+      'sellAmount',
+      'isRequested',
+      'isProcessing'
+    )
 
   const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
@@ -37,9 +39,12 @@ const init = (app, SwapApp, router, port) => {
     })
   }, 30000)
 
-  const pipe = (from, to, type, handler = a => a) => {
+  const pipe = (from, to, type, handler = (a) => a) => {
     from.on(type, (payload) => {
-      safeSend(to, { event: type, payload: handler(payload) })
+      safeSend(to, {
+        event: type,
+        payload: handler(payload),
+      })
     })
   }
 
@@ -48,24 +53,39 @@ const init = (app, SwapApp, router, port) => {
       to.isAlive && to.send(json(message))
     } catch ({ name, message }) {
       if (!wss.clients.has(to) || /WebSocket is not open/g.test(message)) {
-        //@ts-ignore
-        return ws.terminate()
+        return to.terminate()
       }
       //@ts-ignore
-      safeSend(ws, { error: { name, message }})
+      safeSend(ws, { error: { name, message } })
     }
   }
 
   wss.on('connection', (ws) => {
     ws.isAlive = true
 
-    ws.on('pong',   () => ws.isAlive = true)
-    ws.on('close',  () => ws.isAlive = false)
+    ws.on('pong', () => (ws.isAlive = true))
+    ws.on('close', () => (ws.isAlive = false))
 
-    ws.send(json({ event: "ready", payload: "server" }))
-    ws.send(json({ event: "ready", payload: { mainnet: SwapApp.isMainNet() } }))
+    ws.send(json({
+      event: 'ready',
+      payload: 'server',
+    }))
 
-    pipe(swap.room, ws, 'ready', () => ({ event: "ready", payload: { service: "room", room: swap.room.roomName, peer: swap.room.peer }}))
+    ws.send(json({
+      event: 'ready',
+      payload: {
+        mainnet: SwapApp.isMainNet()
+      }
+    }))
+
+    pipe(swap.room, ws, 'ready', () => ({
+      event: 'ready',
+      payload: {
+        service: 'room',
+        room: swap.room.roomName,
+        peer: swap.room.peer,
+      },
+    }))
 
     pipe(swap.room, ws, 'user online')
     pipe(swap.room, ws, 'user offline')
@@ -75,8 +95,8 @@ const init = (app, SwapApp, router, port) => {
 
     pipe(swap.orders, ws, 'new order request')
 
-    pipe(swap.orders, ws, 'new orders', orders => orders.map(cleanOrder))
-    pipe(swap.orders, ws, 'new order', payload => cleanOrder(payload))
+    pipe(swap.orders, ws, 'new orders', (orders) => orders.map(cleanOrder))
+    pipe(swap.orders, ws, 'new order', (payload) => cleanOrder(payload))
     pipe(swap.orders, ws, 'remove order', () => {})
 
     const stopListening = () => {
@@ -93,7 +113,6 @@ const init = (app, SwapApp, router, port) => {
     }
 
     ws.on('close', stopListening)
-
   })
 
   const portUsed = port || WS_PORT

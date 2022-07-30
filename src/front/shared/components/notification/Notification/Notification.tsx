@@ -1,89 +1,90 @@
-import React, { Component } from 'react'
-import PropTypes from 'prop-types'
+import React, { useState, useEffect } from 'react'
 import cx from 'classnames'
 import actions from 'redux/actions'
-
 import cssModules from 'react-css-modules'
 import styles from './Notification.scss'
-
 import Sound from 'helpers/Sound/alert.mp4'
+import { RemoveButton } from 'components/controls'
 
+const Notification = (props) => {
+  const {
+    soundPlay = true,
+    className,
+    children,
+    name,
+    type,
+    timeout,
+  } = props
+  const [isMounted, setIsMounted] = useState(false)
+  const [isRemoved, setIsRemoved] = useState(false)
 
-@cssModules(styles, { allowMultiple: true })
-export default class Notification extends Component<any, any> {
-
-  static defaultProps = {
-    soundPlay: true,
-  }
-
-  static childContextTypes = {
-    close: PropTypes.func,
-  }
-
-  state = {
-    mounted: false,
-    removed: false,
-  }
-
-  componentDidMount() {
-    if (this.props.soundPlay) {
-      this.soundClick()
+  const closeOnEscapeKey = (event) => {
+    if (event.key === 'Escape') {
+      closeNotification()
     }
-    setTimeout(() => {
-      this.setState({
-        mounted: true,
-      }, () => {
-        setTimeout(this.close, 8000)
-      })
-    }, 0)
   }
 
-  close = () => {
-    const { name } = this.props
+  useEffect(() => {
+    setIsMounted(true)
 
-    this.setState({
-      removed: true,
-    }, () => {
-      setTimeout(() => {
-        actions.notifications.hide(name)
-      }, 300)
-    })
+    if (soundPlay) {
+      soundClick()
+    }
+
+    document.addEventListener('keydown', closeOnEscapeKey)
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined
+
+    if (timeout !== false) {
+      timeoutId = setTimeout(
+        closeNotification,
+        timeout === undefined ? 8000 : timeout
+      )
+    }
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscapeKey)
+
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [isMounted, timeout])
+
+  const closeNotification = () => {
+    setIsRemoved(true)
+    setTimeout(() => actions.notifications.hide(name), 300)
   }
 
-  handleClick = () => {
-    this.close()
-    if (this.props.onClick) this.props.onClick()
-  }
-
-  soundClick = () => {
-    let audio = new Audio()
+  const soundClick = () => {
+    const audio = new Audio()
     audio.src = Sound
     audio.autoplay = true
   }
 
-  render() {
-    const { mounted, removed } = this.state
-    const { children, type, className } = this.props
+  const containerStyleName = cx('container', {
+    'mounted': isMounted,
+    'removed': isRemoved,
+  })
 
-    const containerStyleName = cx('container', {
-      'mounted': mounted,
-      'removed': removed,
-    })
+  const notificationStyleName = cx('notification', {
+    'mounted': isMounted,
+    'removed': isRemoved,
+    'errorNotification': type === 'ErrorNotification',
+    'warning': type === 'warning'
+  })
 
-    const notificationStyleName = cx('notification', {
-      'mounted': mounted,
-      'removed': removed,
-      'ErrorNotification': type === 'ErrorNotification',
-    })
-
-    return (
-      <div styleName={containerStyleName}>
-        <div styleName={notificationStyleName} onClick={this.handleClick}>
-          <div styleName="content" className={className}>
-            {children}
-          </div>
+  return (
+    <div id="notificationModal" styleName={containerStyleName}>
+      <div styleName={notificationStyleName}>
+        <div styleName="content" className={className}>
+          {children}
         </div>
+
+        <RemoveButton id="notificationCloseButton" onClick={closeNotification} />
       </div>
-    )
-  }
+    </div>
+  )
 }
+
+export default cssModules(Notification, styles, { allowMultiple: true })

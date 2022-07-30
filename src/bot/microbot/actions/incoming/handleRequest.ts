@@ -1,15 +1,20 @@
 import BigNumber from 'bignumber.js'
 import _debug from 'debug'
 
+import SwapApp from 'swap.app'
+
 import handleError from '../../../app/actions/errors/handleError'
 import beginSwap from '../start/beginSwap'
 
 import fetchOrder from '../../core/fetchOrder'
 import replyToRequest from '../../core/replyToRequest'
 import { checkParticipantAddress } from '../../core/checkAddress'
+import { checkParticipant } from '../../core/checkParticipant'
+import { checkSwapsCountLimit } from '../../core/checkSwapsCountLimit'
 
 
 const debug = _debug('swap.bot')
+
 
 export default (app, wallet, orders) => async ({ orderId, participant }) => {
   debug(`[REQUEST] from ${participant.peer} at order ${orderId}`)
@@ -32,6 +37,17 @@ export default (app, wallet, orders) => async ({ orderId, participant }) => {
     sellAmount: order.sellAmount,
   })
 
+  if (!checkSwapsCountLimit()) {
+    replyToRequest(orders)({ orderId, participant }, false)
+    return false
+  }
+
+  if (!checkParticipant(participant)) {
+    // One swap with one participant
+    replyToRequest(orders)({ orderId, participant }, false)
+    return false
+  }
+
   const isEnoughBalance = new BigNumber(balance).isGreaterThan(order.sellAmount)
   const isAccepted = isEnoughBalance && isParticipantAddressOkay
 
@@ -47,7 +63,18 @@ export default (app, wallet, orders) => async ({ orderId, participant }) => {
   replyToRequest(orders)({ orderId, participant }, isAccepted)
 
   beginSwap(app, order, (swap) => {
-    const { buyAmount, buyCurrency, sellAmount, sellCurrency } = swap
-    orders.create({ buyAmount, buyCurrency, sellAmount, sellCurrency })
+    const {
+      buyAmount,
+      buyCurrency,
+      sellAmount,
+      sellCurrency,
+    } = swap
+
+    orders.create({
+      buyAmount,
+      buyCurrency,
+      sellAmount,
+      sellCurrency,
+    })
   })
 }

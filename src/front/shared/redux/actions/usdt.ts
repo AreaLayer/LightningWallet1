@@ -36,7 +36,6 @@ const login = (privateKey) => {
     publicKey,
   }
 
-  console.info('Logged in with USDT', data)
   reducers.user.setAuthData({ name: 'usdtData', data })
 }
 
@@ -120,7 +119,6 @@ const getTransaction = () => {
 }
 
 const fetchUnspents = (address) =>
-  //@ts-ignore
   apiLooper.get('bitpay', `/addr/${address}/utxo`)
 
 //@ts-ignore

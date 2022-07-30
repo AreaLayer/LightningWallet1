@@ -13,12 +13,11 @@
     "noEmit": true,
     "sourceMap": true,
     "noImplicitAny": false,
+    "strictNullChecks": true,
     "experimentalDecorators": true,
-    "jsx": "react",
-    "lib": [
-      "dom",
-      "esnext"
-    ],
+    "jsx": "react-jsx",
+    "types": ["jest", "node"],
+    "lib": ["dom", "esnext"],
     "paths": {
       "shared": ["src/front/shared"],
       "shared/*": ["src/front/shared/*"],
@@ -40,6 +39,8 @@
       "app-config": ["src/front/local_modules/app-config"],
       "plugins/*": ["src/front/shared/plugins/*"],
       "local_modules/*": ["src/front/local_modules/*"],
+      "images": ["src/front/shared/images"],
+      "images/*": ["src/front/shared/images/*"],
 
       "swap.app": ["src/core/swap.app"],
       "swap.app/*": ["src/core/swap.app/*"],
@@ -62,9 +63,9 @@
 
       "common": ["src/common/"],
       "common/*": ["src/common/*"]
-    },
+    }
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*", "tests"],
+  "exclude": ["node_modules"],
+  "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"]
 }

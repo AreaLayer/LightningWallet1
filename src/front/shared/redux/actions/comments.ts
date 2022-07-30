@@ -2,7 +2,7 @@ const getComment = (key) => getComments()[key] || undefined;
 
 const setComment = ({ comment, key }) => {
   const historyComments = getComments()
-  const newComment = { [`${key}`]: comment }
+  const newComment = { [`${key}`]: `${comment}`.replace(/(\r\n|\n|\r)/gm, " ") }
   console.log('newComment', { comment, key })
 
   localStorage.setItem('historyComments', JSON.stringify(
@@ -13,6 +13,7 @@ const setComment = ({ comment, key }) => {
   ))
 }
 
+//@ts-ignore: strictNullChecks
 const getComments = () => JSON.parse(localStorage.getItem('historyComments')) || {}
 
 const returnDefaultComment = (hiddenList, ind) => {

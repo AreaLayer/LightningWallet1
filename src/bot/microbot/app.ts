@@ -1,10 +1,10 @@
 import _debug from 'debug'
+
 import { setup, helpers, constants } from '../../core/simple/src'
 import { handleRequest, handleOrder, handleError, fillOrderbook, startSaved } from './actions'
 import { TOKENS, TOKEN_DECIMALS } from '../config/constants'
-import lineInput from './lineInput'
 import * as configStorage from '../config/storage'
-import { erc20 } from '../../core/swap.app/util'
+import { tokenRegistrar } from '../../core/swap.app/util'
 import { FG_COLORS as COLORS, colorString } from 'common/utils/colorString'
 
 
@@ -20,8 +20,9 @@ const {
 //register unkronw tokens in core
 Object.keys(TOKENS).filter((name) => !Object.keys(constants.COINS).includes(name))
   .map((name) => {
-    erc20.register(name.toLowerCase(), TOKENS[name].decimals)
+    tokenRegistrar.erc20.register(name.toLowerCase(), TOKENS[name].decimals)
   })
+
 if (configStorage.hasTradeConfig()) {
   configStorage
     .getCustomERC20()
@@ -35,7 +36,7 @@ if (configStorage.hasTradeConfig()) {
 
       TOKEN_DECIMALS[name] = decimals
 
-      erc20.register(name.toLowerCase(), decimals)
+      tokenRegistrar.erc20.register(name.toLowerCase(), decimals)
       TOKENS[name.toLowerCase()] = ercData
       console.log(
         colorString('>>> Add ERC token', COLORS.GREEN),
@@ -52,6 +53,8 @@ const ERC20TOKENS = Object.keys(TOKENS)
     name: name.toUpperCase(),
     tokenAddress: TOKENS[name].address,
   }))
+
+
 let SwapApp, app, auth, wallet, room, orders, services
 
 try {
@@ -60,6 +63,7 @@ try {
     ERC20TOKENS,
     mnemonic: configStorage.getMnemonic() || process.env.SECRET_PHRASE,
   })
+
   let { app, auth, wallet, room, orders, services } = SwapApp
 
   ready(room).then(() => {
@@ -74,7 +78,13 @@ try {
     const update = () => fillOrderbook(wallet, orders)
 
     update()
-    setInterval(update, 10 * 60 * 1000)
+
+    setInterval(() => {
+      console.log(
+        colorString(`Refill order book`, COLORS.GREEN)
+      )
+      update()
+    }, 10 * 60 * 1000)
 
     // orders.on('new orders', orders => orders.map(handleOrder(orders)))
     // orders.on('new order', handleOrder(orders))
@@ -82,7 +92,7 @@ try {
     orders.on('new order request', handleRequest(app, wallet, orders))
   })
 } catch (err) {
-  console.log('Fail create swapApp',err)
+  console.log('Fail create swapApp', err)
   handleError(err)
 }
 

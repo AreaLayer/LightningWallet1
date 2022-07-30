@@ -1,24 +1,21 @@
-import React, { Component } from 'react'
+import { Component } from 'react'
 
-import PropTypes from 'prop-types'
+type ComponentProps = {
+  timeLeft?: number // seconds
+  handleClick: () => void
+}
 
+type ComponentState = {
+  timeLeft: number
+}
 
-export default class TimerButton extends Component<any, any> {
-
-  static propTypes = {
-    timeLeft: PropTypes.number, // seconds
-    handleClick: PropTypes.func,
-  }
-
-  static defaultProps = {
-    timeLeft: 10,
-  }
-
+export default class TimerButton extends Component<ComponentProps, ComponentState> {
   timer = null
 
-  constructor({ timeLeft }) {
-    //@ts-ignore
-    super()
+  constructor(props) {
+    super(props)
+
+    const { timeLeft = 10 } = props
 
     this.state = {
       timeLeft,
@@ -30,6 +27,7 @@ export default class TimerButton extends Component<any, any> {
   }
 
   componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     clearTimeout(this.timer)
   }
 
@@ -41,6 +39,7 @@ export default class TimerButton extends Component<any, any> {
       this.props.handleClick()
     }
     else {
+      //@ts-ignore: strictNullChecks
       this.timer = setTimeout(this.tick, 1000)
       this.setState({
         timeLeft: newTimeLeft,

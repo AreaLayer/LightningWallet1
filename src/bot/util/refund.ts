@@ -1,13 +1,14 @@
-import swap from 'simple.swap.core'
+import * as swap from 'simple.swap.core'
 
 import commandLineArgs from 'command-line-args'
 import commandLineUsage from 'command-line-usage'
 
-const KEY_ID = [ 'id', 'i' ]
-const KEY_HASH = [ 'hash', 'h' ]
-const KEY_SECRET = [ 'secret', 's' ]
-const KEY_ALL = [ 'all', 'a' ]
-const KEY_HELP = [ 'help' ]
+
+const KEY_ID = ['id', 'i']
+const KEY_HASH = ['hash', 'h']
+const KEY_SECRET = ['secret', 's']
+const KEY_ALL = ['all', 'a']
+const KEY_HELP = ['help']
 
 const sections = [
   {
@@ -76,8 +77,8 @@ const {
   history: { getAllInProgress, removeInProgress, saveFinished },
   filter: { hash2id, secret2id },
 } = swap.helpers
-//@ts-ignore
-const { app, room, orders } = swap.setup()
+
+const { app, room, orders } = swap.setup({})
 
 console.clear()
 console.log('IPFS loading...')
@@ -93,6 +94,7 @@ const _ = (async () => {
   const swapHistory = getAllInProgress()
   const keyType = Object.keys(options)[0]
   const key = options[keyType]
+
   let swapID = null
   let refundResult = null
 
@@ -104,6 +106,7 @@ const _ = (async () => {
       swapID = key
 
       if (swapHistory.includes(swapID)) {
+        //@ts-ignore: strictNullChecks
         refundResult = await refund(app, swapID)
 
         if (refundResult) {
@@ -120,9 +123,11 @@ const _ = (async () => {
     case KEY_HASH[0]:
       console.log('Key type is HASH', '\n')
 
-      swapID = await hash2id(key)
+      //@ts-ignore: strictNullChecks
+      swapID = await hash2id(app, key)
 
       if (swapID) {
+        //@ts-ignore: strictNullChecks
         refundResult = await refund(app, swapID)
 
         if (refundResult) {
@@ -137,9 +142,11 @@ const _ = (async () => {
     case KEY_SECRET[0]:
       console.log('Key type is SECRET', '\n')
 
-      swapID = await secret2id(key)
+      //@ts-ignore: strictNullChecks
+      swapID = await secret2id(app, key)
 
       if (swapID) {
+        //@ts-ignore: strictNullChecks
         refundResult = await refund(app, swapID)
 
         if (refundResult) {
@@ -157,6 +164,7 @@ const _ = (async () => {
       for (let a = 0; a < swapHistory.length; a++) {
         swapID = swapHistory[a]
 
+        //@ts-ignore: strictNullChecks
         refundResult = await refund(app, swapID)
 
         if (refundResult) {

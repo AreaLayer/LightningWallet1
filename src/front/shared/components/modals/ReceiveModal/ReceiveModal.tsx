@@ -1,22 +1,16 @@
+import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
 import React, { Fragment }  from 'react'
 import { withRouter } from 'react-router-dom'
-import CopyToClipboard from 'react-copy-to-clipboard'
-import { connect } from 'redaction'
-import { constants } from 'helpers'
-
+import actions from 'redux/actions'
 import cssModules from 'react-css-modules'
+import { constants, externalConfig, getCurrencyKey, user } from 'helpers'
+import erc20Like from 'common/erc20Like'
 import styles from '../Styles/default.scss'
 import ownStyles from './ReceiveModal.scss'
-
 import QR from 'components/QR/QR'
 import { Modal } from 'components/modal'
 import { Button } from 'components/controls'
-import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
-
-import config from 'helpers/externalConfig'
-import getCurrencyKey from 'helpers/getCurrencyKey'
-import { ethToken, getItezUrl } from 'helpers'
-
+import Copy from 'components/ui/Copy/Copy'
 
 const langPrefix = `ReceiveModal`
 const langs = defineMessages({
@@ -42,31 +36,29 @@ const langs = defineMessages({
   },
 })
 
-@connect(
-  ({ user: { activeFiat }, user }) => ({ activeFiat, user })
-)
-@injectIntl
 @withRouter
 @cssModules({ ...styles, ...ownStyles }, { allowMultiple: true })
-export default class ReceiveModal extends React.Component<any, any> {
-
-  props: any
-
+class ReceiveModal extends React.Component<any, any> {
   constructor(props) {
     super(props)
     const {
       data: {
         address,
         currency,
+        standard,
       },
     } = props
 
     let howToDeposit = ''
-    if (config
-      && config.erc20
-      && config.erc20[currency.toLowerCase()]
-      && config.erc20[currency.toLowerCase()].howToDeposit
-    ) howToDeposit = config.erc20[currency.toLowerCase()].howToDeposit
+
+    if (
+      standard
+      && externalConfig[standard]
+      && externalConfig[standard][currency.toLowerCase()]
+      && externalConfig[standard][currency.toLowerCase()].howToDeposit
+    ) {
+      howToDeposit = externalConfig[standard][currency.toLowerCase()].howToDeposit
+    }
 
     const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
     const mnemonicSaved = (mnemonic === `-`)
@@ -74,37 +66,23 @@ export default class ReceiveModal extends React.Component<any, any> {
     howToDeposit = howToDeposit.replace(/{userAddress}/g, address);
 
     const targetCurrency = getCurrencyKey(currency.toLowerCase(), true)
-    const isToken = ethToken.isEthToken({ name: currency })
-
+    const isToken = erc20Like.isToken({ name: currency })
     const recieveUrl = (isToken ? '/token' : '') + `/${targetCurrency}/${address}/receive`
+
     props.history.push(recieveUrl)
 
     this.state = {
-      step: (mnemonicSaved) ? 'reveive' : 'saveMnemonic',
-      isAddressCopied: false,
+      step: (mnemonicSaved) ? 'receive' : 'saveMnemonic',
       howToDeposit,
     }
   }
 
-  handleCopyAddress = () => {
-    this.setState({
-      isAddressCopied: true,
-    }, () => {
-      setTimeout(() => {
-        this.setState({
-          isAddressCopied: false,
-        })
-      }, 500)
-    })
-  }
-
   handleBeginSaveMnemonic = async () => {
-    //@ts-ignore
     actions.modals.open(constants.modals.SaveMnemonicModal, {
       onClose: () => {
         const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
         const mnemonicSaved = (mnemonic === `-`)
-        const step = (mnemonicSaved) ? 'reveive' : 'saveMnemonicWords'
+        const step = (mnemonicSaved) ? 'receive' : 'saveMnemonicWords'
 
         this.setState({
           mnemonicSaved,
@@ -120,92 +98,68 @@ export default class ReceiveModal extends React.Component<any, any> {
     if (pathname.includes('receive')) {
       goBack()
     }
-    //@ts-ignore
+
     actions.modals.close(name)
   }
 
   render() {
     const {
-      props: {
-        user,
-        intl: { locale },
-        name,
-        intl,
-        data: {
-          currency,
-          address,
-        },
-      },
-      state: {
-        isAddressCopied,
-        howToDeposit,
-        step,
-        mnemonicSaved,
-      },
-    } = this
+      intl: { locale },
+      name,
+      intl,
+      data: { currency, address },
+    } = this.props
 
-    const buyViaCreditCardLink = (
-      config
-      && config.opts
-      && config.opts.buyViaCreditCardLink
-    ) ? config.opts.buyViaCreditCardLink : false
+    const { howToDeposit, step } = this.state
 
-    if (howToDeposit) {
-      return (
-        <Modal name={name} title={intl.formatMessage(langs.title)}>
-          <div dangerouslySetInnerHTML={{ __html: howToDeposit }} />
-        </Modal>
-      )
-    }
+    const externalExchangeLink = user.getExternalExchangeLink({ address, currency, locale })
 
     return (
       <Modal name={name} title={intl.formatMessage(langs.title)}>
         <div styleName="content">
-          {step === 'reveive' && (
+          {step === 'receive' && (
             <Fragment>
+              {howToDeposit && (
+                <div styleName="depositInstruction">
+                  <h5 styleName="title">
+                    <FormattedMessage id="howToDeposit" defaultMessage="How to deposit" />:
+                  </h5>
+                  <p styleName="description" dangerouslySetInnerHTML={{ __html: howToDeposit }} />
+                </div>
+              )}
+
               <p style={{ fontSize: 25 }}>
-                <FormattedMessage id="ReceiveModal50" defaultMessage="This is your {currency} address" values={{ currency: `${currency}` }} />
+                <FormattedMessage
+                  id="ReceiveModal50"
+                  defaultMessage="This is your {currency} address"
+                  values={{ currency: `${currency}` }}
+                />
               </p>
-              <CopyToClipboard
-                text={address}
-                onCopy={this.handleCopyAddress}
-              >
+              <Copy text={address}>
                 <div styleName="qr">
                   <QR address={address} />
-                  <p>
-                    {address}
-                  </p>
+
+                  <p styleName="address">{address}</p>
 
                   <div styleName="sendBtnsWrapper">
                     <div styleName="actionBtn">
-                      <Button
-                        brand
-                        onClick={() => { }}
-                        disabled={isAddressCopied}
-                        fill
-                      >
-                        {isAddressCopied ?
-                          <FormattedMessage id="recieved65" defaultMessage="Address copied to clipboard" />
-                          :
-                          <FormattedMessage id="recieved67" defaultMessage="Copy to clipboard" />
-                        }
+                      <Button big brand fill>
+                        <FormattedMessage id="recieved67" defaultMessage="Copy to clipboard" />
                       </Button>
                     </div>
                     <div styleName="actionBtn">
-                      <Button big fill gray onClick={this.handleClose}>
+                      <Button big gray fill onClick={this.handleClose}>
                         <FormattedMessage id="WithdrawModalCancelBtn" defaultMessage="Cancel" />
                       </Button>
                     </div>
                   </div>
                 </div>
-              </CopyToClipboard>
-              {currency.includes("BTC") && buyViaCreditCardLink && (
+              </Copy>
+
+              {externalExchangeLink && (
                 <div styleName="fiatDepositRow">
-                  <a href={getItezUrl({ user, locale, url: buyViaCreditCardLink })} target="_blank" rel="noopener noreferrer">
-                    <FormattedMessage
-                      id="buyByCreditCard"
-                      defaultMessage="buy using credit card"
-                    />
+                  <a href={externalExchangeLink} target="_blank" rel="noopener noreferrer">
+                    <FormattedMessage id="buyByCreditCard" defaultMessage="buy using credit card" />
                   </a>
                 </div>
               )}
@@ -238,3 +192,5 @@ export default class ReceiveModal extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(ReceiveModal)

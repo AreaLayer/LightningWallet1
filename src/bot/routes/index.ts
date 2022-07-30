@@ -1,6 +1,4 @@
 import { Router } from 'express'
-//@ts-ignore
-const router = new Router()
 
 import orders from './orders'
 import me from './me'
@@ -8,6 +6,9 @@ import swaps from './swaps'
 import homepage from './homepage'
 import kraken from './kraken'
 import info from './info'
+
+
+const router = Router()
 
 router.use('/orders', orders)
 router.use('/me', me)

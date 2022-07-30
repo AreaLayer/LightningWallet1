@@ -15,21 +15,17 @@ import Coin from 'components/Coin/Coin'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import BtnTooltip from 'components/controls/WithdrawButton/BtnTooltip'
 import DropdownMenu from 'components/ui/DropdownMenu/DropdownMenu'
-// import LinkAccount from '../LinkAccount/LinkAcount'
 import { withRouter } from 'react-router-dom'
 import ReactTooltip from 'react-tooltip'
 import { FormattedMessage, injectIntl } from 'react-intl'
 import CurrencyButton from 'components/controls/CurrencyButton/CurrencyButton'
-import { relocalisedUrl, localisedUrl } from 'helpers/locale'
 import SwapApp from 'swap.app'
 import { BigNumber } from 'bignumber.js'
 
 
 
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-
-export default class WalletRow extends Component<any, any> {
+class WalletRow extends Component<any, any> {
 
   constructor(props) {
     super(props)
@@ -50,6 +46,7 @@ export default class WalletRow extends Component<any, any> {
   handleRemove = () => {
     const { item: { index }, handleRefresh } = this.props
 
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.Confirm, {
       onAccept: () => {
         actions.btcmultisig.removeBtcMultisigNey(index)
@@ -112,10 +109,7 @@ export default class WalletRow extends Component<any, any> {
           </div>
           {dropDownMenuItems.length > 0 && (
             <div onClick={this.handleOpenDropdown} styleName="assetsTableDots">
-              {/*
-              //@ts-ignore */}
               <DropdownMenu
-                size="regular"
                 className="walletControls"
                 items={dropDownMenuItems}
               />
@@ -127,3 +121,5 @@ export default class WalletRow extends Component<any, any> {
   }
 }
 
+
+export default injectIntl(WalletRow)

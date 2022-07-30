@@ -1,5 +1,15 @@
 import btc from './btc.svg'
 import eth from './eth.svg'
+import bnb from './bnb.svg'
+import matic from './matic.svg'
+import arbeth from './arbeth.svg'
+import aureth from './aureth.svg'
+import xdai from './xdai.svg'
+import ftm from './ftm.svg'
+import avax from './avax.svg'
+import movr from './movr.svg'
+import one from './one.svg'
+import wbtc from './wbtc.svg'
 import icx from './icx.svg'
 import waves from './waves.svg'
 import xrp from './xrp.svg'
@@ -25,6 +35,7 @@ export default {
   'btc (multisig)': btc,
   'btc (sms-protected)': btc,
   'btc (pin-protected)': btc,
+  wbtc,
   dcn,
   bxb,
   kn,
@@ -33,6 +44,15 @@ export default {
   arn,
   omg,
   eth,
+  bnb,
+  matic,
+  arbeth,
+  aureth,
+  xdai,
+  ftm,
+  avax,
+  movr,
+  one,
   syc2,
   icx,
   usdt,

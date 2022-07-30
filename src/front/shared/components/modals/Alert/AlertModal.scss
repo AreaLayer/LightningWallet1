@@ -10,29 +10,19 @@
   position: relative;
 }
 
+.closeButton {
+  position: absolute;
+  right: 0.4em;
+  width: 1em;
+  height: 1em;
+}
+
 .title {
   width: 100%;
-  padding: 0 64px;
   line-height: 18px;
   font-size: 20px;
   font-weight: 700;
   text-align: center;
-
-  &.uppercase {
-    text-transform: uppercase;
-  }
-}
-
-.closeButton {
-  width: 20px;
-  height: 20px;
-  opacity: 0.5;
-  transition: opacity .33s $ease-out-quadratic;
-
-  &:hover {
-    opacity: 1;
-    transition: none;
-  }
 }
 
 .modal-overlay {
@@ -54,13 +44,13 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background-color: var(--color-background-elements);
   padding: 32px;
   width: 100%;
   max-width: 640px;
   height: auto;
   border-radius: 10px;
-  box-shadow: 0 0 5px rgba(0, 0, 0, .4);
+  box-shadow: var(--box-shadow);
 
   &_dashboardView {
     background-color: none;
@@ -81,13 +71,11 @@
   max-width: none;
 }
 
-
 .content {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
-
 
 .notification-overlay {
   display: flex;
@@ -119,11 +107,9 @@
 
   .title {
     font-size: 18px;
-    ;
   }
 
   .notification-overlay {
     height: 100%;
   }
-
 }

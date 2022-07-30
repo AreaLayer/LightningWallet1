@@ -10,7 +10,7 @@
   font-size: 16px;
   font-weight: 800;
   line-height: 140%;
-  color: #8E9AA3;
+  color: var(--color-notice);
   @include ff-bold;
 }
 
@@ -30,19 +30,10 @@
 .header {
   padding: 16px 0;
   padding: 0px 0 25px;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.headerContent {
-  height: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .title {
-  color: #1F2D48;
   @include ff-bold;
   text-align: center;
   font-size: 21px;
@@ -54,40 +45,38 @@
 }
 
 .card {
-  background: #FFFFFF;
-  border: 1px solid rgba(142, 154, 163, 0.16);
+  background: var(--color-background);
+  border: 1px solid var(--color-inactive-border);
   box-sizing: border-box;
-  box-shadow: 0px 2px 12px rgba(142, 154, 163, 0.08);
-  border-radius: 4px;
+  box-shadow: 0px 2px 12px var(--color-pale);
+  border-radius: var(--main-component-border-radius);
   margin-bottom: 8px;
   padding: 10px;
   height: 53px;
   list-style: none;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   height: 140px;
   cursor: pointer;
   width: 110px;
   margin-right: 15px;
   transition: 0.2s background ease;
   text-align: center;
-
-  em {
-    position: absolute;
-    text-align: right;
-    padding-left: auto;
-    width: 120px;
-    font-size: 10px;
-    color: #9b58b6;
+  
+  img {
+    margin-bottom: 0.5em;
+    padding: .5em;
+    border-radius: 50%;
+    background: var(--color-black);
   }
 
-  b {
+  .info {
     font-weight: 800;
     font-size: 13px;
     line-height: 16px;
-    text-align: center;
-    color: #1F2D48;
-    margin-top: 5px;
-    margin-bottom: -1px;
+    color: var(--color);
     @include ff-bold;
   }
 
@@ -97,45 +86,17 @@
     font-size: 11px;
     line-height: 140%;
     text-align: center;
-    color: #8E9AA3;
+    color: var(--color-notice);
     margin-top: -15px;
   }
 
-  li {
-    font-weight: 100;
-    color: #8E9AA3;
-    font-size: 11px;
-    line-height: 20px;
-    text-align: center;
-  }
-
   &:hover {
-    background: rgba(237, 239, 240, 0.40);
+    background: var(--color-pale);
   }
 
   &:last-child {
     margin: 0;
   }
-}
-
-.btc {
-  background: orange;
-}
-
-.eth {
-  background: black;
-}
-
-.usdt {
-  background: #0ccf14;
-}
-
-.swap {
-  background: #775cf1;
-}
-
-.ghost {
-  background: black;
 }
 
 .circle {
@@ -146,26 +107,12 @@
   border-radius: 50%;
   margin: auto;
   align-items: center;
-
-  img {
-    width: auto;
-    height: 20px;
-  }
 }
 
 .closeButton {
-  width: 20px;
-  height: 20px;
-  opacity: 0.5;
-  transition: opacity .33s $ease-out-quadratic;
   position: absolute;
   right: 33px;
   top: 32px;
-
-  &:hover {
-    opacity: 1;
-    transition: none;
-  }
 }
 
 .modal-overlay {
@@ -175,7 +122,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(0, 0, 0, .6);
   opacity: 1;
 
   &_dashboardView {
@@ -188,42 +134,21 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--color-background-elements);
   padding: 32px;
   width: 100%;
   min-width: 550px;
   max-width: max-content;
   height: auto;
-  border-radius: 4px;
+  border-radius: var(--main-component-border-radius);
   box-shadow: 0 0 5px rgba(0, 0, 0, .4);
 
   &_dashboardView {
     box-shadow: none;
   }
-}
 
-.dark {
-  .modal {
-    background: #242425;
-    box-shadow: none;
-
-    @media screen and (max-width: 480px) {
-      background: #222528;
-    }
-  }
-
-  .header {
-    p {
-      color: white;
-    }
-  }
-
-  .card {
-    background: #242425;
-
-    b {
-      color: #cfd1d3;
-    }
+  @media screen and (max-width: 480px) {
+    background: var(--color-background);
   }
 }
 
@@ -242,26 +167,6 @@
   }
 }
 
-
-.notification-overlay {
-  display: flex;
-  flex-grow: 1;
-  align-items: center;
-  padding: 32px 0;
-}
-
-.notification {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.button-overlay {
-  display: flex;
-  justify-content: space-around;
-}
-
 @include media-mobile {
   .modal {
     height: 100%;
@@ -272,15 +177,6 @@
 
   .title {
     font-size: 18px;
-    ;
-  }
-
-  .notification-overlay {
-    height: 100%;
-  }
-
-  .button-overlay {
-    justify-content: space-between;
   }
 }
 
@@ -317,9 +213,7 @@
     }
 
     span {
-      position: absolute;
-      left: 66px;
-      bottom: 11px;
+      bottom: 10px;
     }
 
     &:last-child {

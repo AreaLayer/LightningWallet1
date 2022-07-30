@@ -1,20 +1,18 @@
 import constants from 'helpers/constants'
-import getUnixTimeStamp from 'helpers/getUnixTimeStamp'
+import getUnixTimeStamp from 'common/utils/getUnixTimeStamp'
 import config from 'helpers/externalConfig'
 import backupUserData from 'plugins/backupUserData'
 
 
 const backupFields = [
-  constants.privateKeyNames.btcMnemonic,
-  constants.privateKeyNames.ethMnemonic,
   constants.privateKeyNames.eth,
+  constants.privateKeyNames.bnb,
+  constants.privateKeyNames.matic,
   constants.privateKeyNames.btc,
   constants.privateKeyNames.btcMultisig,
   constants.privateKeyNames.btcMultisigOtherOwnerKey,
-  constants.privateKeyNames.btcMultisigOtherOwnerKeyMnemonic,
   constants.privateKeyNames.btcSmsMnemonicKey,
   constants.privateKeyNames.btcSmsMnemonicKeyGenerated,
-  constants.privateKeyNames.btcSmsMnemonicKeyMnemonic,
   constants.privateKeyNames.btcPinMnemonicKey,
 ]
 
@@ -53,6 +51,7 @@ const backup = (mark, label, overide) => {
   }
 
   let backups = localStorage.getItem(constants.localStorage.backups)
+  //@ts-ignore: strictNullChecks
   try { backups = JSON.parse(backups) } catch (e) { }
   //@ts-ignore
   if (!(backups instanceof Array)) {
@@ -60,6 +59,7 @@ const backup = (mark, label, overide) => {
     backups = []
   }
 
+  //@ts-ignore: strictNullChecks
   if ((backups.indexOf(mark) !== -1) && !overide) return `exists`
   //@ts-ignore
   backups.unshift(mark)
@@ -96,6 +96,7 @@ const restory = (mark) => {
 
 const list = () => {
   let backups = localStorage.getItem(constants.localStorage.backups)
+  //@ts-ignore: strictNullChecks
   try { backups = JSON.parse(backups) } catch (e) { }
   //@ts-ignore
   if (!(backups instanceof Array)) {
@@ -105,6 +106,7 @@ const list = () => {
   //@ts-ignore
   backups = backups.map((mark) => {
     let backupData = localStorage.getItem(`${constants.localStorage.backups_prefix}:${mark}`)
+    //@ts-ignore: strictNullChecks
     try { backupData = JSON.parse(backupData) } catch (e) { }
     if (backupData
       //@ts-ignore
@@ -126,6 +128,7 @@ const list = () => {
 
 const exists = (mark) => {
   let backupData = localStorage.getItem(`${constants.localStorage.backups_prefix}:${mark}`)
+  //@ts-ignore: strictNullChecks
   try { backupData = JSON.parse(backupData) } catch (e) { }
   if (backupData
     //@ts-ignore

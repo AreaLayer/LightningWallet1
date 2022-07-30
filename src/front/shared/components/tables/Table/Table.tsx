@@ -1,11 +1,8 @@
 import React from 'react'
-import { constants } from 'helpers'
 import { FormattedMessage } from 'react-intl'
 
 import CSSModules from 'react-css-modules'
 import styles from './Table.scss'
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
 type TableProps = {
   rows: { [key: string]: any }[]
@@ -14,7 +11,7 @@ type TableProps = {
   id?: string
   className?: string
   isLoading?: boolean
-  textIfEmpty?: JSX.Element
+  textIfEmpty?: JSX.Element | string
   loadingText?: JSX.Element
   titles?: (string | JSX.Element)[]
 }
@@ -24,11 +21,7 @@ type TableState = {
 }
 
 @CSSModules(styles, { allowMultiple: true })
-export default class Table extends React.Component {
-
-  props: TableProps
-  state: TableState
-
+export default class Table extends React.Component<TableProps, TableState> {
   linkOnTableHead: any
   linkOnTableBody: any
   linkOnTable: any
@@ -76,15 +69,24 @@ export default class Table extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const { rows, isLoading } = this.props
+    const { rows, isLoading} = this.props
+
     return isLoading !== nextProps.isLoading || rows !== nextProps.rows || this.state.selectId !== nextState.selectId
   }
 
   render() {
-    const { titles, rows, rowRender, textIfEmpty, isLoading, loadingText, className } = this.props
+    const {
+      titles,
+      rows,
+      rowRender,
+      textIfEmpty,
+      isLoading,
+      loadingText,
+      className,
+    } = this.props
 
     return (
-      <table styleName={`table ${isDark ? 'dark' : ''}`} className={`table ${className}`} ref={(table) => this.linkOnTable = table}>
+      <table styleName="table" className={`table ${className}`} ref={(table) => this.linkOnTable = table}>
         <thead ref={(thead) => this.linkOnTableHead = thead}>
           <tr>
             {

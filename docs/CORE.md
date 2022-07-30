@@ -16,22 +16,28 @@ Swap Core is a decentralized exchange protocol (DEP) for crosschain atomic swaps
 | ticker    | title |
 |-----------|---------|
 | ETH       | Ethereum |
-| * (ERC20) | ERC20 tokens (USDT, ...) |
+| * (ERC20) | Ethereum ERC20 tokens (USDT, ...) |
+| BNB       | Binance coin |
+| * (BEP20) | Binance smart chain BEP20 tokens (USDT, ...) |
+| MATIC     | Matic token |
+| * (ERC20MATIC) | Polygon ERC20 tokens (USDT, ...) |
 | BTC       | Bitcoin |
-| BCH       | Bitcoin Cash |
 | GHOST     | Ghost |
 | NEXT      | NEXT.coin |
 
 ## Supported swap directions
 
-| tx\rx | ETH  | ERC20 | BTC | BCH | GHOST | NEXT |
-|-------|------|-------|-----|-----|-------|------|
-| ETH   |      |       | +   |     | +     | +    |
-| ERC20 |      |       | +   |     | +     |      |
-| BTC   | +    | +     |     |     |       |      |
-| BCH   |      |       |     |     |       |      |
-| GHOST | +    | +     |     |     |       |      |
-| NEXT  | +    |       | +   |     |       | +    |
+| tx\rx        | ETH  | ERC20 | BNB | BEP20 | MATIC | ERC20MATIC | BTC | GHOST | NEXT |
+|--------------|------|-------|-----|-------|-------|------------|-----|-------|------|
+| ETH          |      |       |     |       |       |            |  +  |   +   |  +   |
+| ERC20        |      |       |     |       |       |            |  +  |   +   |      |
+| BNB          |      |       |     |       |       |            |  +  |       |      |
+| BEP20        |      |       |     |       |       |            |  +  |       |      |
+| MATIC        |      |       |     |       |       |            |     |       |      |
+| ERC20MATIC   |      |       |     |       |       |            |  +  |       |      |
+| BTC          |  +   |   +   |  +  |   +   |       |     +      |     |       |      |
+| GHOST        |  +   |   +   |     |       |       |            |     |       |      |
+| NEXT         |  +   |       |     |       |       |            |  +  |       |  +   |
 
 ## How it works step by step
 
@@ -393,7 +399,6 @@ For example swap.orders depends on swap.room, so it must wait until swap.room be
 
 The service for authentication and storing auth data. Currently contains:
 
-- **bch**
 - **btc**
 - **eth**
 - **ghost**

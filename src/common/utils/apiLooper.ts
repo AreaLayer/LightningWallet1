@@ -7,8 +7,6 @@ const apiQuery = {}
 const apiQueryTimers = {}
 const apiQueryTicks = 10
 
-const apis = {}
-
 const apiQueryTimer = (queryName) => {
   if (apiQuery[queryName].length) {
     const queryChunk = apiQuery[queryName].shift()
@@ -67,6 +65,7 @@ const initApiStatus = (name, apiServers) => {
         lastCheck: getUnixTimeStamp(),
         online: true,
       }
+      //@ts-ignore: strictNullChecks
       stat.prior.push(url)
     })
     stat.last = apiServers[apiServers.length - 1]
@@ -76,6 +75,7 @@ const initApiStatus = (name, apiServers) => {
       lastCheck: getUnixTimeStamp(),
       online: true,
     }
+    //@ts-ignore: strictNullChecks
     stat.prior.push(apiServers)
     stat.last = apiServers
   }
@@ -101,11 +101,8 @@ const switchNext = (api) => {
 
 const apiLooper = (method, api, endpoint, options) => {
   const {
-    //@ts-ignore
     inQuery,
-    //@ts-ignore
     ignoreErrors,
-    //@ts-ignore
     reportErrors,
   } = options || {}
 
@@ -151,12 +148,11 @@ const apiLooper = (method, api, endpoint, options) => {
         const currentEndpoint = apiStatus.endpoints[apiStatus.prior[0]]
         if (currentEndpoint.online) {
           const url = `${currentEndpoint.url}${endpoint}`
-          //console.log('apiLooper', method, url)
+
           request[method](url, options)
             .then((answer) => {
               if (options && options.checkStatus instanceof Function) {
                 if (!options.checkStatus(answer)) {
-                  console.error(`Endpoint ${currentEndpoint.url} - checkStatus failed (may be down). Switch next`)
                   if (switchNext(api)) {
                     doRequest()
                   } else {
@@ -186,11 +182,9 @@ const apiLooper = (method, api, endpoint, options) => {
                 }
               }
               if (ignoreErrors) {
-                console.log('Ignore error ^')
                 resolve(answer)
                 return
               }
-              console.error(`Endpoint ${currentEndpoint.url} may be offline. Switch next`)
               if (switchNext(apiName)) {
                 doRequest()
               } else {

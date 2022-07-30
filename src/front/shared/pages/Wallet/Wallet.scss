@@ -3,14 +3,6 @@
   @include ff-bold;
 }
 
-.hasCusomLogo {
-  margin: 30px 0;
-
-  ul {
-    margin-top: 0
-  }
-}
-
 .btc {
   background: orange;
 }
@@ -30,29 +22,14 @@
 }
 
 .yourAssets {
-  box-shadow: $l-box-shadow;
-  background: $l-background-elements;
-  border-radius: 4px;
+  box-shadow: var(--box-shadow);
+  background: var(--color-background-elements);
+  border-radius: var(--main-component-border-radius);
   padding: 25px;
   margin-top: 20px;
 }
 
-.yourAssets.dark {
-  box-shadow: $d-box-shadow;
-  background: $d-background-elements;
-
-  @media screen and (max-width: 480px) {
-    box-shadow: none;
-    background: #222528;
-  }
-
-  .yourAssetsHeading {
-    color: #fbfbfb;
-  }
-}
-
 .yourAssetsHeading {
-  color: #1f2d48;
   font-size: 24px;
   line-height: 33px;
   font-weight: bold;
@@ -60,16 +37,16 @@
 }
 
 .yourAssetsDescr {
-  color: #8e9aa3;
+  color: var(--color-notice);
   font-size: 14px;
   @include ff-regular;
   line-height: 150%;
 }
 
 .yourBalance {
-  box-shadow: $l-box-shadow;
-  background: $l-background-elements;
-  border-radius: 4px;
+  box-shadow: var(--box-shadow);
+  background: var(--color-background-elements);
+  border-radius: var(--main-component-border-radius);
   height: fit-content;
   @include ff-regular;
 
@@ -77,51 +54,11 @@
     text-align: center;
     font-weight: bold;
     font-size: 12pt;
-    color: #d20404;
+    color: var(--color-f-error);
     cursor: pointer;
     text-decoration: underline;
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-}
-
-.yourBalance.dark {
-  box-shadow: $d-box-shadow;
-  background: $d-background-elements;
-
-  @media screen and (max-width: 480px) {
-    box-shadow: none;
-    background: #222528;
-  }
-
-  .yourBalanceTop {
-    .yourBalanceValue {
-      p {
-        color: #fbfbfb;
-      }
-    }
-  }
-
-  .yourBalanceCurrencies {
-    button {
-      color: #585e63;
-    }
-
-    button.active {
-      color: #fbfbfb;
-      filter: unset;
-    }
-  }
-
-  .yourBalanceBottomWrapper {
-    &:before {
-      background: none;
-    }
-  }
-
-  .yourBalance,
-  .yourBalanceCurrencies {
-    background: unset;
+    margin-left: 10px;
+    margin-right: 10px;
   }
 }
 
@@ -131,7 +68,7 @@
 }
 
 .yourBalanceDescr {
-  color: #8e9aa3;
+  color: var(--color-notice);
   font-size: 13px;
   font-weight: bold;
   position: absolute;
@@ -161,27 +98,8 @@
   p {
     font-size: 32px;
     line-height: 44px;
-    color: #1f2d48;
     font-weight: bold;
     margin: 0;
-  }
-
-  span {
-    font-size: 18px;
-    line-height: 25px;
-    color: $primary;
-    font-weight: bold;
-    margin-top: 5px;
-    position: absolute;
-    margin-left: 10px;
-  }
-
-  span.green {
-    color: #0ccf14;
-  }
-
-  span.red {
-    color: #ee5b51;
   }
 }
 
@@ -198,7 +116,7 @@
     bottom: 0;
     opacity: 0.1;
     content: '';
-    background: linear-gradient(180deg, $primary 0%, rgba(97, 68, 229, 0) 100%);
+    background: linear-gradient(180deg, var(--color-brand) 0%, rgba(97, 68, 229, 0) 100%);
   }
 }
 
@@ -220,17 +138,17 @@
 }
 
 .yourBalanceCurrencies {
-  color: rgba(0, 0, 0, 0.1);
+  color: var(--color-indicating);
   position: absolute;
   left: 15px;
   top: 25px;
   justify-content: space-between;
   display: flex;
 
-  span {
+  .separator {
     width: 1px;
     height: 16px;
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--color-border);
     display: inline-block;
     margin-top: 1px;
   }
@@ -242,12 +160,10 @@
     text-transform: uppercase;
     margin: 0 10px;
     font-size: 13px;
-    color: rgba(142, 154, 163, 0.5);
   }
 
   button.active {
-    color: #1f2d48;
-    filter: brightness(0);
+    color: var(--color);
   }
 }
 
@@ -256,6 +172,14 @@
     button {
       width: 30%;
     }
+  }
+}
+
+.addCurrencyBtnWrapper {
+  width: calc(100% - 28px);
+
+  :not(:last-child) {
+    margin-bottom: 0.5rem;
   }
 }
 
@@ -323,15 +247,10 @@
   .yourAssets {
     padding: 20px 0;
 
-    button {
-      width: calc(100% - 65px);
+    .addCurrencyBtnWrapper {
+      width: calc(100% - 52px);
       margin: auto;
     }
-  }
-
-  .yourBalance,
-  .yourBalanceCurrencies {
-    background: rgb(253, 253, 253);
   }
 
   .yourAssetsHeading,
@@ -345,6 +264,14 @@
 
   .yourBalance {
     display: block;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .yourAssets,
+  .yourBalance {
+    box-shadow: none;
+    background-color: var(--color-page-background);
   }
 }
 
@@ -373,4 +300,11 @@
       }
     }
   }
+}
+
+.alertTooltipWrapper {
+  font-size: 0.8em;
+  padding: 0.3em 0.5em;
+  background: rgba(var(--color-bad), 0.6);
+  border-radius: 2px;
 }

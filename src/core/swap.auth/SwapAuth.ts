@@ -9,14 +9,13 @@ class SwapAuth extends ServiceInterface {
 
   _serviceName: string
   accounts: any
-  app: any
 
   //@ts-ignore
   static get name() {
     return 'auth'
   }
 
-  constructor(privateKeys, useMnemonic) {
+  constructor(privateKeys, useMnemonic?: string) {
     super()
 
     this._serviceName         = 'auth'
@@ -24,8 +23,6 @@ class SwapAuth extends ServiceInterface {
 
     _privateKeys = privateKeys
     _mnemonic = useMnemonic
-    
-
   }
 
   initService() {

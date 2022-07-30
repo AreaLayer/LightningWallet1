@@ -1,44 +1,45 @@
 import React, { Component, Fragment } from 'react'
-import PropTypes from 'prop-types'
-
-import actions from 'redux/actions'
-
 import styles from './SwapProgress.scss'
 import CSSModules from 'react-css-modules'
-
 import crypto from 'crypto'
-import swapApp from 'swap.app'
-import config from 'app-config'
 
-import { constants, links, ethToken } from 'helpers'
-import { localisedUrl } from 'helpers/locale'
 import { BigNumber } from 'bignumber.js'
 import { Link as LinkTo } from 'react-router-dom'
-
 import { injectIntl, FormattedMessage } from 'react-intl'
 
 import Timer from '../../Timer/Timer'
 import { Button, TimerButton } from 'components/controls'
+import PleaseDontLeaveWrapper from './PleaseDontLeaveWrapper'
 
-import SwapController from '../../SwapController'
-import PleaseDontLeaveWrapper from './SwapProgressText/PleaseDontLeaveWrapper'
+import { constants, links, ethToken } from 'helpers'
+import { localisedUrl } from 'helpers/locale'
+import metamask from 'helpers/metamask'
 
-import BtcLikeToEth from './SwapProgressText/BtcLikeToEth'
-import BtcLikeToEthToken from './SwapProgressText/BtcLikeToEthToken'
-import EthToBtcLike from './SwapProgressText/EthToBtcLike'
-import EthTokenToBtcLike from './SwapProgressText/EthTokenToBtcLike'
+type ComponentProps = {
+  flow: IUniversalObj
+  swap: IUniversalObj
+  history: IUniversalObj
+  signed: boolean
+  locale: string
+  wallets: { [key: string]: string }
+  fields: { [key: string]: string }
+}
 
+type ComponentState = {
+  flow: IUniversalObj
+  swap: IUniversalObj
+  signed: boolean
+  enabledButton: boolean
+  refundError: boolean
+  steps: Function[]
+  buyCurrency: string
+  sellCurrency: string
+  secret: string
+  stepValue: number
+}
 
-
-
-import * as animation from './images'
-import finishSvg from './images/finish.svg'
-
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-@injectIntl
 @CSSModules(styles, { allowMultiple: true })
-export default class SwapProgress extends Component<any, any> {
+class SwapProgress extends Component<ComponentProps, ComponentState> {
   swap = null
   _fields = null
   wallets = null
@@ -46,11 +47,6 @@ export default class SwapProgress extends Component<any, any> {
   locale = null
   timer = null
   isSellCurrencyEthOrEthToken = null
-
-
-  static propTypes = {
-    flow: PropTypes.object,
-  }
 
   static defaultProps = {
     flow: {},
@@ -61,10 +57,7 @@ export default class SwapProgress extends Component<any, any> {
     super(props)
     const {
       flow,
-      step,
       swap,
-      styles,
-      tokenItems,
       signed,
       wallets,
       history,
@@ -73,20 +66,15 @@ export default class SwapProgress extends Component<any, any> {
     } = props
 
     this._fields = fields
-
-
-    console.log('SwapProgress fields', this._fields)
-
     this.swap = swap
-
     this.wallets = wallets
     this.history = history
     this.locale = locale
 
+    //@ts-ignore: strictNullChecks
     this.isSellCurrencyEthOrEthToken = ethToken.isEthOrEthToken({ name: swap.sellCurrency })
 
     this.state = {
-      step,
       swap,
       signed,
       enabledButton: false,
@@ -101,8 +89,7 @@ export default class SwapProgress extends Component<any, any> {
   }
 
   onPushGoToWallet = () => {
-    const { buyCurrency } = this.state
-
+    //@ts-ignore: strictNullChecks
     this.history.push(localisedUrl(this.locale, '/wallet'))
   }
 
@@ -113,14 +100,19 @@ export default class SwapProgress extends Component<any, any> {
         swap,
       },
       _fields: {
+        //@ts-ignore: strictNullChecks
         currencyName,
+        //@ts-ignore: strictNullChecks
         withdrawTransactionHash,
+        //@ts-ignore: strictNullChecks
         explorerLink,
+        //@ts-ignore: strictNullChecks
+        etherscanLink,
       },
     } = this
 
     if (flow.ethSwapWithdrawTransactionHash && swap.sellCurrency === currencyName) {
-      window.open(`${config.link.etherscan}/tx/${flow.ethSwapWithdrawTransactionHash}`, '_blank')
+      window.open(`${etherscanLink}/tx/${flow.ethSwapWithdrawTransactionHash}`, '_blank')
     }
     if (flow[withdrawTransactionHash]) {
       window.open(`${explorerLink}/tx/${flow[withdrawTransactionHash]}`, '_blank')
@@ -141,6 +133,7 @@ export default class SwapProgress extends Component<any, any> {
         },
       },
       _fields: {
+        //@ts-ignore: strictNullChecks
         currencyName,
       }
     } = this
@@ -173,6 +166,7 @@ export default class SwapProgress extends Component<any, any> {
   }
 
   componentDidMount() {
+    //@ts-ignore: strictNullChecks
     this.swap.on('state update', this.handleFlowStateUpdate)
     this.handleBarProgress()
     localStorage.setItem(constants.localStorage.startSwap, Date.now().toString())
@@ -180,15 +174,21 @@ export default class SwapProgress extends Component<any, any> {
   }
 
   componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     this.swap.off('state update', this.handleFlowStateUpdate)
+    //@ts-ignore: strictNullChecks
     clearTimeout(this.timer)
   }
 
   reloadPage = () => {
+    //@ts-ignore: strictNullChecks
     this.timer = setTimeout(() => {
+      //@ts-ignore: strictNullChecks
       const startSwapTime: number = new BigNumber(localStorage.getItem(constants.localStorage.startSwap)).toNumber()
 
+      //@ts-ignore: strictNullChecks
       if (this.swap.flow.isFinished) {
+        //@ts-ignore: strictNullChecks
         clearTimeout(this.timer)
       }
 
@@ -197,6 +197,7 @@ export default class SwapProgress extends Component<any, any> {
       if (((Date.now() - startSwapTime) > 600 * 1000) && isSwapPage) {
         console.warn('UPS!!! SWAP IS FROZEN - RELOAD')
         localStorage.removeItem(constants.localStorage.startSwap)
+        //@ts-ignore: strictNullChecks
         clearTimeout(this.timer)
         window.location.reload()
       }
@@ -213,7 +214,9 @@ export default class SwapProgress extends Component<any, any> {
     const { state, stepNumbers } = swap.flow
 
     const {
+      //@ts-ignore: strictNullChecks
       scriptCreatingTransactionHash,
+      //@ts-ignore: strictNullChecks
       withdrawTransactionHash,
     } = this._fields
 
@@ -261,21 +264,8 @@ export default class SwapProgress extends Component<any, any> {
     this.handleBarProgress()
   }
 
-  // TODO add animation css, if the app will have error and try to on 10s step, will show the 9th of animathin
-
-  handleStepChangeImage = (step) => {
-    if (step < 10) {
-      return <img src={animation[`icon${step}`]} alt="step" />
-    }
-    if (step === 10) {
-      // eslint-disable-next-line
-      return <img src={animation['icon9']} alt="step" />
-    }
-  }
-
-  handleFocusSecretInput = (event) => event.target.select();
-
   tryRefund = async () => {
+    //@ts-ignore: strictNullChecks
     const { flow } = this.swap
 
     await flow.tryRefund()
@@ -297,43 +287,59 @@ export default class SwapProgress extends Component<any, any> {
   submitSecret = () => {
     const { secret } = this.state
 
-    this.swap.flow.submitSecret(secret)
+    // this.swap.flow.submitSecret(secret)
   }
 
   confirmScriptChecked = () => {
     const {
+      //@ts-ignore: strictNullChecks
       verifyScriptFunc,
     } = this._fields
-    this.swap.flow[verifyScriptFunc]()
+    // this.swap.flow[verifyScriptFunc]()
   }
 
   render() {
     const {
-      step,
       steps,
       flow,
       swap,
+      swap: {
+        flow: {
+          isTakerMakerModel,
+          isUTXOSide,
+          state :{
+            isEthContractFunded,
+            utxoScriptValues,
+            scriptBalance,
+            isFinished,
+            isRefunded,
+            isStoppedSwap
+          }
+        },
+      },
       signed,
-      buyAmount,
-      sellAmount,
       buyCurrency,
       sellCurrency,
       enabledButton,
       refundError,
-      stepValue,
-      isSecretCopied,
     } = this.state
 
     const {
+      //@ts-ignore: strictNullChecks
       currencyName,
+      //@ts-ignore: strictNullChecks
       scriptValues,
+      //@ts-ignore: strictNullChecks
       explorerLink,
+      //@ts-ignore: strictNullChecks
+      etherscanLink,
+      //@ts-ignore: strictNullChecks
       withdrawTransactionHash,
     } = this._fields
 
-    const progress = Math.floor(90 * stepValue)
-    const finishIcon = <img src={finishSvg} alt="finishIcon" />
+    //@ts-ignore: strictNullChecks
     const showWalletButton = (!this.swap.destinationBuyAddress)
+      //@ts-ignore: strictNullChecks
       || (this.swap.destinationBuyAddress === this.wallets[buyCurrency.toUpperCase()])
 
     const canRefund = this.checkCanRefund()
@@ -344,58 +350,30 @@ export default class SwapProgress extends Component<any, any> {
       _refundTx = flow.refundTransactionHash.transactionHash || flow.refundTransactionHash
     }
 
-    /** todo **/
-    const swapTexts = (
-      <Fragment>
-        {
-          this.props.name === 'BtcLikeToEth' && <BtcLikeToEth step={flow.step} flow={flow} swap={swap} coinName={currencyName} />
-        }
-        {
-          this.props.name === 'EthToBtcLike' && <EthToBtcLike step={flow.step} flow={flow} swap={swap} coinName={currencyName} />
-        }
-        {
-          this.props.name === 'BtcLikeToEthToken' && <BtcLikeToEthToken step={flow.step} flow={flow} swap={swap} coinName={currencyName} />
-        }
-        {
-          this.props.name === 'EthTokenToBtcLike' && <EthTokenToBtcLike step={flow.step} flow={flow} swap={swap} coinName={currencyName} />
-        }
-      </Fragment>
-    )
+    const canBeRefunded = utxoScriptValues && (isUTXOSide ? scriptBalance > 0 : isEthContractFunded)
+    const isDeletedSwap = isFinished || isRefunded
 
     return (
-      <div styleName={`overlay ${isDark ? 'dark' : ''}`}>
+      <div styleName="overlay">
         <div styleName="container">
           <div styleName="stepContainer">
-            <SwapController swap={swap} />
-            <div styleName="progressContainer">
-              <div styleName={progress > 180 ? 'progress-pie-chart gt-50' : 'progress-pie-chart'}>
-                <div styleName="ppc-progress">
-                  <div styleName="ppc-progress-fill" style={{ transform: `rotate(${progress}deg)` }} />
-                </div>
-              </div>
-              <div styleName="step">
-                <div styleName="stepImg">
-                  {flow.isFinished ? finishIcon : this.handleStepChangeImage(flow.step)}
-                </div>
-              </div>
-            </div>
             <div styleName="stepInfo">
-
-              <span styleName="stepHeading">
-                {swapTexts}
-              </span>
+              {!isDeletedSwap && canBeRefunded && (
+                  <Timer lockTime={utxoScriptValues.lockTime * 1000} />
+                )
+              }
 
               {signed && flow.step < 4 && (
                 <div>
                   <strong>
-                    <a href={`${config.link.etherscan}/tx/${flow.signTransactionHash}`} target="_blank" rel="noopener noreferrer">
+                    <a href={`${etherscanLink}/tx/${flow.signTransactionHash}`} target="_blank" rel="noopener noreferrer">
                       <FormattedMessage id="swappropgress193" defaultMessage="Sign ETH transaction: {transaction}" values={{ transaction: flow.signTransactionHash }} />
                     </a>
                   </strong>
                 </div>
               )}
 
-              {(flow[scriptValues] && !flow.isFinished && !flow.isEthWithdrawn) && flow.refundTxHex && (
+              {(flow.utxoScriptValues && !flow.isFinished && !flow.isEthWithdrawn) && flow.refundTxHex && (
                 <div>
                   <a
                     href="https://wiki.swaponline.io/faq/my-swap-got-stuck-and-my-bitcoin-has-been-withdrawn-what-to-do/"
@@ -416,7 +394,7 @@ export default class SwapProgress extends Component<any, any> {
                       <a
                         href={swap.sellCurrency === currencyName
                           ? `${explorerLink}/tx/${_refundTx}`
-                          : `${config.link.etherscan}/tx/${_refundTx}`
+                          : `${etherscanLink}/tx/${_refundTx}`
                         }
                         target="_blank"
                         rel="noopener noreferrer"
@@ -452,7 +430,7 @@ export default class SwapProgress extends Component<any, any> {
                           isRefund
                           lockTime={flow[scriptValues].lockTime * 1000}
                           cancelTime={(flow[scriptValues].lockTime - 7200) * 1000}
-                          enabledButton={() => this.setState(() => ({ enabledButton: true }))}
+                          enabledButton={this.willEnable}
                         />
                       </div>
                     )
@@ -470,8 +448,48 @@ export default class SwapProgress extends Component<any, any> {
                   <FormattedMessage id="swapFinishedGoHome298" defaultMessage="Everything is OK. Continue" />
                 </TimerButton>
               )}
-
-              {flow.step > 3 && !this.isSellCurrencyEthOrEthToken &&
+              {flow.step === 4 && flow.waitUnlockUTXO && (
+                <strong styleName="attention">
+                  <FormattedMessage
+                    id="Swap_OwnerHasLockedUTX"
+                    defaultMessage="Swap paused because you has unconfirmed transaction in mempool. Waiting confirm"
+                  />
+                </strong>
+              )}
+              {flow.step <= 5 && flow.participantHasLockedUTXO && (
+                <strong styleName="attention">
+                  <FormattedMessage
+                    id="Swap_SellerHasLockedUTX"
+                    defaultMessage="Swap paused because owner has unconfirmed transaction in mempool. Waiting confirm"
+                  />
+                </strong>
+              )}
+              {flow.step <= 5 && flow.utxoFundError && (
+                <strong styleName="attention">
+                  <FormattedMessage
+                    id="Swap_UtxoBroadcastError"
+                    defaultMessage="Swap paused because broadcast tx ended with error &quot;{error}&quot;"
+                    values={{
+                      error: flow.utxoFundError,
+                    }}
+                  />
+                </strong>
+              )}
+              {metamask.isConnected() && (
+                (!this.isSellCurrencyEthOrEthToken && flow.step === 6)
+                || (this.isSellCurrencyEthOrEthToken && flow.step === 5 && flow.isUTXOScriptOk)
+              ) && (
+                <strong styleName="metamask_attention">
+                  <FormattedMessage
+                    id="Swap_MetamaskAttention"
+                    defaultMessage="Please confirm the transaction in your &quot;{walletName}&quot; wallet"
+                    values={{
+                      walletName: metamask.web3connect.getProviderTitle(),
+                    }}
+                  />
+                </strong>
+              )}
+              {flow.step > 3 && !flow.isRefunded && !flow.isFinished  && !this.isSellCurrencyEthOrEthToken &&
                 <PleaseDontLeaveWrapper isBtcLike={flow.secret ? flow.secret : false} />
               }
             </div>
@@ -479,7 +497,7 @@ export default class SwapProgress extends Component<any, any> {
             {flow.ethSwapWithdrawTransactionHash && !this.isSellCurrencyEthOrEthToken && (
               <strong styleName="transaction">
                 <a
-                  href={`${config.link.etherscan}/tx/${flow.ethSwapWithdrawTransactionHash}`}
+                  href={`${etherscanLink}/tx/${flow.ethSwapWithdrawTransactionHash}`}
                   target="_blank"
                   rel="noreferrer noopener"
                 >
@@ -518,3 +536,5 @@ export default class SwapProgress extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(SwapProgress)

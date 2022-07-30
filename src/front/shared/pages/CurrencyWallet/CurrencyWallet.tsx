@@ -2,11 +2,9 @@ import React, { Component, Fragment } from 'react'
 
 import { connect } from 'redaction'
 import actions from 'redux/actions'
-import Slider from 'pages/Wallet/components/WallerSlider'
 import { withRouter } from 'react-router-dom'
-
-import helpers, { links, constants, ethToken } from 'helpers'
-import { getTokenWallet, getBitcoinWallet, getEtherWallet, getGhostWallet, getNextWallet } from 'helpers/links'
+import erc20Like from 'common/erc20Like'
+import { links, constants } from 'helpers'
 
 import CSSModules from 'react-css-modules'
 import styles from './CurrencyWallet.scss'
@@ -29,179 +27,75 @@ import DashboardLayout from 'components/layout/DashboardLayout/DashboardLayout'
 
 import getCurrencyKey from 'helpers/getCurrencyKey'
 import lsDataCache from 'helpers/lsDataCache'
+import getCoinInfo from 'common/coins/getCoinInfo'
 
 
 const isWidgetBuild = config && config.isWidget
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
-@connect(({ signUp: { isSigned } }) => ({
-  isSigned,
-}))
 @connect(
   ({
     core,
     user,
     history: { transactions, swapHistory },
-    history,
     user: {
-      ethData,
-      btcData,
-      ghostData,
-      nextData,
       activeFiat,
       activeCurrency,
-      btcMultisigSMSData,
-      btcMultisigUserData,
-      isFetching,
       isBalanceFetching,
-      tokensData,
-      multisigStatus,
       multisigPendingCount,
     },
   }) => ({
-    items: [
-      ethData,
-      btcData,
-      ghostData,
-      nextData,
-      btcMultisigSMSData,
-      btcMultisigUserData,
-      ...Object.keys(tokensData).map((k) => tokensData[k]),
-    ],
-    tokens: [...Object.keys(tokensData).map((k) => tokensData[k])],
     user,
     activeFiat,
-    historyTx: history,
     hiddenCoinsList: core.hiddenCoinsList,
     txHistory: transactions,
     swapHistory,
-    isFetching,
     activeCurrency,
     isBalanceFetching,
-    multisigStatus,
     multisigPendingCount,
   })
 )
-@injectIntl
 @withRouter
 @CSSModules({ ...styles, ...stylesHere }, { allowMultiple: true })
-export default class CurrencyWallet extends Component<any, any> {
-  _mounted = false
+class CurrencyWallet extends Component<any, any> {
+  mounted = false
 
   constructor(props) {
     super(props)
 
     const {
       match: {
-        params: { fullName = null, ticker = null, address = null, action = null },
+        params: { ticker = null, address = null },
       },
-      intl: { locale },
-      //items,
-      txHistory,
       hiddenCoinsList,
     } = props
 
     const items = actions.core.getWallets({})
-
-    if (!address && !ticker) {
-      if (fullName) {
-        // Если это токен - перенаправляем на адрес /token/name/address
-        if (ethToken.isEthToken({ name: fullName })) {
-          this.state = {
-            ...this.state,
-            ...{
-              isRedirecting: true,
-              redirectUrl: getTokenWallet(fullName),
-            },
-          }
-          return
-        }
-
-        if (fullName.toLowerCase() === `bitcoin`) {
-          this.state = {
-            ...this.state,
-            ...{
-              isRedirecting: true,
-              redirectUrl: getBitcoinWallet(),
-            },
-          }
-          return
-        }
-        if (fullName.toLowerCase() === `ghost`) {
-          this.state = {
-            ...this.state,
-            ...{
-              isRedirecting: true,
-              redirectUrl: getGhostWallet(),
-            },
-          }
-          return
-        }
-        if (fullName.toLowerCase() === `next`) {
-          this.state = {
-            ...this.state,
-            ...{
-              isRedirecting: true,
-              redirectUrl: getNextWallet(),
-            },
-          }
-          return
-        }
-
-        if (fullName.toLowerCase() === `ethereum`) {
-          this.state = {
-            ...this.state,
-            ...{
-              isRedirecting: true,
-              redirectUrl: getEtherWallet(),
-            },
-          }
-          return
-        }
-      }
-      // @ToDO throw error
-    }
-
     const walletAddress = address
 
-    // оставляю запасной вариант для старых ссылок
-    if (fullName) {
-      //@ts-ignore
-      ticker = fullName
-    }
-
-    // MultiWallet - after Sweep - названию валюты доверять нельзя - нужно проверяться также адрес - и выбирать по адресу
-    let itemCurrency = items.filter((item) => {
-      if (ethToken.isEthToken({ name: ticker })) {
-        if (
-          item.currency.toLowerCase() === ticker.toLowerCase() &&
-          item.address.toLowerCase() === walletAddress.toLowerCase()
-        ) {
-          return true
-        }
-      } else {
-        if (!ethToken.isEthToken({ name: ticker }) && item.address.toLowerCase() === walletAddress.toLowerCase()) {
-          return true
-        }
-      }
+    let itemCurrency = this.filterCurrencies({
+      items,
+      ticker,
+      walletAddress,
     })
+
     if (!itemCurrency.length) {
       itemCurrency = items.filter((item) => {
-        if (item.balance > 0 && item.currency.toLowerCase() === ticker.toLowerCase()) return true
-      })
-    }
-    if (!itemCurrency.length) {
-      itemCurrency = items.filter((item) => {
-        if (item.balance >= 0 && item.currency.toLowerCase() === ticker.toLowerCase()) return true
+        if (
+          (item.balance >= 0)
+          && (
+            (item.currency.toLowerCase() === ticker.toLowerCase())
+            || (item.tokenKey && item.tokenKey.toLowerCase() === ticker.toLowerCase())
+          )
+        ) return true
       })
     }
 
     if (itemCurrency.length) {
       itemCurrency = itemCurrency[0]
+
       //@ts-ignore
       const { currency, address, contractAddress, decimals, balance, infoAboutCurrency } = itemCurrency
-
-      const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`)
+      const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${walletAddress}`)
 
       this.state = {
         itemCurrency,
@@ -216,96 +110,84 @@ export default class CurrencyWallet extends Component<any, any> {
         isLoading: false,
         infoAboutCurrency,
         filterValue: walletAddress || address || '',
-        token: ethToken.isEthToken({ name: ticker }),
+        ticker,
+        token: erc20Like.isToken({ name: ticker }),
       }
     }
   }
 
   componentDidMount() {
-    this._mounted = true
-    console.log('CurrencyWallet mounted')
+    this.mounted = true
+    
     const {
       currency,
       itemCurrency,
       token,
-      isRedirecting,
-      redirectUrl,
       balance,
       infoAboutCurrency,
       hiddenCoinsList,
+      ticker,
+      walletAddress,
     } = this.state
-
-    actions.user.getBalances()
-
-    if (isRedirecting) {
-      const {
-        history,
-        intl: { locale },
-      } = this.props
-      history.push(localisedUrl(locale, redirectUrl))
-      setTimeout(() => {
-        location.reload()
-      }, 100)
-      return
-    }
 
     let {
       match: {
-        params: { address = null },
+        params: {
+          address = null,
+          action,
+        },
       },
       activeCurrency,
       activeFiat
     } = this.props
 
-    if (currency) {
-      // actions.analytics.dataEvent(`open-page-${currency.toLowerCase()}-wallet`)
-    }
-    if (token) {
-      actions.token.getBalance(currency.toLowerCase())
+    if (action == 'send') {
+      actions.user.getBalances()
     }
 
-    // set balance for the address
-    address &&
-      actions[getCurrencyKey(currency.toLowerCase(), false)]
+    if (token && itemCurrency.standard) {
+      actions[itemCurrency.standard].getBalance(currency.toLowerCase(), walletAddress).then((balance) => {
+        this.setState({
+          balance,
+        })
+      })
+    } else {
+      const actionName = currency.toLowerCase()
+
+      address && actions[getCurrencyKey(actionName, false)]
         .fetchBalance(address)
         .then((balance) => this.setState({ balance }))
+    }
 
-    this.setLocalStorageItems()
-
-    // if address is null, take transactions from current user
-    address
-      ? actions.history.setTransactions(address, currency.toLowerCase(), this.pullTransactions)
-      : actions.user.setTransactions()
+    if (action !== 'send') {
+      actions.history.setTransactions(walletAddress, ticker.toLowerCase())
+    }
 
     if (!address) {
       actions.core.getSwapHistory()
     }
 
-    const { Withdraw, WithdrawMultisigSMS, WithdrawMultisigUser } = constants.modals
-
     const targetCurrency = getCurrencyKey(currency.toLowerCase(), true)
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
+    const firstUrlPart = itemCurrency.tokenKey ? `/token/${itemCurrency.tokenKey}` : `/${targetCurrency}`
+    const withdrawUrl = `${firstUrlPart}/${address}/send`
+    const receiveUrl = `${firstUrlPart}/${address}/receive`
 
-    const withdrawUrl = (isToken ? '/token' : '') + `/${targetCurrency}/${address}/send`
-    const receiveUrl = (isToken ? '/token' : '') + `/${targetCurrency}/${address}/receive`
+    const currentUrl = this.props.history.location.pathname.toLowerCase()
 
-    if (this.props.history.location.pathname.toLowerCase() === withdrawUrl.toLowerCase() && balance !== 0) {
-      let modalType = Withdraw
-      // if (itemCurrency.isSmsProtected) modalType = WithdrawMultisigSMS
-      // if (itemCurrency.isUserProtected) modalType = WithdrawMultisigUser
-
-      actions.modals.open(modalType, {
+    if (currentUrl === withdrawUrl.toLowerCase() && balance !== 0) {
+      actions.modals.open(constants.modals.Withdraw, {
         currency,
         address,
         balance,
+        itemCurrency,
         infoAboutCurrency,
         hiddenCoinsList,
-        currencyRate: itemCurrency.currencyRate,
       })
       if (activeCurrency.toUpperCase() !== activeFiat) {
         actions.user.pullActiveCurrency(currency.toLowerCase())
       }
     }
+
     if (this.props.history.location.pathname.toLowerCase() === receiveUrl.toLowerCase()) {
       actions.modals.open(constants.modals.ReceiveModal, {
         currency,
@@ -315,28 +197,26 @@ export default class CurrencyWallet extends Component<any, any> {
   }
 
   componentDidUpdate(prevProps) {
-    const { currency } = this.state
-
-    const { activeFiat } = this.props
-    const { activeFiat: prevFiat } = prevProps
-
     let {
-      match: {
-        params: { address = null, fullName = null, ticker = null, action = null },
-      },
-      hiddenCoinsList,
-      activeCurrency
-    } = this.props
-
-    let {
+      txHistory: prevTransactions,
       match: {
         params: { address: prevAddress = null },
       },
     } = prevProps
-    if (prevAddress !== address) {
-      address
-        ? actions.history.setTransactions(address, currency.toLowerCase(), this.pullTransactions)
-        : actions.user.setTransactions()
+
+    let {
+      txHistory,
+      match: {
+        params: { address = null, ticker = null, action = null },
+      },
+      activeCurrency,
+      activeFiat,
+    } = this.props
+
+    const { currency } = this.state
+
+    if (JSON.stringify(txHistory) !== JSON.stringify(prevTransactions)) {
+      this.updateTransactions()
     }
 
     if (
@@ -344,106 +224,45 @@ export default class CurrencyWallet extends Component<any, any> {
       prevProps.isBalanceFetching !== this.props.isBalanceFetching
     ) {
       const items = actions.core.getWallets({})
-
-      if (!address && !ticker) {
-        if (fullName) {
-          // Если это токен - перенаправляем на адрес /token/name/address
-          if (ethToken.isEthToken({ name: fullName })) {
-            this.state = {
-              ...this.state,
-              ...{
-                isRedirecting: true,
-                redirectUrl: getTokenWallet(fullName),
-              },
-            }
-            return
-          }
-
-          if (fullName.toLowerCase() === `bitcoin`) {
-            this.state = {
-              ...this.state,
-              ...{
-                isRedirecting: true,
-                redirectUrl: getBitcoinWallet(),
-              },
-            }
-            return
-          }
-
-          if (fullName.toLowerCase() === `ghost`) {
-            this.state = {
-              ...this.state,
-              ...{
-                isRedirecting: true,
-                redirectUrl: getGhostWallet(),
-              },
-            }
-            return
-          }
-
-          if (fullName.toLowerCase() === `next`) {
-            this.state = {
-              ...this.state,
-              ...{
-                isRedirecting: true,
-                redirectUrl: getNextWallet(),
-              },
-            }
-            return
-          }
-
-          if (fullName.toLowerCase() === `ethereum`) {
-            this.state = {
-              ...this.state,
-              ...{
-                isRedirecting: true,
-                redirectUrl: getEtherWallet(),
-              },
-            }
-            return
-          }
-        }
-        // @ToDO throw error
-      }
-
       const walletAddress = address
-
-      // оставляю запасной вариант для старых ссылок
-      if (fullName) {
-        ticker = fullName
-      }
-      // MultiWallet - after Sweep - названию валюты доверять нельзя - нужно проверяться также адрес - и выбирать по адресу
-      let itemCurrency = items.filter((item) => {
-        if (ethToken.isEthToken({ name: ticker })) {
-          if (
-            item.currency.toLowerCase() === ticker.toLowerCase() &&
-            item.address.toLowerCase() === walletAddress.toLowerCase()
-          ) {
-            return true
-          }
-        } else {
-          if (!ethToken.isEthToken({ name: ticker }) && item.address.toLowerCase() === walletAddress.toLowerCase()) {
-            return true
-          }
-        }
+      
+      let itemCurrency = this.filterCurrencies({
+        items,
+        ticker,
+        walletAddress,
       })
+
+      if (!itemCurrency.length) {
+        itemCurrency = items.filter((item) => {
+          if (
+            (item.balance >= 0)
+            && (
+              (item.currency.toLowerCase() === ticker.toLowerCase())
+              || (item.tokenKey && item.tokenKey.toLowerCase() === ticker.toLowerCase())
+            )
+          ) return true
+        })
+      }
 
       if (itemCurrency.length) {
         itemCurrency = itemCurrency[0]
-        //@ts-ignore
-        const { currency, address, contractAddress, decimals, balance, infoAboutCurrency } = itemCurrency
 
-        const { Withdraw, WithdrawMultisigSMS, WithdrawMultisigUser } = constants.modals
-
-        let modalWithdraw = Withdraw
-        // if (itemCurrency.isSmsProtected) modalWithdraw = WithdrawMultisigSMS
-        // if (itemCurrency.isUserProtected) modalWithdraw = WithdrawMultisigUser
-
+        const {
+          currency,
+          contractAddress,
+          decimals,
+          balance,
+          infoAboutCurrency,
+          tokenKey,
+        } = itemCurrency
         const {
           txItems: oldTxItems,
         } = this.state
 
         const hasCachedData = lsDataCache.get(`TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`)
+
+        if (!this.mounted) return
+        const token = erc20Like.isToken({ name: ticker })
 
         this.setState(
           {
@@ -457,33 +276,51 @@ export default class CurrencyWallet extends Component<any, any> {
             isLoading: false,
             infoAboutCurrency,
             filterValue: address || '',
-            token: ethToken.isEthToken({ name: ticker }),
+            token,
           },
           () => {
             if (prevProps.location.pathname !== this.props.location.pathname) {
               if (activeCurrency.toUpperCase() !== activeFiat) {
                 actions.user.pullActiveCurrency(currency.toLowerCase())
               }
+              if (token && itemCurrency.standard) {
+                actions[itemCurrency.standard].getBalance(currency.toLowerCase(), address).then((balance) => {
+                  this.setState({
+                    balance,
+                  })
+                })
+              } else {
+                const actionName = currency.toLowerCase()
+
+                address && actions[getCurrencyKey(actionName, false)]
+                  .fetchBalance(address)
+                  .then((balance) => this.setState({ balance }))
+              }
+
+              if (action !== 'send') {
+                actions.history.setTransactions(address, ticker.toLowerCase())
+              }
+
+              if (!address) {
+                actions.core.getSwapHistory()
+              }
             }
             const targetCurrency = getCurrencyKey(currency.toLowerCase(), true)
-            const isToken = helpers.ethToken.isEthToken({ name: currency })
-
-            const withdrawUrl = (isToken ? '/token' : '') + `/${targetCurrency}/${address}/send`
-            const receiveUrl = (isToken ? '/token' : '') + `/${targetCurrency}/${address}/receive`
+            const firstUrlPart = tokenKey ? `/token/${tokenKey}` : `/${targetCurrency}`
+            const withdrawUrl = `${firstUrlPart}/${address}/send`
+            const receiveUrl = `${firstUrlPart}/${address}/receive`
             const currentUrl = this.props.location.pathname.toLowerCase()
 
             if (currentUrl === withdrawUrl.toLowerCase()) {
-              actions.modals.open(modalWithdraw, {
+              actions.modals.open(constants.modals.Withdraw, {
                 currency,
                 address,
                 balance,
                 infoAboutCurrency,
-                hiddenCoinsList,
                 itemCurrency,
-                //@ts-ignore
-                currencyRate: itemCurrency.currencyRate,
               })
             }
+
             if (currentUrl === receiveUrl.toLowerCase()) {
               actions.modals.open(constants.modals.ReceiveModal, {
                 currency,
@@ -497,46 +334,57 @@ export default class CurrencyWallet extends Component<any, any> {
   }
 
   componentWillUnmount() {
-    this._mounted = false
-    console.log('CurrencyWallet unmounted')
+    this.mounted = false
   }
 
-  getRows = (txHistory) => {
-    this.setState(() => ({ rows: txHistory }))
-  }
-
-  pullTransactions = (transactions) => {
-    if (!this._mounted) return
-    let data = [].concat([], ...transactions).sort((a, b) => b.date - a.date)
-    this.setState({
-      txItems: data,
-    })
+  filterCurrencies = (params) => {
+    const { items, ticker, walletAddress } = params
 
     const {
-      currency,
-      address,
-    } = this.state
+      coin,
+      blockchain,
+    } = getCoinInfo(ticker)
+
+    return items.filter((item) => {
+      let {currency: currencyName} = item
+
+      switch (currencyName.toLowerCase()) {
+        case 'btc (multisig)':
+        case 'btc (sms-protected)':
+        case 'btc (pin-protected)':
+          currencyName = 'btc'
+      }
+
+      const blockchainOk = (blockchain && item.blockchain)
+        ? item.blockchain.toLowerCase() === blockchain.toLowerCase()
+        : ((blockchain && !item.blockchain) || (!blockchain && item.blockchain))
+          ? false
+          : true
+
+      if (
+        currencyName.toLowerCase() === coin.toLowerCase() &&
+        item.address.toLowerCase() === walletAddress.toLowerCase() &&
+        blockchainOk
+      ) {
+        return true
+      }
+    })
+  }
+
+  updateTransactions = () => {
+    if (!this.mounted) return
+
+    const { txHistory } = this.props
+    const { currency, address } = this.state
+
+    this.setState(() => ({
+      txItems: txHistory,
+    }))
 
     lsDataCache.push({
       key: `TxHistory_${getCurrencyKey(currency, true).toLowerCase()}_${address}`,
-      data,
+      data: txHistory,
       time: 3600,
-    })
-  }
-
-  setLocalStorageItems = () => {
-    //@ts-ignore
-    const isClosedNotifyBlockBanner = localStorage.getItem(constants.localStorage.isClosedNotifyBlockBanner)
-    //@ts-ignore
-    const isClosedNotifyBlockSignUp = localStorage.getItem(constants.localStorage.isClosedNotifyBlockSignUp)
-    const isPrivateKeysSaved = localStorage.getItem(constants.localStorage.privateKeysSaved)
-    const walletTitle = localStorage.getItem(constants.localStorage.walletTitle)
-
-    this.setState({
-      isClosedNotifyBlockBanner,
-      isClosedNotifyBlockSignUp,
-      walletTitle,
-      isPrivateKeysSaved,
     })
   }
 
@@ -561,40 +409,17 @@ export default class CurrencyWallet extends Component<any, any> {
   handleWithdraw = () => {
     const {
       history,
-      hiddenCoinsList,
       intl: { locale },
     } = this.props
-    const { itemCurrency, currency, address, contractAddress, decimals, balance, isBalanceEmpty } = this.state
+    const { itemCurrency, currency, address } = this.state
 
-    // actions.analytics.dataEvent(`balances-withdraw-${currency.toLowerCase()}`)
-    let withdrawModal = constants.modals.Withdraw
-    if (itemCurrency.isSmsProtected) withdrawModal = withdrawModal = constants.modals.WithdrawMultisigSMS
-    if (itemCurrency.isUserProtected) withdrawModal = constants.modals.WithdrawMultisigUser
+    const targetCurrency = getCurrencyKey(currency.toLowerCase(), true).toLowerCase()
+    const firstUrlPart = itemCurrency.tokenKey ? `/token/${itemCurrency.tokenKey}` : `/${targetCurrency}`
 
-    let targetCurrency = getCurrencyKey(currency.toLowerCase(), true).toLowerCase()
-
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
-
-    history.push(localisedUrl(locale, (isToken ? '/token' : '') + `/${targetCurrency}/${address}/send`))
-  }
-
-  handleGoWalletHome = () => {
-    const {
-      history,
-      intl: { locale },
-    } = this.props
-
-    history.push(localisedUrl(locale, links.wallet))
-  }
-
-  handleGoTrade = () => {
-    const { currency } = this.state
-    const {
-      history,
-      intl: { locale },
-    } = this.props
-    // was pointOfSell
-    history.push(localisedUrl(locale, `${links.exchange}/btc-to-${currency.toLowerCase()}`))
+    history.push(localisedUrl(
+      locale,
+      `${firstUrlPart}/${address}/send`
+    ))
   }
 
   rowRender = (row, rowIndex) => {
@@ -636,7 +461,7 @@ export default class CurrencyWallet extends Component<any, any> {
     this.loading()
     const { address, currency } = this.state
     this.setState(() => ({ filterValue: address }))
-    actions.history.setTransactions(address, currency.toLowerCase(), this.pullTransactions)
+    actions.history.setTransactions(address, currency.toLowerCase())
   }
 
   render() {
@@ -649,10 +474,8 @@ export default class CurrencyWallet extends Component<any, any> {
       },
       intl,
       hiddenCoinsList,
-      isSigned,
       isBalanceFetching,
       activeFiat,
-      multisigStatus,
       activeCurrency,
       multisigPendingCount,
     } = this.props
@@ -661,24 +484,27 @@ export default class CurrencyWallet extends Component<any, any> {
       currency,
       itemCurrency,
       balance,
-      fullName,
       infoAboutCurrency,
-      isRedirecting,
       txItems,
       filterValue,
       isLoading,
     } = this.state
 
-    const currencyKey = getCurrencyKey(currency, true)
+    let currencyName = currency.toLowerCase()
 
-    if (isRedirecting) return null
+    switch (currencyName) {
+      case 'btc (multisig)':
+      case 'btc (sms-protected)':
+      case 'btc (pin-protected)':
+        currencyName = 'btc'
+    }
 
     txHistory = txItems || txHistory
 
     if (txHistory) {
       txHistory = txHistory.filter((tx) => {
-        if (tx && tx.type) {
-          return tx.type.toLowerCase() === currencyKey.toLowerCase()
+        if (tx?.type) {
+          return tx.type.toLowerCase() === currencyName
         }
         return false
       })
@@ -721,36 +547,24 @@ export default class CurrencyWallet extends Component<any, any> {
     }
 
     let currencyFiatBalance
-    let changePercent
 
     if (infoAboutCurrency && infoAboutCurrency.price_fiat) {
       currencyFiatBalance =
         new BigNumber(balance).dp(6, BigNumber.ROUND_FLOOR).toString() as any * infoAboutCurrency.price_fiat as any
-      changePercent = infoAboutCurrency.percent_change_1h
     } else {
       currencyFiatBalance = 0
     }
 
-    let settings = {
-      infinite: true,
-      speed: 500,
-      autoplay: true,
-      autoplaySpeed: 6000,
-      fade: true,
-      slidesToShow: 1,
-      slidesToScroll: 1,
-    }
-
     return (
-      <div styleName={`root ${isDark ? 'dark' : ''}`}>
+      <div styleName="root">
         <PageSeo
           location={location}
           defaultTitle={intl.formatMessage(title.metaTitle, {
-            fullName,
+            fullName: currency,
             currency,
           })}
           defaultDescription={intl.formatMessage(description.metaDescription, {
-            fullName,
+            fullName: currency,
             currency,
           })}
         />
@@ -758,34 +572,27 @@ export default class CurrencyWallet extends Component<any, any> {
         <DashboardLayout
           page="history"
           BalanceForm={
-            txHistory
-              ?
-              <BalanceForm
-                address={address}
-                activeFiat={activeFiat}
-                currencyBalance={balance}
-                fiatBalance={currencyFiatBalance}
-                changePercent={changePercent}
-                activeCurrency={activeCurrency}
-                isFetching={isBalanceFetching}
-                handleReceive={this.handleReceive}
-                handleWithdraw={this.handleWithdraw}
-                handleExchange={this.handleGoTrade}
-                handleInvoice={this.handleInvoice}
-                showButtons={actions.user.isOwner(address, currency)}
-                currency={currency.toLowerCase()}
-                singleWallet={true}
-                multisigPendingCount={multisigPendingCount}
-              />
-              :
-              <Fragment>
-                {/*
-                //@ts-ignore */}
-                <ContentLoader leftSideContent />
-              </Fragment>
+            <BalanceForm
+              type="currencyWallet"
+              activeFiat={activeFiat}
+              currencyBalance={balance}
+              fiatBalance={currencyFiatBalance}
+              activeCurrency={activeCurrency}
+              isFetching={isBalanceFetching}
+              handleReceive={this.handleReceive}
+              handleWithdraw={this.handleWithdraw}
+              handleInvoice={this.handleInvoice}
+              showButtons={actions.user.isOwner(
+                address,
+                itemCurrency.tokenKey || currencyName
+              )}
+              currency={currency.toLowerCase()}
+              singleWallet={true}
+              multisigPendingCount={multisigPendingCount}
+            />
           }
         >
-          <div styleName={`currencyWalletActivity ${isDark ? 'darkActivity' : ''}`}>
+          <div styleName="currencyWalletActivity">
             <FilterForm
               filterValue={filterValue}
               onSubmit={this.handleFilter}
@@ -795,26 +602,24 @@ export default class CurrencyWallet extends Component<any, any> {
             {txHistory &&
               !isLoading &&
               (txHistory.length > 0 ? (
+                // TODO: use the infinite list component or smth else
+                // if we have lots of tx with the Table then it 
+                // load long time and display all transaction
                 <Table rows={txHistory} styleName="currencyHistory" rowRender={this.rowRender} />
               ) : (
                   <div styleName="historyContent">
-                    {/*
-                    //@ts-ignore */}
                     <ContentLoader rideSideContent empty nonHeader inner />
                   </div>
                 ))}
             {(!txHistory || isLoading) && (
               <div styleName="historyContent">
-                {/*
-                //@ts-ignore */}
                 <ContentLoader rideSideContent nonHeader />
               </div>
             )}
           </div>
           {showSwapHistory && (
             <>
-              {!actions.btcmultisig.isBTCSMSAddress(`${address}`) &&
-                !actions.btcmultisig.isBTCMSUserAddress(`${address}`) &&
+              {!actions.btcmultisig.isBTCMSUserAddress(`${address}`) &&
                 (swapHistory.filter((item) => item.step >= 1).length > 0 ? (
                     <SwapsHistory orders={swapHistory.filter((item) => item.step >= 4)} />
                   ) : (
@@ -830,3 +635,5 @@ export default class CurrencyWallet extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(CurrencyWallet)

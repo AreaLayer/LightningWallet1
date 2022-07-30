@@ -73,7 +73,7 @@ const markInvoice = (invoiceId, mark, txid, address) => new Promise((resolve) =>
   .catch(() => { resolve(false) }))
 
 const getInvoice = (hash) => {
-  if ((config.isWidget || !config.opts.invoiceEnabled)) {
+  if (!config.opts.invoiceEnabled) {
     return new Promise((resolve) => { resolve(false) })
   }
 
@@ -117,7 +117,7 @@ const getInvoice = (hash) => {
 }
 
 const getManyInvoices = (data) => {
-  if ((config.isWidget || !config.opts.invoiceEnabled)) {
+  if (!config.opts.invoiceEnabled) {
     return new Promise((resolve) => { resolve([]) })
   }
 
@@ -128,10 +128,11 @@ const getManyInvoices = (data) => {
       if (item && item.type && item.address) {
         const {
           type: rawType,
+          tokenKey,
           address,
         } = item
 
-        const type = getCurrencyKey(rawType, true).toUpperCase()
+        const type = ((tokenKey) ? tokenKey : getCurrencyKey(rawType, true)).toUpperCase()
         walletsHashMap[`${type}:${address.toLowerCase()}`] = {
           type,
           address,
@@ -180,7 +181,7 @@ const getManyInvoices = (data) => {
 }
 
 const getInvoices = (data) => {
-  if ((config.isWidget || !config.opts.invoiceEnabled)) {
+  if (!config.opts.invoiceEnabled) {
     return new Promise((resolve) => { resolve([]) })
   }
 

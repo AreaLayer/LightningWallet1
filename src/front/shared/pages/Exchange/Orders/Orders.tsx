@@ -1,5 +1,4 @@
 import React, { Component, Fragment } from 'react'
-import PropTypes from 'prop-types'
 
 import cssModules from 'react-css-modules'
 import styles from './Orders.scss'
@@ -22,7 +21,7 @@ import OrderBook from './OrderBook/OrderBook'
 
 import config from 'app-config'
 
-@injectIntl
+
 @connect(({
   core: { filter },
   currencies: { items: currencies },
@@ -31,21 +30,10 @@ import config from 'app-config'
   currencies,
 }))
 @cssModules(styles, { allowMultiple: true })
-export default class Home extends Component<any, any> {
-
-  static propTypes = {
-    faqList: PropTypes.arrayOf(PropTypes.shape({
-      title: PropTypes.string.isRequired,
-      description: PropTypes.string.isRequired,
-    })),
-    faqFetching: PropTypes.bool,
-  }
-
+class Offers extends Component<any, any> {
   constructor(props) {
-    //@ts-ignore
-    super()
+    super(props)
     const { initialData, intl: { locale } } = props
-    //@ts-ignore
     const { buyCurrency, sellCurrency } = initialData || {}
 
     const { buy, sell } = this.getCurrentCurrencies(props)
@@ -194,8 +182,6 @@ export default class Home extends Component<any, any> {
                 currencies={currencies}
               />
               <div styleName="videoContainer">
-                {/*
-                //@ts-ignore */}
                 <Center relative centerVertically={false}>
                   <SubTitle>
                     <FormattedMessage id="Home153" defaultMessage="What is atomic swap?" />
@@ -204,7 +190,7 @@ export default class Home extends Component<any, any> {
 
                 <div styleName="videoFaqContainer">
                   <iframe
-                    title="What1 is atomic swap?"
+                    title="What is atomic swap?"
                     width="700"
                     height="480"
                     src="https://www.youtube.com/embed/Jhrb7xOT_7s"
@@ -212,7 +198,7 @@ export default class Home extends Component<any, any> {
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                   />
-                  <div styleName="faqContainer" >
+                  <div styleName="faqContainer">
                     {
                       links.faq.map((question, idx) =>
                         <FaqExpandableItem key={idx} {...question} />
@@ -223,9 +209,7 @@ export default class Home extends Component<any, any> {
               </div>
             </PageHeadline>
           ) : (
-            //@ts-ignore
             <OrderBook
-              //@ts-ignore
               handleSellCurrencySelect={this.handleSellCurrencySelect}
               handleBuyCurrencySelect={this.handleBuyCurrencySelect}
               buyCurrency={buyCurrency}
@@ -237,6 +221,7 @@ export default class Home extends Component<any, any> {
               pairFees={pairFees}
               balances={balances}
               checkSwapAllow={this.props.checkSwapAllow}
+              checkSwapExists={this.props.checkSwapExists}
             />
           )
         }
@@ -244,3 +229,5 @@ export default class Home extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(Offers)

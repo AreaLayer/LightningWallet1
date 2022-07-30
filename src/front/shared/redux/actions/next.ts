@@ -12,33 +12,15 @@ import { next, apiLooper, constants, api } from 'helpers'
 import actions from 'redux/actions'
 import typeforce from 'swap.app/util/typeforce'
 import config from 'app-config'
-const bitcore = require('bitcore-lib')
-import { localisePrefix } from 'helpers/locale'
-import * as mnemonicUtils from '../../../../common/utils/mnemonic'
-import { default as nextUtils } from '../../../../common/utils/coin/next'
+import bitcore from 'bitcore-lib'
+import * as mnemonicUtils from 'common/utils/mnemonic'
+import { default as nextUtils } from 'common/utils/coin/next'
 
 
 const NETWORK = (process.env.MAINNET) ? `MAINNET` : `TESTNET`
 
 
-const hasAdminFee = (config
-  && config.opts
-  && config.opts.fee
-  && config.opts.fee.next
-  && config.opts.fee.next.fee
-  && config.opts.fee.next.address
-  && config.opts.fee.next.min
-) ? config.opts.fee.next : false
-
-const getRandomMnemonicWords = () => bip39.generateMnemonic()
-const validateMnemonicWords = (mnemonic) => bip39.validateMnemonic(mnemonicUtils.convertMnemonicToValid(mnemonic))
-
-
-const sweepToMnemonic = (mnemonic, path) => {
-  const wallet = getWalletByWords(mnemonic, path)
-  localStorage.setItem(constants.privateKeyNames.nextMnemonic, wallet.WIF)
-  return wallet.WIF
-}
+const hasAdminFee = !!config?.opts?.fee?.next?.min && config.opts.fee.next
 
 const getMainPublicKey = () => {
   const {
@@ -48,35 +30,6 @@ const getMainPublicKey = () => {
   } = getState()
 
   return nextData.publicKey.toString('Hex')
-}
-
-const isSweeped = () => {
-  const {
-    user: {
-      nextData,
-      nextMnemonicData,
-    },
-  } = getState()
-
-  if (nextMnemonicData
-    && nextMnemonicData.address
-    && nextData
-    && nextData.address
-    && nextData.address.toLowerCase() !== nextMnemonicData.address.toLowerCase()
-  ) return false
-
-  return true
-}
-
-const getSweepAddress = () => {
-  const {
-    user: {
-      nextMnemonicData,
-    },
-  } = getState()
-
-  if (nextMnemonicData && nextMnemonicData.address) return nextMnemonicData.address
-  return false
 }
 
 const getWalletByWords = (mnemonic: string, walletNumber: number = 0, path: string = '') => {
@@ -125,16 +78,10 @@ const getPrivateKeyByAddress = (address) => {
   if (mnemonicAddress === address) return mnemonicKey
 }
 
-const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
-  let sweepToMnemonicReady = false
-
-  if (privateKey
-    && mnemonic
-    && mnemonicKeys
-    && mnemonicKeys.next === privateKey
-  ) sweepToMnemonicReady = true
-
-  if (!privateKey && mnemonic) sweepToMnemonicReady = true
+const login = (
+  privateKey,
+  mnemonic: string | null = null,
+) => {
 
   if (privateKey) {
     const hash = bitcoin.crypto.sha256(privateKey)
@@ -146,20 +93,19 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
     // keyPair     = bitcoin.ECPair.makeRandom({ network: next.network })
     // privateKey  = keyPair.toWIF()
     // use random 12 words
+    //@ts-ignore: strictNullChecks
     if (!mnemonic) mnemonic = bip39.generateMnemonic()
-    
+
+    //@ts-ignore: strictNullChecks
     const accData = getWalletByWords(mnemonic)
-    console.log('Next. Generated wallet from random 12 words')
-    console.log(accData)
+
     privateKey = accData.WIF
-    localStorage.setItem(constants.privateKeyNames.nextMnemonic, privateKey)
   }
 
   localStorage.setItem(constants.privateKeyNames.next, privateKey)
 
   const data = {
     ...auth(privateKey),
-    isMnemonic: sweepToMnemonicReady,
     currency: 'NEXT',
     fullName: 'NEXT.coin',
   }
@@ -167,57 +113,10 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
   window.getNextAddress = () => data.address
   window.getNextData = () => data
 
-  console.info('Logged in with Next', data)
   reducers.user.setAuthData({
     name: 'nextData',
     data,
   })
-  if (!sweepToMnemonicReady) {
-    // Auth with our mnemonic account
-    if (mnemonic === `-`) {
-      console.error('Sweep. Cant auth. Need new mnemonic or enter own for re-login')
-      return
-    }
-
-    if (!mnemonicKeys || !mnemonicKeys.next) {
-      console.error('Sweep. Cant auth. Login key undefined')
-      return
-    }
-
-    const mnemonicData = {
-      ...auth(mnemonicKeys.next),
-      isMnemonic: true,
-    }
-    console.info('Logged in with Next Mnemonic', mnemonicData)
-    reducers.user.addWallet({
-      name: 'nextMnemonicData',
-      data: {
-        currency: 'NEXT',
-        fullName: 'Next (New)',
-        balance: 0,
-        isBalanceFetched: false,
-        balanceError: null,
-        infoAboutCurrency: null,
-        ...mnemonicData,
-      },
-    })
-    new Promise(async (resolve) => {
-      const balanceData = await fetchBalanceStatus(mnemonicData.address)
-      if (balanceData) {
-        reducers.user.setAuthData({
-          name: 'nextMnemonicData',
-          data: {
-            //@ts-ignore
-            ...balanceData,
-            isBalanceFetched: true,
-          },
-        })
-      } else {
-        reducers.user.setBalanceError({ name: 'nextMnemonicData' })
-      }
-      resolve(true)
-    })
-  }
 
   return privateKey
 }
@@ -277,8 +176,7 @@ const getBalance = () => {
   }).then((answer: any) => {
     const balance = (typeof answer.balance === 'undefined') ? 0 : answer.balance
     const unconfirmedBalance = (typeof answer.unconfirmedBalance === 'undefined') ? 0 : answer.unconfirmedBalance
-    console.log('NEXT Balance: ', balance)
-    console.log('NEXT unconfirmedBalance Balance: ', unconfirmedBalance)
+
     reducers.user.setBalance({
       name: 'nextData',
       amount: balance,
@@ -333,38 +231,32 @@ const getAllMyAddresses = () => {
   const {
     user: {
       nextData,
-      nextMnemonicData,
       nextMultisigSMSData,
       nextMultisigUserData,
-      nextMultisigG2FAData,
       nextMultisigPinData,
     },
   } = getState()
 
   const retData = []
-  // Проверяем, был ли sweep
-  if (nextMnemonicData
-    && nextMnemonicData.address
-    && nextData
-    && nextData.address
-    && nextMnemonicData.address !== nextData.address
-  ) {
-    retData.push(nextMnemonicData.address.toLowerCase())
-  }
 
+  //@ts-ignore: strictNullChecks
   retData.push(nextData.address.toLowerCase())
 
-  if (nextMultisigSMSData && nextMultisigSMSData.address) retData.push(nextMultisigSMSData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (nextMultisigSMSData?.address) retData.push(nextMultisigSMSData.address.toLowerCase())
   // @ToDo - SMS MultiWallet
 
-  if (nextMultisigUserData && nextMultisigUserData.address) retData.push(nextMultisigUserData.address.toLowerCase())
-  if (nextMultisigUserData && nextMultisigUserData.wallets && nextMultisigUserData.wallets.length) {
+  //@ts-ignore: strictNullChecks
+  if (nextMultisigUserData?.address) retData.push(nextMultisigUserData.address.toLowerCase())
+  if (nextMultisigUserData?.wallets?.length) {
     nextMultisigUserData.wallets.map((wallet) => {
+      //@ts-ignore: strictNullChecks
       retData.push(wallet.address.toLowerCase())
     })
   }
 
-  if (nextMultisigPinData && nextMultisigPinData.address) retData.push(nextMultisigPinData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (nextMultisigPinData?.address) retData.push(nextMultisigPinData.address.toLowerCase())
 
   return retData
 }
@@ -373,7 +265,6 @@ const getDataByAddress = (address) => {
   const {
     user: {
       nextData,
-      nextMnemonicData,
       nextMultisigSMSData,
       nextMultisigUserData,
       nextMultisigG2FAData,
@@ -382,7 +273,6 @@ const getDataByAddress = (address) => {
 
   const founded = [
     nextData,
-    nextMnemonicData,
     nextMultisigSMSData,
     nextMultisigUserData,
     ...(
@@ -411,17 +301,16 @@ const getTransaction = (address: string = ``, ownType: string = ``) =>
       resolve([])
     }
 
-    return apiLooper.get('nextExplorer', `/txs/?address=${address}`, {
+    return apiLooper.get('nextExplorer', `/txs/${address}`, {
       checkStatus: (answer) => {
         try {
           if (answer && answer.txs !== undefined) return true
         } catch (e) { /* */ }
         return false
       },
-      query: 'next_balance',
     }).then((res: any) => {
       const transactions = res.txs.map((item) => {
-        const direction = item.vin[0].addr !== address ? 'in' : 'out'
+        const direction = item.vin[0].address !== address ? 'in' : 'out'
 
         const isSelf = direction === 'out'
           && item.vout.filter((item) =>
@@ -431,6 +320,7 @@ const getTransaction = (address: string = ``, ownType: string = ``) =>
         return ({
           type,
           hash: item.txid,
+          //@ts-ignore: strictNullChecks
           canEdit: (myAllWallets.indexOf(address) !== -1),
           confirmations: item.confirmations,
           value: isSelf
@@ -458,24 +348,36 @@ const getTransaction = (address: string = ``, ownType: string = ``) =>
 const send = ({ from, to, amount, feeValue, speed } = {}) => {
 
   return new Promise(async (ready) => {
-    bitcore.Networks.add({
+    const networks = bitcore.Networks
+    const nextNetwork = {
       name: 'next-mainnet',
-      pubkeyhash: next.network.pubKeyHash,
-      privatekey: next.network.wif,
-      scripthash: next.network.scriptHash,
-      xpubkey: next.network.bip32.public,
-      xprivkey: next.network.bip32.private,
+      alias: 'next-mainnet',
+      pubkeyhash: 0x4b,
+      privatekey: 0x80,
+      scripthash: 0x05,
+      xpubkey: 0x0488B21E,
+      xprivkey: 0x0488ADE4,
       networkMagic: 0xcbe4d0a1,
-      port: 7077,
-    })
-    const bitcoreNetwork = bitcore.Networks.get('next-mainnet')
+      port: 7078,
+      dnsSeeds: [
+        config.api.nextExplorer,
+      ]
+    }
+    networks.add(nextNetwork)
+
+    const bitcoreNextNetwork = networks.get('next-mainnet', 'name')
+
+    const bitcoinNetwork = networks.get('livenet', 'name')
+    // need remove because of bitcore.PrivateKey() use 'privatekey' key to get network
+    // for validation and bitcoin.livenet.privatekey === nextNetwork.privatekey
+    networks.remove(bitcoinNetwork)
 
     const privKeyWIF = getPrivateKeyByAddress(from)
-    const privateKey = new bitcore.PrivateKey.fromWIF(privKeyWIF)
-    const publicKey = bitcore.PublicKey(privateKey, bitcoreNetwork)
-    const addressFrom = new bitcore.Address(publicKey, bitcoreNetwork)
+    const privateKey = new bitcore.PrivateKey(privKeyWIF, bitcoreNextNetwork)
+    const publicKey = bitcore.PublicKey.fromPrivateKey(privateKey)
+    const addressFrom = new bitcore.Address(publicKey, bitcoreNextNetwork)
 
-    const unspents = await fetchUnspents(from)
+    const unspents: bitcore.Transaction.UnspentOutput[] = await fetchUnspents(from) || []
     const amountSat = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
 
     const transaction = new bitcore.Transaction()
@@ -487,6 +389,7 @@ const send = ({ from, to, amount, feeValue, speed } = {}) => {
     const rawTx = String(transaction.serialize())
     const broadcastAnswer: any = await broadcastTx(rawTx)
     const txid = broadcastAnswer.raw
+
     ready(txid)
   })
 }
@@ -495,7 +398,14 @@ const send = ({ from, to, amount, feeValue, speed } = {}) => {
 const fetchUnspents = (address) => nextUtils.fetchUnspents({
   address,
   NETWORK,
-})
+}).then((unspents: any) => unspents.map(unspent => ({
+    address: unspent.address,
+    txId: unspent.txid,
+    outputIndex: unspent.outputIndex,
+    script: unspent.script,
+    satoshis: unspent.satoshis,
+  }))
+)
 
 
 const broadcastTx = (txRaw) => nextUtils.broadcastTx({
@@ -506,14 +416,13 @@ const broadcastTx = (txRaw) => nextUtils.broadcastTx({
 const signMessage = (message, encodedPrivateKey) => {
   //@ts-ignore
   const keyPair = bitcoin.ECPair.fromWIF(encodedPrivateKey, [next.networks.mainnet])
+  //@ts-ignore: strictNullChecks
   const privateKeyBuff = Buffer.from(keyPair.privateKey)
 
   const signature = bitcoinMessage.sign(message, privateKeyBuff, keyPair.compressed)
 
   return signature.toString('base64')
 }
-
-const getReputation = () => Promise.resolve(0)
 
 const checkWithdraw = (scriptAddress) => nextUtils.checkWithdraw({
   scriptAddress,
@@ -532,16 +441,10 @@ export default {
   fetchTxInfo,
   fetchBalance,
   signMessage,
-  getReputation,
   getTx,
   getLinkToInfo,
   getInvoices,
   getWalletByWords,
-  getRandomMnemonicWords,
-  validateMnemonicWords,
-  sweepToMnemonic,
-  isSweeped,
-  getSweepAddress,
   getAllMyAddresses,
   getDataByAddress,
   getMainPublicKey,

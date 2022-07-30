@@ -1,25 +1,22 @@
-import React from 'react'
 import { isMobile } from 'react-device-detect'
 
 import { Switch, Route } from 'react-router-dom'
 
 import { links } from 'helpers'
-import { localisePrefix } from 'helpers/locale'
-
 import LocalStorage from 'pages/LocalStorage/LocalStorage'
 import SwapComponent from 'pages/Swap/Swap'
+import TurboSwap from 'pages/TurboSwap/TurboSwap'
 import History from 'pages/History/History'
 import CreateWallet from 'pages/CreateWallet/CreateWallet'
 import NotFound from 'pages/NotFound/NotFound'
-import About from 'pages/About/About'
 import Wallet from 'pages/Wallet/Wallet'
-import Currency from 'pages/Currency/Currency'
-import Exchange from 'pages/Exchange/Exchange'
-import PointOfSell from 'pages/PointOfSell/PointOfSell'
+import Exchange from 'shared/pages/Exchange'
 import CurrencyWallet from 'pages/CurrencyWallet/CurrencyWallet'
 import Transaction from 'pages/Transaction/Transaction'
-import IEO from 'pages/IEO/IEO'
 import BtcMultisignProcessor from 'pages/Multisign/Btc/Btc'
+
+import MarketmakerPromo from 'pages/Marketmaker/MarketmakerPromo'
+import MarketmakerSettings from 'pages/Marketmaker/MarketmakerSettings'
 
 import CreateInvoice from 'pages/Invoices/CreateInvoice'
 import InvoicesList from 'pages/Invoices/InvoicesList'
@@ -29,72 +26,76 @@ import ScrollToTop from '../components/layout/ScrollToTop/ScrollToTop'
 import SaveMnemonicModal from "components/modals/SaveMnemonicModal/SaveMnemonicModal"
 import SaveKeysModal from "components/modals/SaveKeysModal/SaveKeysModal"
 
-
 import RestoryMnemonicWallet from "components/modals/RestoryMnemonicWallet/RestoryMnemonicWallet"
-
 
 const routes = (
   <ScrollToTop>
     <Switch>
-      <Route exact path={`${localisePrefix}/:page(exit)`} component={Wallet} />
+      <Route exact path={`/:page(exit)`} component={Wallet} />
 
-      <Route path={`${localisePrefix}${links.swap}/:buy-:sell/:orderId`} component={SwapComponent} />
+      <Route path={`${links.atomicSwap}/:orderId`} component={SwapComponent} />
+      <Route path={`${links.turboSwap}/:orderId`} component={TurboSwap} />
 
-      <Route path={`${localisePrefix}/:ticker(btc|eth|ghost|next)/tx/:tx?`} component={Transaction} />
-      <Route path={`${localisePrefix}/:token(token)/:ticker/tx/:tx?`} component={Transaction} />
+      <Route path={`/:ticker(btc|eth|bnb|matic|arbeth|aureth|xdai|ftm|avax|movr|one|ghost|next)/tx/:tx?`} component={Transaction} />
+      <Route path={`/:token(token)/:ticker/tx/:tx?`} component={Transaction} />
 
-      <Route path={`${localisePrefix}/:ticker(btc|eth|ghost|next)/:address/:action(receive|send)?`} component={CurrencyWallet} />
-      <Route path={`${localisePrefix}/:token(token)/:ticker/:address`} component={CurrencyWallet} />
-      <Route path={`${localisePrefix}/:token(token)/:ticker/:address/withdraw`} component={CurrencyWallet} />
-      <Route path={`${localisePrefix}/:fullName-wallet/:address?`} component={CurrencyWallet} />
+      <Route
+        path={`/:ticker(btc|eth|bnb|matic|arbeth|aureth|xdai|ftm|avax|movr|one|ghost|next)/:address/:action(receive|send)?`}
+        component={CurrencyWallet}
+      />
+      <Route path={`/:token(token)/:ticker/:address`} component={CurrencyWallet} />
+      <Route path={`/:token(token)/:ticker/:address/withdraw`} component={CurrencyWallet} />
+      <Route path={`/:fullName-wallet/:address?`} component={CurrencyWallet} />
 
-      <Route path={`${localisePrefix}${links.exchange}/:sell-to-:buy/:linkedOrderId`} component={Exchange} />
-      <Route path={`${localisePrefix}${links.exchange}/:sell-to-:buy`} component={Exchange} />
-      <Route path={`${localisePrefix}${links.exchange}`} component={Exchange} />
+      <Route path={`${links.exchange}/quick/createOrder`} component={Exchange} />
+      <Route path={`${links.exchange}/quick/:sell-to-:buy`} component={Exchange} />
+      <Route path={`${links.exchange}/quick`} component={Exchange} />
+      <Route path={`${links.exchange}/:sell-to-:buy/:linkedOrderId`} component={Exchange} />
+      <Route path={`${links.exchange}/:sell-to-:buy`} component={Exchange} />
+      <Route path={`${links.exchange}`} component={Exchange} />
 
-      <Route path={`${localisePrefix}${links.localStorage}`} component={LocalStorage} />
+      <Route path={`${links.localStorage}`} component={LocalStorage} />
 
-      <Route path={`${localisePrefix}${links.pointOfSell}/:sell-to-:buy`} component={PointOfSell} />
-      <Route path={`${localisePrefix}${links.pointOfSell}`} component={PointOfSell} />
+      <Route path={`${links.send}/:currency/:address/:amount`} component={Wallet} />
+      <Route path={`${links.wallet}`} component={Wallet} />
 
-      <Route path={`${localisePrefix}${links.aboutUs}`} component={About} />
+      <Route exact path={`${links.createWallet}`} component={CreateWallet} />
+      <Route path={`${links.createWallet}/:currency`} component={CreateWallet} />
+      <Route path={`${links.restoreWallet}`} component={RestoryMnemonicWallet} />
 
-      <Route path={`${localisePrefix}${links.send}/:currency/:address/:amount`} component={Wallet} />
-      <Route path={`${localisePrefix}${links.wallet}`} component={Wallet} />
+      <Route path={`${links.multisign}/btc/:action/:data/:peer`} component={BtcMultisignProcessor} />
+      <Route path={`${links.multisign}/btc/:action/:data`} component={BtcMultisignProcessor} />
 
-      <Route exact path={`${localisePrefix}${links.createWallet}`} component={CreateWallet} />
-      <Route path={`${localisePrefix}${links.createWallet}/:currency`} component={CreateWallet} />
-      <Route path={`${localisePrefix}${links.restoreWallet}`} component={RestoryMnemonicWallet} />
+      <Route path={`${links.createInvoice}/:type/:wallet`} component={CreateInvoice} />
+      {isMobile && <Route path={`${links.invoices}/:type?/:address?`} component={InvoicesList} />}
+      <Route path={`${links.invoice}/:uniqhash?/:doshare?`} component={Invoice} />
 
-      <Route path={`${localisePrefix}${links.multisign}/btc/:action/:data/:peer`} component={BtcMultisignProcessor} />
-      <Route path={`${localisePrefix}${links.multisign}/btc/:action/:data`} component={BtcMultisignProcessor} />
+      <Route path={`${links.savePrivateSeed}`} component={SaveMnemonicModal} />
+      <Route path={`${links.savePrivateKeys}`} component={SaveKeysModal} />
 
-      <Route path={`${localisePrefix}${links.createInvoice}/:type/:wallet`} component={CreateInvoice} />
-      {isMobile && <Route path={`${localisePrefix}${links.invoices}/:type?/:address?`} component={InvoicesList} />}
-      <Route path={`${localisePrefix}${links.invoice}/:uniqhash?/:doshare?`} component={Invoice} />
+      <Route exact path={`${links.notFound}`} component={NotFound} />
+      <Route exact path={`/`} component={Wallet} />
+      <Route exact path={`${links.connectWallet}`} component={Wallet} />
 
-      <Route path={`${localisePrefix}${links.savePrivateSeed}`} component={SaveMnemonicModal} />
-      <Route path={`${localisePrefix}${links.savePrivateKeys}`} component={SaveKeysModal} />
+      <Route exact path={`${links.marketmaker}`} component={MarketmakerPromo} />
+      <Route exact path={`${links.marketmaker_short}`} component={MarketmakerPromo} />
+      <Route path={`${links.marketmaker}/:token/:utxoCoin?`} component={MarketmakerSettings} />
+      <Route path={`${links.marketmaker_short}/:token/:utxoCoin?`} component={MarketmakerSettings} />
 
-      <Route path={`${localisePrefix}${links.ieo}`} component={IEO} />
-      <Route exact path={`${localisePrefix}${links.notFound}`} component={NotFound} />
-      <Route exact path={`${localisePrefix}/`} component={Wallet} />
-      <Route exact path={`${localisePrefix}${links.connectWallet}`} component={Wallet} />
-      {/* В десктоп режиме - история показывается в дизайне кошелька */}
+      {/* In desktop mode - the history is shown in the wallet design */}
       {!isMobile && (
-        <>
-          <Route exact path={`${localisePrefix}/:page(invoices)/:type?/:address?`} component={Wallet} />
-          <Route exact path={`${localisePrefix}/:page(history)`} component={Wallet} />
-        </>
+        <Switch>
+          <Route exact path={`/:page(invoices)/:type?/:address?`} component={Wallet} />
+          <Route exact path={`/:page(history)`} component={Wallet} />
+        </Switch>
       )}
       {isMobile && (
-        <>
-          <Route exact path={`${localisePrefix}${links.history}/(btc)?/:address?`} component={History} />
-          <Route exact path={`${localisePrefix}/:page(invoices)/:type?/:address?`} component={History} />
-        </>
+        <Switch>
+          <Route exact path={`${links.history}/(btc)?/:address?`} component={History} />
+          <Route exact path={`/:page(invoices)/:type?/:address?`} component={History} />
+        </Switch>
       )}
-      <Route path={`${localisePrefix}${links.currencyWallet}`} component={Wallet} />
-      <Route path={`${localisePrefix}/:currency`} component={Currency} />
+      <Route path={`${links.currencyWallet}`} component={Wallet} />
 
       <Route component={NotFound} />
     </Switch>

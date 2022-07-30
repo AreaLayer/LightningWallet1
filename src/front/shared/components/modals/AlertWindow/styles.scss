@@ -1,20 +1,12 @@
 .header {
-    padding: 16px 0;
-  }
+  padding: 16px 0;
+}
 
 .closeButton {
-  width: 20px;
-  height: 20px;
-  opacity: 0.5;
-  transition: opacity 0.33s $ease-out-quadratic;
   position: absolute;
   right: 20px;
-
-  &:hover {
-    opacity: 1;
-    transition: none;
-  }
 }
+
 .headerContent {
   height: 100%;
   display: flex;
@@ -45,26 +37,19 @@
   justify-content: center;
   background-color: rgba(0, 0, 0, .3);
   opacity: 1;
-
-  &.--dark {
-    .modal {
-      background: #1e1f20;
-      color: white;
-    }
-  }
 }
 
 .modal {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--color-background-elements);
   padding: 32px;
   width: 100%;
   max-width: 640px;
   height: auto;
   border-radius: 10px;
-  box-shadow: 0 0 5px rgba(0, 0, 0, .4);
+  box-shadow: var(--box-shadow);
 }
 
 .button {

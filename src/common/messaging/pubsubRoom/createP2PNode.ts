@@ -19,7 +19,7 @@ const createP2PNode = (options) => {
   const defaultListen = [
     //'/ip4/0.0.0.0/tcp/4002',
     '/dns4/webrtc-star-1.swaponline.io/tcp/443/wss/p2p-webrtc-star/',
-    //'/dns4/webrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star',
+    //'/dns4/webrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star/',
     //'/dns4/secure-beyond-12878.herokuapp.com/tcp/443/wss/p2p-webrtc-star/',
     //'/dns4/wrtc-star2.sjc.dwebops.pub/tcp/443/wss/p2p-webrtc-star/'
   ]
@@ -51,25 +51,24 @@ const createP2PNode = (options) => {
     let peerId = null
     if (peerIdJson) {
       try {
+        //@ts-ignore: strictNullChecks
         peerId = await PeerId.createFromJSON(peerIdJson)
       } catch (e) {}
     }
 
     if (!peerId) {
+      //@ts-ignore: strictNullChecks
       peerId = await PeerId.create()
     }
 
+    //@ts-ignore: strictNullChecks
     console.log('Peer id:', peerId._idB58String)
 
     const p2pNode = new Libp2p({
+      //@ts-ignore: strictNullChecks
       peerId,
       addresses: {
         listen: (listen || defaultListen),
-      },
-      connectionManager: {
-        minPeers: 25,
-        maxPeers: 100,
-        pollInterval: 5000
       },
       modules: {
         transport: [WebrtcStar],
@@ -77,7 +76,26 @@ const createP2PNode = (options) => {
         connEncryption: [SECIO],
         peerDiscovery: [Bootstrap],
         dht: KadDHT,
+        // @ts-ignore
         pubsub: Gossipsub
+      },
+      dialer: {
+        // @ts-ignore
+        maxParallelDials: 100,
+        maxDialsPerPeer: 100,
+        dialTimeout: 30e3
+      },
+      connectionManager: {
+        maxConnections: Infinity,
+        minConnections: Infinity,
+        maxData: Infinity,
+        maxSentData: Infinity,
+        maxReceivedData: Infinity,
+        maxEventLoopDelay: Infinity,
+        pollInterval: 2000,
+        autoDialInterval: 5000,
+        movingAverageInterval: 1000,
+        defaultPeerValue: 1
       },
       config: {
         transport: {
@@ -92,25 +110,9 @@ const createP2PNode = (options) => {
           },
           bootstrap: {
             enabled: true,
-            interval: 30e3,
+            interval: 1e3,
             list: discoveryPeers || defaultDiscoveryPeers,
-          }
-        },
-        dialer: {
-          maxParallelDials: 100,
-          maxDialsPerPeer: 100,
-          dialTimeout: 30e3
-        },
-        connectionManager: {
-          maxConnections: Infinity,
-          minConnections: 0,
-          pollInterval: 1000,
-          defaultPeerValue: 1,
-          maxData: Infinity,
-          maxSentData: Infinity,
-          maxReceivedData: Infinity,
-          maxEventLoopDelay: Infinity,
-          movingAverageInterval: 5000
+          },
         },
         relay: {
           enabled: true,

@@ -1,25 +1,24 @@
-import React from 'react'
-
 import CSSModules from 'react-css-modules'
 import styles from './Switching.scss'
 import cx from 'classnames'
 
-import PropTypes from 'prop-types'
+type SwitchingProps = {
+  onClick: () => void
+  noneBorder?: boolean
+}
 
+const doNothing = () => {}
 
-const Switching = ({ onClick, noneBorder }) => {
+const Switching = (props: SwitchingProps) => {
+  const { onClick = doNothing, noneBorder = false } = props
 
-  const styleName = cx('Switching', {
+  const styleName = cx('switching', {
     'noneBorder': noneBorder,
   })
 
   return (
-    <button onClick={onClick} styleName={styleName} />
+    <button type="button" onClick={onClick} styleName={styleName} className="fas fa-exchange-alt" />
   )
-}
-
-Switching.propTypes = {
-  onClick: PropTypes.func.isRequired,
 }
 
 export default CSSModules(Switching, styles, { allowMultiple: true })

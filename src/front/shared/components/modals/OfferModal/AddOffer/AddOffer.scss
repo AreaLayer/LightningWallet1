@@ -1,5 +1,5 @@
 
-@keyframes errorAppend{
+@keyframes errorAppend {
   0% {
     max-height: 0;
     opacity: 0;
@@ -22,12 +22,6 @@
   width: 100%;
   max-width: 450px;
   margin: 0 auto;
-
-  &.--dark {
-    .togleText {
-      color: #8e9aa3;
-    }
-  }
 }
 
 .offerTitle {
@@ -41,19 +35,20 @@
   input {
     border: none;
     border-radius: 0;
-    border-right: 1px solid rgba(0, 0, 0, 0.2);
+    border-right: 1px solid var(--color-border);
     height: 66px;
   }
 }
 
-.togleText {
-  position: relative;
-  top: -35px;
-  left: 72px;
+.toggle {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5em;
 }
 
-.togles {
-  height: 40px;
+.toggleText {
+  display: flex;
+  align-items: center;
 }
 
 .controlsToggles {
@@ -70,14 +65,10 @@
   box-shadow: none;
 }
 
-.togleGroup {
-  display: inline-block;
-}
-
 .error {
   margin-top: 8px;
   font-size: 14px;
-  color: $color-f-error;
+  color: var(--color-f-error);
 
   [role = "errorLink"] {
     display: inline !important;
@@ -90,11 +81,11 @@
 .Error {
   display: flex;
   align-items: center;
-  color: #fff;
+  color: var(--color-background-elements);
   padding: 0.3em 10px;
   margin-top: -5px;
   font-size: 13px;
-  background: #FD6B65;
+  background: var(--color-f-error);
   border-radius: 3px;
   margin-bottom: 15px;
   @include errAppend();
@@ -122,3 +113,5 @@
     }
   }
 }
+
+

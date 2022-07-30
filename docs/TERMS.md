@@ -1,3 +1,5 @@
+(work in progress...)
+
 # Terms
 
 The list of terms is needed to synchronize developer concepts
@@ -54,7 +56,7 @@ Room participant, can communicate with other peers using messages
 
 
 ## Maker
-The peer who created the offer
+The peer who created the offer. https://youtu.be/XkLsW5qxdEc?t=458 (ru)
 
 - synonyms: `offer maker`
 - deprecated: `owner`
@@ -71,6 +73,7 @@ The peer who accepted the offer (initiated the swap)
 ...
 
 - synonyms: `marketmaker bot` / `bot`
+- abbreviations: `mm`
 
 
 ## Offer
@@ -93,6 +96,12 @@ The peer who accepted the offer (initiated the swap)
 ...
 
 - example: `allowPartialSwap = true`
+
+
+### Atomic swap / Turbo swap
+Two schemes for swap execution.
+
+See [atomic vs turbo swaps comparison](/docs/ATOMIC_VS_TURBO_SWAPS.md))
 
 
 ## Flow

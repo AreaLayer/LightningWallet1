@@ -1,39 +1,30 @@
-import actions from 'redux/actions'
 import config from './externalConfig'
-import eth from './eth'
-import constants from './constants'
-import BigNumber from 'bignumber.js'
+import erc20Like from 'common/erc20Like'
 
+// TODO: =================================
 
-const isEthToken = ({ name }) => Object.keys(config.erc20).includes(name.toLowerCase())
+// ! Deprecated. Use common/erc20Like
+
+// TODO: =================================
+
 const isEthOrEthToken = ({ name }) => Object.keys(config.erc20).concat('eth').includes(name.toLowerCase())
 
 type EstimateFeeOptions = {
   method: string
+  swapABMethod?: 'withdraw' | 'deposit'
   speed: 'fast' | 'normal' | 'slow'
 }
 
 const estimateFeeValue = async (options: EstimateFeeOptions) => {
-  /* 
-  * method -> send, swap
-  * speed -> slow, fast, fastest
-  */
-  const { method, speed } = options
-  const gasPrice = await estimateGasPrice({ speed })
-  const feeValue = new BigNumber(constants.defaultFeeRates.ethToken.limit[method])
-    .multipliedBy(gasPrice)
-    .multipliedBy(1e-18)
-    .toNumber()
-
-  return +feeValue
+  return erc20Like.erc20.estimateFeeValue(options)
 }
 
-
-const estimateGasPrice = ({ speed }) => eth.estimateGasPrice({ speed })
+const estimateGasPrice = (params) => {
+  return erc20Like.erc20.estimateFeeValue(params)
+}
 
 export default {
   estimateFeeValue,
   estimateGasPrice,
-  isEthToken,
   isEthOrEthToken,
 }

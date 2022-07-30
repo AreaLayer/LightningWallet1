@@ -1,18 +1,12 @@
 import React, { Fragment } from 'react'
 import PropTypes from 'prop-types'
-import helpers, { constants } from 'helpers'
 import actions from 'redux/actions'
-import Link from 'local_modules/sw-valuelink'
-import { connect } from 'redaction'
-import config from 'app-config'
-
 import cssModules from 'react-css-modules'
 
 import defaultStyles from '../Styles/default.scss'
 import styles from './BtcMultisignSwitch.scss'
 
 import Modal from 'components/modal/Modal/Modal'
-import Button from 'components/controls/Button/Button'
 
 import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
 
@@ -20,21 +14,15 @@ import Table from 'components/tables/Table/Table'
 import WalletRow from './WalletRow'
 
 
-@injectIntl
 @cssModules({ ...defaultStyles, ...styles }, { allowMultiple: true })
-export default class BtcMultisignSwitch extends React.Component<any, any> {
-
-  props: any
-
+class BtcMultisignSwitch extends React.Component<any, any> {
   static propTypes = {
     name: PropTypes.string,
     data: PropTypes.object,
   }
 
-  constructor() {
-    //@ts-ignore
-    super()
-
+  constructor(props) {
+    super(props)
 
     this.state = {
       wallets: [],
@@ -113,3 +101,5 @@ export default class BtcMultisignSwitch extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(BtcMultisignSwitch)

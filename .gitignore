@@ -4,6 +4,7 @@
 .DS_Store
 .eslintcache
 *-lock.*
+yarn*
 
 # node
 
@@ -30,3 +31,10 @@ src/bot/.env
 .ipfs
 .storage
 .env
+swaponline.github.io
+tradeconfig.mainnet.json
+tradeconfig.testnet.json
+
+# tests files
+
+tests/e2e/screenshots

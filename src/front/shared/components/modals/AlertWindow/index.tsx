@@ -14,10 +14,6 @@ import WidthContainer from 'components/layout/WidthContainer/WidthContainer'
 
 import styles from './styles.scss'
 
-
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
 const defaultLanguage = defineMessages({
   createWallet: {
     id: 'AlertModalcreateWallet',
@@ -33,10 +29,9 @@ const defaultLanguage = defineMessages({
   },
 })
 
-@injectIntl
 @withRouter
 @CSSModules(styles, { allowMultiple: true })
-export default class AlertWindow extends Component<any, any> {
+class AlertWindow extends Component<any, any> {
 
   handleClose = () => {
     const { name, data, onClose, history, intl } = this.props
@@ -87,15 +82,14 @@ export default class AlertWindow extends Component<any, any> {
     }
 
     return (
-      <div styleName={`modal-overlay ${isDark ? '--dark' : ''}`}>
+      <div styleName="modal-overlay">
         <div styleName="modal">
           <div styleName="header">
             {/*
             //@ts-ignore */}
             <WidthContainer styleName="headerContent">
               <div styleName="title">{labels.title}</div>
-              {/*
-              //@ts-ignore */}
+
               {canClose && (<CloseIcon styleName="closeButton" onClick={this.handleClosePopup} />)}
             </WidthContainer>
           </div>
@@ -114,3 +108,5 @@ export default class AlertWindow extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(AlertWindow)

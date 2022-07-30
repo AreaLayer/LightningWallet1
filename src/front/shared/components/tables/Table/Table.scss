@@ -12,21 +12,20 @@ $walletPaddingTop: 41px;
     position: sticky;
     top: 0;
     @include ff-bold;
-    width: 100%;
-    border-bottom: 0.5px solid rgba(#000, 0.03);
     border-radius: $borderRadius $borderRadius 0 0;
-    z-index: 100;
+    z-index: 1;
+
+    th {
+      // disable bootstrap style
+      border-bottom: none;
+    }
   }
 
   tbody {
     border-radius: 0 0 $borderRadius $borderRadius;
 
     tr {
-      border-top: 1px solid #f5f5f5;
-
-      &:first-child {
-        border-top: 0;
-      }
+      border-top: 1px solid var(--color-pale);
     }
   }
 
@@ -42,7 +41,6 @@ $walletPaddingTop: 41px;
 
     &:last-child {
       padding-right: 0;
-      // right-align buttons
       display: flex;
       justify-content: flex-end;
     }
@@ -97,14 +95,8 @@ $walletPaddingTop: 41px;
   }
 }
 
-.dark {
-  tr {
-    border-top: 1px solid #313131 !important;
-  }
-}
-
 .noticeText {
-  color: $notice-color;
+  color: var(--color-notice);
 }
 
 .wallet {
@@ -151,19 +143,19 @@ $walletPaddingTop: 41px;
       width: 49%;
       border-radius: 4px;
       margin-bottom: 2%;
-      border: 1px solid rgba(142, 154, 163, 0.16) !important;
-      box-shadow: 0px 2px 12px rgba(142, 154, 163, 0.08);
+      border: 1px solid var(--color-inactive-border) !important;
+      box-shadow: 0px 2px 12px var(--color-inactive-border);
     }
 
     td {
       padding: 10px 20px !important;
       display: flex !important;
       justify-content: space-between;
-      border-bottom: 1px solid #edeff0;
+      border-bottom: 1px solid var(--color-inactive-border);
       @include ff-regular;
 
-      >span {
-        color: #8E9AA3;
+      > span {
+        color: var(--color-notice);
         @include ff;
       }
 
@@ -211,7 +203,7 @@ $walletPaddingTop: 41px;
       &:first-child {
         position: absolute;
         display: flex;
-        background: $color-f-brightest;
+        background: var(--color-f-brightest);
         align-items: center;
         height: 40px;
         width: 50px;
@@ -423,9 +415,6 @@ table.wallet {
   }
 
   .table.exchange {
-    display: table;
-    width: 280px;
-
     td {
       position: relative;
 
@@ -495,6 +484,20 @@ table.wallet {
 
     tr {
       display: block;
+    }
+  }
+}
+
+@media all and (max-width: 800px) {
+  .table.exchange {
+    thead {
+      display: none;
+    }
+
+    tbody {
+      tr:first-child {
+        border-top: none; // ui improve without titles
+      }
     }
   }
 }

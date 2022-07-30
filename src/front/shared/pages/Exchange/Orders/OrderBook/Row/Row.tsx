@@ -1,55 +1,59 @@
 import React, { Component, Fragment } from 'react'
-
+import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
+import cssModules from 'react-css-modules'
+import { Link } from 'react-router-dom'
 import { connect } from 'redaction'
 import actions from 'redux/actions'
-
-import cssModules from 'react-css-modules'
 import styles from './Row.scss'
+import config from 'app-config'
 
 import helpers, { links, constants } from 'helpers'
-import { Link } from 'react-router-dom'
-import SwapApp from 'swap.app'
+import { IPairFees } from 'helpers/getPairFees'
+import PAIR_TYPES from 'helpers/constants/PAIR_TYPES'
+import { localisedUrl } from 'helpers/locale'
+import feedback from 'helpers/feedback'
+import { BigNumber } from 'bignumber.js'
 
 import Avatar from 'components/Avatar/Avatar'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import { RemoveButton } from 'components/controls'
+import TurboIcon from 'components/ui/TurboIcon/TurboIcon'
 
 import Pair from './../../Pair'
-import PAIR_TYPES from 'helpers/constants/PAIR_TYPES'
 import RequestButton from '../RequestButton/RequestButton'
-import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-import { localisedUrl } from 'helpers/locale'
-import { BigNumber } from 'bignumber.js'
-import feedback from 'shared/helpers/feedback'
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
+import SwapApp from 'swap.app'
 
 type RowProps = {
-  history: { [key: string]: any }
+  history: IUniversalObj
   balances: { [key: string]: number } | boolean
-  pairFees: any
+  pairFees: IPairFees
   decline: any[]
   orderId: string
-  linkedOrderId: number
+  linkedOrderId: string
   
   row: {
     id: string
     isMy: boolean
+    isTurbo: boolean
     buyCurrency: string
     sellCurrency: string
     buyAmount: BigNumber
     sellAmount: BigNumber
     isRequested: boolean
     isProcessing: boolean
-    owner: { [key: string]: any }
+    owner: IUniversalObj
   }
 
   removeOrder: (number) => void
   checkSwapAllow: ({}) => boolean
+  checkSwapExists: ({}) => boolean
 
-  currenciesData?: { [key: string]: any }
-  intl?: { [key: string]: any }
+  currenciesData?: IUniversalObj
+  intl?: IUniversalObj
   peer?: string
+
+  buy?: string
+  sell?: string
 }
 
 type RowState = {
@@ -57,7 +61,7 @@ type RowState = {
   isFetching: boolean
   windowWidth: number
 }
-@injectIntl
+
 @connect(({
   pubsubRoom: { peer },
   user,
@@ -67,11 +71,8 @@ type RowState = {
 }))
 
 @cssModules(styles, { allowMultiple: true })
-export default class Row extends Component {
+class Row extends Component<RowProps, RowState> {
   _mounted = false
-
-  props: RowProps
-  state: RowState
 
   constructor(props) {
     super(props)
@@ -93,7 +94,7 @@ export default class Row extends Component {
       balances,
     } = this.props
 
-    const balanceCheckCur = (isMy) ? sellCurrency : buyCurrency
+    let balanceCheckCur = isMy ? sellCurrency : buyCurrency
 
     return (balances && balances[balanceCheckCur]) ? balances[balanceCheckCur] : 0
   }
@@ -125,20 +126,31 @@ export default class Row extends Component {
     }
   }
 
-  getDecimals = (amount, currency) => {
-    const decimalPlaces = constants.tokenDecimals[currency.toLowerCase()] || 8
-    return String(new BigNumber(amount).dp(decimalPlaces, BigNumber.ROUND_CEIL))
+  formatWithDecimals = (amount, currency): string => {
+    const decimals = constants.tokenDecimals[currency.toLowerCase()]
+    const wrongDecimals = !Number.isInteger(decimals) || decimals < 0 || decimals > 8
+    const finalDecimals = wrongDecimals ? 8 : decimals
+    const result = new BigNumber(amount).dp(finalDecimals, BigNumber.ROUND_HALF_CEIL)
+
+    // save decimals if it's float number
+    return !result.mod(1) ? result.toFixed(finalDecimals) : result.toFixed()
   }
 
   handleDeclineOrdersModalOpen = (indexOfDecline) => {
+    //@ts-ignore: strictNullChecks
     const orders = SwapApp.shared().services.orders.items
     const declineSwap = actions.core.getSwapById(this.props.decline[indexOfDecline])
 
     if (declineSwap !== undefined) {
+      //@ts-ignore: strictNullChecks
       actions.modals.open(constants.modals.DeclineOrdersModal, {
         declineSwap,
       })
     }
+  }
+
+  renderCoinName = (coin) => {
+    return coin.toUpperCase()
   }
 
   sendSwapRequest = async (orderId, currency) => {
@@ -146,22 +158,23 @@ export default class Row extends Component {
       row: {
         id,
         buyAmount: sellAmount,
-        buyCurrency: sellCurrency, // taker-maker - (maker buy - we sell)
-        sellCurrency: buyCurrency, // taker-maker - (maker sell - we buy)
+        //sellAmount,
       },
+      buy: buyCurrency,
+      sell: sellCurrency,
       row,
       intl,
       history,
-      pairFees,
-      balances,
       checkSwapAllow,
+      checkSwapExists,
     } = this.props
 
     const balance = this.getBalance()
 
-    feedback.offers.buyPressed(`${sellCurrency}->${buyCurrency}`)
+    feedback.offers.buyPressed(`${this.renderCoinName(sellCurrency)}->${this.renderCoinName(buyCurrency)}`)
 
     const pair = Pair.fromOrder(row)
+    //@ts-ignore: strictNullChecks
     const { price, amount, total, main, base, type } = pair
 
     if (!checkSwapAllow({
@@ -170,6 +183,16 @@ export default class Row extends Component {
       amount: sellAmount,
       balance,
     })) return false
+
+    const isSwapExists = await checkSwapExists({ haveCurrency: sellCurrency, getCurrency: buyCurrency, orderId })
+
+    if (isSwapExists) {
+      actions.notifications.show(
+        constants.notifications.ErrorNotification,
+        { error: 'You have Exists Swap with order participant. Please use other order for start swap with this pair.' }
+      )
+      return false
+    }
 
     const exchangeRates = new BigNumber(price).dp(6, BigNumber.ROUND_CEIL)
 
@@ -184,10 +207,11 @@ export default class Row extends Component {
       },
     })
 
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.ConfirmBeginSwap, {
       order: row,
       onAccept: async (customWallet) => {
-        feedback.offers.swapRequested(`${sellCurrency}->${buyCurrency}`)
+        feedback.offers.swapRequested(`${this.renderCoinName(sellCurrency)}->${this.renderCoinName(buyCurrency)}`)
 
         this.setState({ isFetching: true })
 
@@ -207,7 +231,14 @@ export default class Row extends Component {
 
           if (isAccepted) {
             this.setState({ isFetching: false }, () => {
-              history.push(localisedUrl(intl.locale, `${links.swap}/${buyCurrency}-${sellCurrency}/${id}`))
+              const swapUri = row.isTurbo ?
+                `${links.turboSwap}/${id}`
+                :
+                `${links.atomicSwap}/${id}`
+              
+              console.log(`Redirect to swap: ${swapUri}`)
+              //@ts-ignore: strictNullChecks
+              history.push(localisedUrl(intl.locale, swapUri))
             })
           } else {
             this.setState({ isFetching: false })
@@ -221,13 +252,15 @@ export default class Row extends Component {
           defaultMessage="Do you want to {action} {amount} {main} for {total} {base} at price {price} {main}/{base}?"
           values={{
             action: `${type === PAIR_TYPES.BID
+              //@ts-ignore: strictNullChecks
               ? intl.formatMessage(messages.sell)
+              //@ts-ignore: strictNullChecks
               : intl.formatMessage(messages.buy)
             }`,
-            amount: `${this.getDecimals(amount, main)}`,
-            main: `${main}`,
-            total: `${this.getDecimals(total, base)}`,
-            base: `${base}`,
+            amount: `${this.formatWithDecimals(amount, main)}`,
+            main: `${this.renderCoinName(main)}`,
+            total: `${this.formatWithDecimals(total, base)}`,
+            base: `${this.renderCoinName(base)}`,
             price: `${exchangeRates}`,
           }}
         />
@@ -236,8 +269,11 @@ export default class Row extends Component {
   }
 
   renderContent = () => {
-    let windowWidthIn = window.innerWidth
-    this.setState({ windowWidth: windowWidthIn })
+    const windowWidth = window.innerWidth
+
+    this.setState(() => ({
+      windowWidth,
+    }))
   }
 
   render() {
@@ -246,50 +282,49 @@ export default class Row extends Component {
       windowWidth,
     } = this.state
 
-    const balance = this.getBalance()
-
     const {
       row: {
         id,
         isMy,
+        isTurbo,
         buyCurrency,
         buyAmount,
         sellCurrency,
-        sellAmount,
         isRequested,
         isProcessing,
-        owner: { peer: ownerPeer },
+        owner: {
+          peer: ownerPeer,
+          eth: {
+            address: ownerEthAddress,
+          },
+        },
       },
+      buy,
+      sell,
+      row: order,
       peer,
       orderId,
       removeOrder,
       linkedOrderId,
-      intl: { locale },
-      pairFees,
+      checkSwapAllow,
     } = this.props
 
-
     const pair = Pair.fromOrder(this.props.row)
+    //@ts-ignore: strictNullChecks
     const { price, amount, total, main, base, type } = pair
 
-    // todo: improve calculation much more
-    const buyCurrencyFee = (
-      pairFees
-      && pairFees.byCoins
-      && pairFees.byCoins[buyCurrency.toUpperCase()]
-    ) ? pairFees.byCoins[buyCurrency.toUpperCase()].fee
-      : false
+    const isSwapButtonEnabled = checkSwapAllow({
+      sellCurrency: sell,
+      buyCurrency: buy,
+      amount: buyAmount,
+      isSilentError: true,
+    })
 
-    const costs = (buyCurrencyFee) ? new BigNumber(buyAmount).plus(buyCurrencyFee) : buyAmount
-
-    let isSwapButtonEnabled = new BigNumber(balance).isGreaterThanOrEqualTo(costs)
-    // @ToDo - Tokens - need eth balance for fee
-
-    let sellCurrencyOut,
-      sellAmountOut,
-      getCurrencyOut,
-      getAmountOut,
-      priceOut
+    let sellCurrencyOut
+    let sellAmountOut
+    let getCurrencyOut
+    let getAmountOut
+    let priceOut
 
     if (type === PAIR_TYPES.BID) {
       sellCurrencyOut = base
@@ -306,6 +341,8 @@ export default class Row extends Component {
       getAmountOut = total
       priceOut = price
     }
+
+    const swapUri = `${links.atomicSwap}/${id}`
 
     const mobileFormatCrypto = (value, currency) => {
       if (currency === 'USDT' || currency == 'EUR') {
@@ -324,62 +361,56 @@ export default class Row extends Component {
     return showDesktopContent ? (
       <tr
         id={id}
-        styleName={`${isDark ? 'rowDark' : ''}`}
+        styleName={`
+          ${id === linkedOrderId ? 'linkedOrderHighlight' : ''}
+        `}
         style={orderId === id ? { background: 'rgba(0, 236, 0, 0.1)' } : {}}
       >
-        <td>
-          <Avatar
-            value={ownerPeer}
-            size={30}
-          />
-        </td>
-        <td>
-          <span styleName="rowBindingText">
-            <FormattedMessage
-              id="OrderBookRowSells"
-              defaultMessage="sells"
+        <td styleName='rowCell'>
+          <div styleName='withIcon'>
+            <Avatar
+              value={ownerPeer}
+              size={25}
+              ownerEthAddress={ownerEthAddress}
             />
-          </span>
+            {isTurbo &&
+              <TurboIcon />
+            }
+          </div>
+        </td>
+        <td styleName='rowCell'>
           <span styleName='rowAmount'>
-            {`${this.getDecimals(sellAmountOut, sellCurrencyOut)} ${sellCurrencyOut}`}
+            <span className={`${sellCurrencyOut.toLowerCase()}SellAmountOfOrder`}>{`${this.formatWithDecimals(sellAmountOut, sellCurrencyOut)}`}</span>
+            {' '}
+            <span>{`${this.renderCoinName(sellCurrencyOut)}`}</span>
           </span>
         </td>
-        <td>
-          <span styleName="rowBindingText">
-            <FormattedMessage
-              id="OrderBookRowFor"
-              defaultMessage="for"
-            />
-          </span>
+        <td styleName='rowCell'>
           <span styleName='rowAmount'>
-            {`${this.getDecimals(getAmountOut, getCurrencyOut)} ${getCurrencyOut}`}
+            <span className={`${getCurrencyOut.toLowerCase()}GetAmountOfOrder`}>{`${this.formatWithDecimals(getAmountOut, getCurrencyOut)}`}</span>
+            {' '}
+            <span>{`${this.renderCoinName(getCurrencyOut)}`}</span>
           </span>
         </td>
-        <td>
-          <span styleName="rowBindingText">
-            <FormattedMessage
-              id="OrderBookRowAtPrice"
-              defaultMessage="at price"
-            />
-          </span>
+        <td styleName='rowCell'>
           <span styleName='rowAmount'>
-            {`${this.getDecimals(priceOut, getCurrencyOut)} ${getCurrencyOut}/${sellCurrencyOut}`}
+            {`${this.formatWithDecimals(priceOut, getCurrencyOut)} ${this.renderCoinName(getCurrencyOut)}/${this.renderCoinName(sellCurrencyOut)}`}
           </span>
         </td>
-        <td styleName="buttonsColumn">
+        <td styleName='rowCell'>
           {peer === ownerPeer
-            ?
-            <RemoveButton className="removeButton" onClick={() => removeOrder(id)} />
+            ? <RemoveButton onClick={() => removeOrder(id)} brand />
             :
             <Fragment>
               {
                 isRequested ? (
                   <Fragment>
                     <div style={{ color: 'red' }}>
-                      <FormattedMessage id="Row148" defaultMessage="REQUESTING" />
+                      <FormattedMessage id="RowM136" defaultMessage="REQUESTING" />
                     </div>
-                    <Link to={`${localisedUrl(locale, links.swap)}/${buyCurrency}-${sellCurrency}/${id}`}>
-                      <FormattedMessage id="Row151" defaultMessage="Go to the swap" />
+                    {' '}
+                    <Link to={swapUri}>
+                      <FormattedMessage id="RowM139" defaultMessage="Swap" />
                     </Link>
                   </Fragment>
                 ) : (
@@ -404,10 +435,12 @@ export default class Row extends Component {
                           :
                           () => {}
                         }
-                        data={{ type, amount, main, total, base }}
-                      >
-                        <FormattedMessage id="RowM166" defaultMessage="Start" />
-                      </RequestButton>
+                        data={{
+                          type,
+                          main: this.renderCoinName(main),
+                          base: this.renderCoinName(base),
+                        }}
+                      />
                     )
                   )
                 )
@@ -422,8 +455,8 @@ export default class Row extends Component {
       <tr
         id={id}
         styleName={`
-          ${peer === ownerPeer ? 'mobileRowRemove' : 'mobileRowStart'}
-          ${isDark ? 'rowDark' : ''}
+          ${'mobileRow'}
+          ${id === linkedOrderId ? 'linkedOrderHighlight' : ''}
         `}
         style={orderId === id ? { background: 'rgba(0, 236, 0, 0.1)' } : {}}
       >
@@ -432,26 +465,31 @@ export default class Row extends Component {
             <div styleName="tdContainer-1">
               <span styleName="firstType">
                 {type === PAIR_TYPES.BID
-                  ? (<FormattedMessage id="RowMobileFirstTypeYouHave" defaultMessage="You have" />)
-                  : (<FormattedMessage id="RowMobileFirstTypeYouGet" defaultMessage="You get" />)}
+                  ? (<FormattedMessage id="MyOrdersYouSend" defaultMessage="You send" />)
+                  : (<FormattedMessage id="RowMobileYouGet" defaultMessage="You get" />)}
               </span>
-              <span styleName='rowAmount'>{`${mobileFormatCrypto(amount, main)} ${main}`}</span>
+              <span styleName='rowAmount withIcon'>
+                {isTurbo &&
+                  <TurboIcon />
+                }
+                {`${mobileFormatCrypto(amount, main)} ${main}`}
+              </span>
             </div>
             <div>
-              <i className="fas fa-exchange-alt" />
+              <i styleName='arrowsIcon' className="fas fa-exchange-alt" />
             </div>
             <div styleName="tdContainer-2">
               <span styleName="secondType">
                 {type === PAIR_TYPES.BID
-                  ? (<FormattedMessage id="RowMobileSecondTypeYouGet" defaultMessage="You get" />)
-                  : (<FormattedMessage id="RowMobileSecondTypeYouHave" defaultMessage="You have" />)}
+                  ? (<FormattedMessage id="RowMobileYouGet" defaultMessage="You get" />)
+                  : (<FormattedMessage id="MyOrdersYouSend" defaultMessage="You send" />)}
               </span>
-              <span styleName='rowAmount'>{`${mobileFormatCrypto(total, base)} ${base}`}</span>
+              <span styleName='rowAmount'>{`${mobileFormatCrypto(total, base)} ${this.renderCoinName(base)}`}</span>
             </div>
             <div styleName="tdContainer-3">
               {
                 peer === ownerPeer ? (
-                  <RemoveButton className="removeButton" onClick={() => removeOrder(id)} />
+                  <RemoveButton onClick={() => removeOrder(id)} brand={true} />
                 ) : (
                   <Fragment>
                     {
@@ -460,8 +498,9 @@ export default class Row extends Component {
                           <div style={{ color: 'red' }}>
                             <FormattedMessage id="RowM136" defaultMessage="REQUESTING" />
                           </div>
-                          <Link to={`${links.swap}/${buyCurrency}-${sellCurrency}/${id}`}>
-                            <FormattedMessage id="RowM139" defaultMessage="Go to the swap" />
+                          {' '}
+                          <Link to={swapUri}>
+                            <FormattedMessage id="RowM139" defaultMessage="Swap" />
                           </Link>
                         </Fragment>
                       ) : (
@@ -479,7 +518,6 @@ export default class Row extends Component {
                               </span>
                             </Fragment>
                           ) : (
-                            //@ts-ignore
                             <RequestButton
                               styleName="startButton"
                               disabled={!isSwapButtonEnabled}
@@ -488,7 +526,11 @@ export default class Row extends Component {
                                 :
                                 () => {}
                               }
-                              data={{ type, amount, main, total, base }}
+                              data={{
+                                type,
+                                main: this.renderCoinName(main),
+                                base: this.renderCoinName(base),
+                              }}
                             />
                           )
                         )
@@ -504,3 +546,5 @@ export default class Row extends Component {
     )
   }
 }
+
+export default injectIntl(Row)

@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { request, gql } from 'graphql-request'
 
 
@@ -106,7 +107,7 @@ const updUserMut = gql`
 
 let serverBaseUrl = 'http://localhost:5050/graphql'
 if (process.env.NODE_ENV === 'production') {
-  serverBaseUrl = 'https://stat.swaponline.io/graphql'
+  serverBaseUrl = 'https://analysis.swaponline.io/graphql'
 }
 
 const addUser = async (createdBy, domain, data) => {
@@ -143,7 +144,44 @@ const updateUser = async (createdBy, domain, data) => {
   }
 }
 
+const getIPInfo = () => {
+  try {
+    return axios
+      .get('https://json.geoiplookup.io')
+      .then((result: any) => {
+        // eslint-disable-next-line camelcase
+        const { ip, country_code } = result.data
+        // eslint-disable-next-line camelcase
+        if (!ip || !country_code) {
+          return ({
+            ip: 'json.geoiplookup.io didn\'t respond with a result, so setting locale EN by default',
+            locale: 'EN',
+          })
+        }
+        return ({
+          ip,
+          locale: country_code,
+        })
+      })
+      .catch((error) => {
+        console.error('getIPInfo:', error)
+
+        return {
+          ip: 'None',
+          locale: 'EN',
+        }
+      })
+  } catch (error) {
+    console.error(error)
+  }
+  return {
+    ip: 'None',
+    locale: 'EN',
+  }
+}
+
 export default {
   addUser,
   updateUser,
+  getIPInfo,
 }

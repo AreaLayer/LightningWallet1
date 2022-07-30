@@ -1,19 +1,39 @@
 import axios from 'axios'
-import getTopLocation from 'helpers/getTopLocation'
+import { routing, links, externalConfig } from 'helpers'
 
-
-const isFeedbackEnabled = true
-
+const isFeedbackEnabled = !externalConfig.isWidget || window?.STATISTICS_ENABLED
+const marks = {
+  danger: '🔴',
+  warning: '🔥',
+  attention: '💥',
+  unimportant: '💤',
+}
 
 const sendMessage = ({ appPart, eventName, details }) => {
   if (!isFeedbackEnabled) {
     return
   }
 
-  const host = getTopLocation().host || window.location.hostname || document.location.host
+  let host = routing.getTopLocation().host || window.location.hostname || document.location.host
+  let version = window.pluginVersion
+  let remainingLicenseDays = window.licenceInfo
+  let prefixMark = ''
+  const regexp = new RegExp(host)
 
-  const prefixMark = eventName === 'failed' ? '🛑 ' : ''
-  const textToSend = `${prefixMark} [${host}] ${appPart} - ${eventName}${details ? ` {${details}}` : ``} |`
+  if (links.extension.match(regexp)) {
+    host = 'Chrome extension'
+  }
+
+  if (eventName === 'failed') prefixMark = marks.danger
+  if (eventName === 'warning') prefixMark = marks.warning
+
+  const textToSend = [
+    `${prefixMark ? `${prefixMark} ` : ''}`,
+    `[${host}${remainingLicenseDays ? ` license days left: ${remainingLicenseDays}` : ''}] `,
+    `${version ? `(version: ${version})` : ''}`,
+    `${appPart} - ${eventName}`,
+    `${details ? ` {${details}}` : ``} |`,
+  ].join('')
 
   if (host && host.includes('localhost')) {
     console.log(`📩 (muted) ${textToSend}`)
@@ -37,6 +57,8 @@ const events = {
     started: 'started',
     otherTabsClosed: 'otherTabsClosed',
     //closed: 'closed',
+    failed: 'failed',
+    warning: 'warning',
   },
   createWallet: {
     //started: 'started',
@@ -48,8 +70,12 @@ const events = {
     clickedBanner: 'clickedBanner',
     pressedAddCurrency: 'pressedAddCurrency',
   },
+  createInvoice: {
+    failed: 'failed',
+  },
   faq: {
     opened: 'opened',
+    failed: 'failed',
   },
   backup: {
     started: 'started',
@@ -70,6 +96,7 @@ const events = {
     selectedAddress: 'selectedAddress',
     redirectedCreateWallet: 'redirectedCreateWallet',
     requestedSwap: 'requestedSwap',
+    failed: 'failed',
   },
   createOffer: {
     started: 'started',
@@ -86,11 +113,41 @@ const events = {
     stopped: 'stopped',
     finished: 'finished',
   },
+  oneinch: {
+    createOrder: 'create the order',
+    cancelOrder: 'cancel the order',
+    failed: 'failed',
+  },
+  liquiditySource: {
+    startedSwap: 'start the swap',
+    addLiquidity: 'add liquidity',
+    removeLiquidity: 'remove liquidity',
+    failed: 'failed',
+  },
+  zerox: {
+    startedSwap: 'start the swap',
+    failed: 'failed',
+  },
+  marketmaking: {
+    enteredPromo: 'enteredPromo',
+    selected: 'selected',
+    enteredSettings: 'enteredSettings',
+    faqOpened: 'faqOpened',
+    prevented: 'prevented',
+    enabled: 'enabled',
+    disabled: 'disabled',
+  },
   theme: {
     switched: 'switched',
   },
   i18n: {
     switched: 'switched',
+  },
+  actions: {
+    failed: 'failed'
+  },
+  helpers: {
+    failed: 'failed'
   },
 }
 
@@ -108,7 +165,7 @@ Object.keys(events).forEach(appPart => {
   }
   const appPartEvents = events[appPart]
   Object.keys(appPartEvents).forEach(eventName => {
-    feedback[appPart][eventName] = function (details) {
+    feedback[appPart][eventName] = function(details) {
       sendMessage({ appPart, eventName, details })
     }
   })

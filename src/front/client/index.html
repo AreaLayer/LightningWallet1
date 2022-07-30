@@ -5,10 +5,12 @@
     <title><%= htmlWebpackPlugin.options.title %></title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:image:type" content="image/svg+xml" />
     <meta
       property="og:image"
-      content="https://screenshots.wpmix.net/chrome_2019-03-28_18-55-506746c4c5-44e6-4bb5-89cb-52ce8fabcedf.png"
+      content="https://wiki.swaponline.io/assets/swaponline_io.svg"
     />
+    <meta http-equiv="refresh" content="3600">
     <link
       rel="stylesheet"
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
@@ -21,43 +23,39 @@
     />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.5.1/css/swiper.min.css"
-      integrity="sha256-DBYdrj7BxKM3slMeqBVWX2otx7x4eqoHRJCsSDJ0Nxw="
+      href="https://use.fontawesome.com/releases/v5.1.0/css/all.css"
+      integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt"
       crossorigin="anonymous"
     />
 
     <meta name="google" content="notranslate" />
     <meta property="og:url" content="https://swaponline.io" />
+
+    <link rel="stylesheet" href="variables.css">
+
     <!-- ERC20 Tokens hot plug for widget-build (Dont remove this) -->
     <script src="erc20tokens.js"></script>
+    <link rel="stylesheet" href="customStyles.css" />
+    <!-- Use OwnBuffer for bn.js package in bitcore-lib -->
+    <script type="text/javascript" src="ownBuffer.js"></script>
+
     <%= htmlWebpackPlugin.options.firebugScript %>
+
     <script>
-      var isWidgetBuild = '<%= htmlWebpackPlugin.options.isWidget %>';
+      const isWidgetBuild = '<%= htmlWebpackPlugin.options.isWidget %>'
+
+      if (window.defaultWindowTitle && isWidgetBuild) {
+        document.title = window.defaultWindowTitle;
+      }
     </script>
 
     <style>
-      :root {
-        --primary:#6144e5;
-        --primary-hover: #7371ff;
-        --primary-background: rgba(97, 68, 229, 0.1);
-        --alternate: #e91db4;
-        --alternate-hover:  #ff1fc5;
-      }
-
-      body {
-        background-color: #f7f7f7;
-      }
-
       .overflowY-default {
         overflow: visible;
       }
 
       .overflowY-hidden {
         overflow: hidden;
-      }
-
-      .overflowY-dashboardView-default {
-        overflow: visible;
       }
 
       .overflowY-dashboardView-hidden {
@@ -73,25 +71,19 @@
           overflow: visible;
         }
       }
-    </style>
-    <style>
+
       .overlay {
         display: flex;
         justify-content: center;
         align-items: center;
         flex-direction: column;
-        background-color: white;
+        background-color: var(--color-page-background);
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         z-index: 1000;
-      }
-
-      .darkTheme {
-        background-color: #222427;
-        color: #fff;
       }
 
       .loader {
@@ -142,7 +134,7 @@
         margin-top: 2em;
       }
       .show-on-fail-ls .btc-open-in-new-tab > A {
-        color: #fff;
+        color: var(--color-background-elements);
         text-decoration: none;
       }
 
@@ -158,8 +150,8 @@
         right: 0;
         bottom: 0;
         overflow: auto;
-        background-color: #fff;
-        color: var(--primary);
+        background-color: var(--color-background-elements);
+        color: var(--color-brand);
       }
 
       .starter-modal__container-content {
@@ -226,30 +218,30 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 0.1em solid var(--primary);
+        border: 0.1em solid var(--color-brand);
         border-radius: 0.2em;
         white-space: nowrap;
         letter-spacing: inherit;
         font-family: inherit;
         font-weight: 600;
         font-size: 15px;
-        background-color: var(--primary);
-        color: #fff;
+        background-color: var(--color-brand);
+        color: var(--color-background-elements);
         transition: 0.15s;
       }
 
       .starter-modal__btn_skip {
         background-color: transparent;
-        color: var(--primary);
+        color: var(--color-brand);
       }
 
       .starter-modal__btn:hover {
-        background-color: var(--primary-hover);
-        border-color: var(--primary-hover);
+        background-color: var(--color-brand-hover);
+        border-color: var(--color-brand-hover);
       }
 
       .starter-modal__btn_skip:hover {
-        color: #fff;
+        color: var(--color-background-elements);
       }
 
       .starter-modal__btn svg {
@@ -269,7 +261,7 @@
         font-size: 15px;
         font-weight: bold;
         text-decoration: underline;
-        color: var(--primary);
+        color: var(--color-brand);
       }
 
       @media (max-width: 768px) {
@@ -385,16 +377,10 @@
       .starter-modal:not(.d-none) ~ #root {
         display: none;
       }
-
-      @media (max-width: 767px) {
-        #swiper_banners {
-          margin: 0 25px;
-        }
-      }
     </style>
   </head>
 
-  <body>
+  <body data-scheme="default">
     <!-- Start Modal -->
     <section class="starter-modal d-none" id="starter-modal">
       <div class="starter-modal__container-content">
@@ -483,10 +469,10 @@
 
         <div class="starter-modal__buttons">
           <div class="starter-modal__btn-container">
-            <button class="starter-modal__btn starter-modal__btn_create-wallet">
+            <button id="preloaderCreateBtn" class="starter-modal__btn">
               Create Wallet
             </button>
-            <button class="starter-modal__btn starter-modal__btn_connect-wallet">
+            <button id="preloaderConnectBtn" class="starter-modal__btn">
               <?xml version="1.0" encoding="utf-8"?>
               <svg version="1.1"
                 xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 318.6 318.6">
@@ -550,13 +536,13 @@
             </button>
           </div>
           <div class="starter-modal__btn-container">
-            <button class="starter-modal__btn starter-modal__btn_skip">
-              Skip
-            </button>
+            <button id="preloaderRestoreBtn" class="starter-modal__btn starter-modal__btn_skip">
+              Restore from 12-word seed
+            </button> 
           </div>
           <div class="starter-modal__link-container">
-            <button id="starter-modal__link-restore-wallet" class="starter-modal__link starter-modal__link-restore-wallet">
-              Restore from 12-word seed
+            <button id="preloaderSkipBtn" class="starter-modal__link">
+              Skip
             </button>
           </div>
         </div>
@@ -591,355 +577,418 @@
         </div>
         <div id="usersInform" class="usersInform"></div>
       </div>
-      <script>
-        let localStorageIsOk = true;
-        try {
-          const testLocalStorage = window.localStorage;
-        } catch (e) {
-          localStorageIsOk = false;
-          document.getElementById('onFailLocalStorageLink').href = window.location.href;
-          document.getElementById('onFailLocalStorageMessage').classList.remove('d-none');
+    </div>
 
-          const sendErrorFeedback = function () {
-            let msg = 'localStorage error: agent(' + navigator.userAgent + ')';
-            msg += ', location(' + window.location.href + ')';
+    <div id="portal"></div>
 
-            let url = 'https://noxon.wpmix.net/counter.php?msg=' + encodeURI(msg);
+    <script crossorigin type="text/javascript" src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script crossorigin type="text/javascript" src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
 
+    <!--
+      * Please use only one inline script in this file (each additional script requires an additional hash in the extension manifest).
+
+      * Each change to this script requires a hash change in the extension manifest.
+    -->
+
+    <script>
+      const isDark = localStorage.getItem('isDark')
+      const isLight = localStorage.getItem('isLight')
+      const isSystemDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      const dataset = document.body.dataset
+
+      if (!isDark && !isLight && isSystemDark) {
+        localStorage.setItem('isDark', 'true')
+        dataset.scheme = "dark"
+      } else {
+        if (isDark) {
+          dataset.scheme = "dark"
+        } else {
+          dataset.scheme = "default"
+        }
+      }
+
+      // Extension: prevent 2 tabs
+      if (window?.chrome?.extension) {
+        var extViews = chrome.extension.getViews()
+        var extBgWindow = chrome.extension.getBackgroundPage()
+        if (window !== extBgWindow) {
+          if (chrome.extension.getViews().length > 2) {
+            chrome.runtime.openOptionsPage()
+            window.close()
+          }
+          window.onbeforeunload = () => {
+            // With this window and bg window = 2
+            if (chrome.extension.getViews().length === 2) {
+              extBgWindow.location.reload()
+            }
+          }
+        }
+      }
+
+      // Extension: icon click => open tab
+      if (window?.chrome?.browserAction) {
+        if (!chrome.browserAction.isClickListenerAdded) {
+          console.log('Extension: add click listener')
+          chrome.browserAction.onClicked.addListener(function(tab) {
+            console.log('Extension: icon clicked')
+            chrome.runtime.openOptionsPage()
+          });
+          chrome.browserAction.isClickListenerAdded = true;
+        } else {
+          console.log('Extension: click listener already added');
+        }
+      } else {
+        console.log('Extension: can`t add click listener (possibly not extension)')
+      }
+
+      // Check caching backend
+      try {
+        JSON.parse("<!-- BACK_SO");
+      } catch (e) {
+        console.log("warning: caching backend is down")
+      }
+
+      let hasCriticalProblems = false
+
+      try {
+        const testLocalStorage = window.localStorage;
+      } catch (e) {
+        hasCriticalProblems = true
+
+        document.getElementById('onFailLocalStorageLink').href = window.location.href;
+        document.getElementById('onFailLocalStorageMessage').classList.remove('d-none');
+
+        const sendErrorFeedback = function () {
+          let msg = 'localStorage error: agent(' + navigator.userAgent + ')';
+          msg += ', location(' + window.location.href + ')';
+
+          let url = 'https://noxon.wpmix.net/counter.php?msg=' + encodeURI(msg);
+
+          if (!isWidgetBuild || window?.STATISTICS_ENABLED) {
             window.jQuery.ajax({
               type: 'POST',
               url: url,
             });
-          };
-
-          if (!window.jQuery) {
-            // inject jQuery for send request to counter for feedback
-            let jsScriptTag = document.createElement('SCRIPT');
-            jsScriptTag.src = 'https://code.jquery.com/jquery-3.5.1.min.js';
-            console.log('jsScriptTag', jsScriptTag);
-            document.getElementsByTagName('BODY')[0].appendChild(jsScriptTag);
-            let waitJQLoad = function (onLoaded) {
-              if (window.jQuery) {
-                onLoaded();
-              } else {
-                window.setTimeout(function () {
-                  waitJQLoad(onLoaded);
-                }, 100);
-              }
-            };
-            waitJQLoad(sendErrorFeedback);
-          } else {
-            sendErrorFeedback();
-          }
-        }
-
-        function setCookie(name, value, options = {}) {
-          let expires = options.expires;
-
-          if (typeof expires == 'number' && expires) {
-            let date = new Date();
-            date.setTime(date.getTime() + expires * 1000);
-            expires = options.expires = date;
-          }
-          if (expires && expires.toUTCString) {
-            options.expires = expires.toUTCString();
-          }
-
-          value = encodeURIComponent(value);
-          let updatedCookie = name + '=' + value;
-
-          for (let propName in options) {
-            updatedCookie += '; ' + propName;
-            const propValue = options[propName];
-
-            if (propValue !== true) {
-              updatedCookie += '=' + propValue;
-            }
-          }
-          document.cookie = updatedCookie;
-        }
-
-        function getCookie(cookieName) {
-          const name = cookieName + '=';
-          const parametersArr = document.cookie.split(';');
-
-          for (let i = 0; i < parametersArr.length; i++) {
-            let parameter = parametersArr[i];
-            while (parameter.charAt(0) == ' ') {
-              parameter = parameter.substring(1);
-            }
-            if (parameter.indexOf(name) == 0) {
-              return parameter.substring(name.length, parameter.length);
-            }
-          }
-          return '';
-        }
-
-        const wrapper = document.getElementById('wrapper_element');
-
-        if (window.localStorage.getItem('isDark')) {
-          wrapper.classList.add('darkTheme');
-        } else {
-          wrapper.classList.remove('darkTheme');
-        }
-
-        // detect browser's lang
-        const getNavigatorLanguage = () => {
-          if (navigator.languages && navigator.languages.length) {
-            return navigator.languages[0];
-          } else {
-            return (
-              navigator.userLanguage ||
-              navigator.language ||
-              navigator.browserLanguage ||
-              'en'
-            );
           }
         };
 
-        let lang = getCookie('mylang');
-
-        if (!lang) {
-          const browserLang = getNavigatorLanguage();
-          lang = browserLang.includes('ru') ? 'ru' : 'en'
-          setCookie('mylang', lang);
-        }
-
-        const locale = lang.toLowerCase();
-        const locationName = lang.toUpperCase();
-
-        (function () {
-          // set tip
-          const tips = {
-            beforeBackup: [
-              {
-                en: 'Loading...',
-                ru: 'Загрузка...',
-              },
-            ],
-            afterBackup: [
-              {
-                en: 'Keep your recovery phrase in&nbsp;a&nbsp;safe place',
-                ru: 'Держите вашу фразу восстановления в&nbsp;безопасном месте',
-              },
-              {
-                en: "Don't forget where your recovery phrase is&nbsp;saved",
-                ru: 'Не забудьте, где&nbsp;хранится ваша фраза восстановления',
-              },
-            ],
+        if (!window.jQuery) {
+          // inject jQuery for send request to counter for feedback
+          let jsScriptTag = document.createElement('SCRIPT');
+          jsScriptTag.src = 'https://code.jquery.com/jquery-3.5.1.min.js';
+          console.log('jsScriptTag', jsScriptTag);
+          document.getElementsByTagName('BODY')[0].appendChild(jsScriptTag);
+          let waitJQLoad = function (onLoaded) {
+            if (window.jQuery) {
+              onLoaded();
+            } else {
+              window.setTimeout(function () {
+                waitJQLoad(onLoaded);
+              }, 100);
+            }
           };
-          // Determine if the passphrase is saved
-          if (locale === 'en' || locale === 'ru') {
-            const mnemonic = window.localStorage.getItem('testnet:twentywords') || window.localStorage.getItem('mainnet:twentywords');
-            const isBackup = mnemonic === `-`;
-            const relevantTips = tips[!isBackup ? 'beforeBackup' : 'afterBackup'];
-            const currentTip = relevantTips[Math.floor(Math.random() * relevantTips.length)][locale];
-            const tipNode = document.getElementById('beforeJSTip');
-            tipNode.innerHTML = currentTip;
-          } else {
-            console.error('Unknown locale', locale);
-          }
-        })();
-
-        const information = document.getElementById('usersInform');
-
-        if ((locationName === 'ru' || (locale === 'ru' && locationName !== 'en')) && localStorage.length === 0) {
-          information.innerText = 'Генерация приватных ключей для вашего мультивалютного кошелька прямо сейчас, \n это может занять одну минуту'
-        }
-
-        if (localStorage.length === 0) {
-          information.innerText =
-            locationName !== 'ru' || locale !== 'ru'
-              ? 'Please wait while the application is loading,\n it may take one minute...'
-              : 'Пожалуйста подождите пока приложение запускается,\n это не займет больше минуты...';
-        }
-      </script>
-      <script>
-        window.prerenderReady = false;
-        window.isUserRegisteredAndLoggedIn = false;
-        window.DEFAULT_FIAT = 'USD';
-        window.DefaultCountryCode = '+1';
-        window.widgetName = 'own widget name';
-
-        window.buyViaCreditCardLink = 'https://itez.swaponline.io/?DEFAULT_FIAT={DEFAULT_FIAT}&locale={locale}&btcaddress={btcaddress}';
-      </script>
-      <!-- /Loader before any JS -->
-
-      <!-- This library using in React componet (WallerSlider) -->
-      <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.5.1/js/swiper.min.js"
-      integrity="sha256-4sETKhh3aSyi6NRiA+qunPaTawqSMDQca/xLWu27Hg4=" crossorigin="anonymous"></script>
-
-      <!-- Start Modal Scripts -->
-      <script>
-        /**
-         * For setCookie() function
-         */
-        const SEC_IN_HOUR = 60 * 60
-        const SEC_IN_DAY = SEC_IN_HOUR * 24
-        const SEC_IN_MONTH = SEC_IN_DAY * daysInThisMonth()
-        const SEC_IN_YEAR = SEC_IN_MONTH * 12
-
-        function daysInThisMonth() {
-          const date = new Date()
-          return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-        }
-
-        // Open first screen
-        function swapOpenStarterModal() {
-          document.getElementById('starter-modal').classList.remove('d-none');
-        }
-        // Close first screen
-        function swapCloseStarterModal() {
-          document.getElementById('starter-modal').classList.add('d-none');
-        }
-        
-        function swapIsHome() {
-          const swapLocationHash = window.location.hash;
-          if (swapLocationHash == '' || swapLocationHash == '#/') {
-            return true;
-          }
-          return false;
-        }
-       
-        function swapIsWalletCreate() {
-          const swapLocalStorageWallet = localStorage.getItem('isWalletCreate');
-          return swapLocalStorageWallet !== null
-        }
-
-        function hasMetamask() {
-          return !(!window.ethereum || false);
-        }
-
-        // Swap Modal
-        const swapDisalbeStarter = getCookie('swapDisalbeStarter');
-
-        // Open modal if cookie false
-        if (
-          swapDisalbeStarter != 'true' &&
-          swapIsHome() &&
-          !isWidgetBuild &&
-          !swapIsWalletCreate() &&
-          localStorageIsOk
-        ) {
-          swapOpenStarterModal();
-        }
-      </script>
-
-      <script>
-        const btnCreateWallet = document.querySelector('.starter-modal__btn_create-wallet');
-        const btnConnectWallet = document.querySelector('.starter-modal__btn_connect-wallet');
-        const btnSkip = document.querySelector('.starter-modal__btn_skip');
-        const btnRestoryWallet = document.getElementById('starter-modal__link-restore-wallet')
-        
-        // Create wallet
-        btnCreateWallet.addEventListener('click', function () {
-          redirectionTo('#/createWallet');
-        });
-
-        // Connect wallet
-        btnConnectWallet.addEventListener('click', function () {
-          redirectionTo('#/connectWallet');
-        });
-
-        // Restore wallet
-        btnRestoryWallet.addEventListener('click', () => {
-          setCookie('swapDisalbeStarter', 'true', {
-            expires: SEC_IN_YEAR * 5,
-          });
-        })
-
-        function redirectionTo(urlPath) {
-          document.location.href = urlPath;
-          swapCloseStarterModal();
-          setCookie('swapDisalbeStarter', 'true', {
-            expires: SEC_IN_YEAR * 5,
-          });
-        }
-
-        // Skip (go to exchange)
-        btnSkip.addEventListener('click', function () {
-          document.location.href = '#/exchange/btc-to-eth';
-          swapCloseStarterModal();
-        });
-
-        // Open modal
-        function swapOpenModal(id) {
-          var thisModalEl = document.getElementById(id);
-          if (thisModalEl) {
-            document.getElementById(id).classList.remove('d-none');
-            document.body.classList.add('overflow-hidden');
-            bannerSwiper.update();
-          }
-        }
-
-        // Close modal
-        function swapCloseModal(id) {
-          if (id) {
-            document.getElementById(id).classList.add('d-none');
-            document.body.classList.remove('overflow-hidden');
-          }
-        }
-
-        // Close modal on click
-        document.querySelectorAll('.swap-close-modal').forEach((item) => {
-          item.addEventListener('click', function (e) {
-            e.preventDefault();
-            var thisParentId = this.parentNode.id;
-            swapCloseModal(thisParentId);
-          });
-        });
-
-        // Open modal on click
-        document.querySelectorAll('[data-open-modal]').forEach((item) => {
-          item.addEventListener('click', function (e) {
-            e.preventDefault();
-            var thisModalId = this.dataset.openModal;
-            swapOpenModal(thisModalId);
-          });
-        });
-
-        // Open modal by hash
-        var currentHash = window.location.hash;
-        var currentHashArr = currentHash.split('#');
-        var lastHash = currentHashArr.pop();
-        swapOpenModal(lastHash);
-
-        window.logoUrl = '#';
-        window.darkLogoUrl = '';
-
-        if (window.localStorage.getItem('isDark')) {
-          window.logoUrl = window.darkLogoUrl || window.logoUrl;
-        }
-
-        if (
-          window.location.hostname === "localhost" ||
-          window.location.hostname === "swaponline.github.io" ||
-          window.location.hostname === "swaponline.io"
-        ) {
-          document.getElementById("loaderImg").src = "https://wiki.swaponline.io/assets/swaponline_io.svg";
+          waitJQLoad(sendErrorFeedback);
         } else {
-          if (window.logoUrl != '#') {
-            document.getElementById("loaderImg").src = window.localStorage.getItem("isDark") ? window.darkLogoUrl : window.logoUrl;
-          } else {
-            document.getElementById("loaderImg").style.display = 'none'
+          sendErrorFeedback();
+        }
+      }
+
+      // if it's iframe show a message about new window
+      if (
+        !isWidgetBuild &&
+        (window.location !== window.parent.location || window.self !== window.top)
+      ) {
+        document.getElementById('onFailLocalStorageLink').href = window.location.href
+        document.getElementById('onFailLocalStorageMessage').classList.remove('d-none')
+      }
+
+      function setCookie(name, value, options = {}) {
+        let expires = options.expires;
+
+        if (typeof expires == 'number' && expires) {
+          let date = new Date();
+          date.setTime(date.getTime() + expires * 1000);
+          expires = options.expires = date;
+        }
+        if (expires && expires.toUTCString) {
+          options.expires = expires.toUTCString();
+        }
+
+        value = encodeURIComponent(value);
+        let updatedCookie = name + '=' + value;
+
+        for (let propName in options) {
+          updatedCookie += '; ' + propName;
+          const propValue = options[propName];
+
+          if (propValue !== true) {
+            updatedCookie += '=' + propValue;
           }
         }
-      </script>
-      <!-- End Modal Scripts -->
-    </div>
-    <link
-      rel="stylesheet"
-      href="https://use.fontawesome.com/releases/v5.1.0/css/all.css"
-      integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt"
-      crossorigin="anonymous"
-    />
-    <script type="text/javascript" src="https://unpkg.com/react@16.10.2/umd/react.production.min.js"></script>
-    <script type="text/javascript" src="https://unpkg.com/react-dom@16.10.2/umd/react-dom.production.min.js"></script>
-    
-    <div id="portal"></div>
+        document.cookie = updatedCookie;
+      }
 
-    <!-- Google Analytics -->
-    <script>
+      function getCookie(cookieName) {
+        const name = cookieName + '=';
+        const parametersArr = document.cookie.split(';');
+
+        for (let i = 0; i < parametersArr.length; i++) {
+          let parameter = parametersArr[i];
+          while (parameter.charAt(0) == ' ') {
+            parameter = parameter.substring(1);
+          }
+          if (parameter.indexOf(name) == 0) {
+            return parameter.substring(name.length, parameter.length);
+          }
+        }
+        return '';
+      }
+
+      // detect browser's lang
+      const getNavigatorLanguage = () => {
+        if (navigator.languages && navigator.languages.length) {
+          return navigator.languages[0];
+        } else {
+          return (
+            navigator.userLanguage ||
+            navigator.language ||
+            navigator.browserLanguage ||
+            'en'
+          );
+        }
+      };
+
+      let lang = getCookie('mylang');
+
+      const availableLangs = [
+        'en',
+        'ru',
+        'nl',
+        'de',
+        'es',
+        'pl',
+        'pt',
+        'ko',
+        'ar',
+      ]
+
+      const isLangAvailable = lang ? availableLangs.includes(lang.toLowerCase()) : false
+      const defaultLanguage = window.defaultLanguage
+
+      if (!lang || !isLangAvailable) {
+        if (defaultLanguage) {
+          lang = defaultLanguage
+        } else {
+          const browserLang = getNavigatorLanguage().split("-")[0];
+
+          lang = availableLangs.includes(browserLang) ? browserLang : (function () {
+            console.log('Set English by default')
+            return 'en';
+          })()
+        }
+
+        setCookie('mylang', lang);
+      }
+
+      const locale = lang.toLowerCase();
+
+      (function () {
+        // set tip
+        const tips = {
+          beforeBackup: [
+            {
+              en: 'Loading...',
+              ru: 'Загрузка...',
+              nl: 'Bezig met laden...',
+              de: 'Wird geladen...',
+              es: 'Cargando...',
+              pl: 'Ładowanie...',
+              pt: 'Carregamento...',
+              ko: '로드 중...',
+              ar: 'تحميل...',
+            },
+          ],
+          afterBackup: [
+            {
+              en: 'Keep your recovery phrase in&nbsp;a&nbsp;safe place',
+              ru: 'Держите вашу фразу восстановления в&nbsp;безопасном месте',
+              nl: 'Bewaar uw herstelzin op een &nbsp;&nbsp;veilige plaats',
+              de: 'Bewahren Sie Ihren Wiederherstellungssatz an einem&nbsp;&nbsp;sicheren Ort auf',
+              es: 'Mantenga su frase de recuperación en&nbsp;&nbsp;lugar seguro',
+              pl: 'Przechowuj frazę odzyskiwania w&nbsp;&nbsp;bezpiecznym miejscu',
+              pt: 'Mantenha a sua frase de recuperação dentro&nbsp;seguro',
+              ko: '복구 문구를 &nbsp;안전한 장소에 보관하십시오.',
+              ar: 'احتفظ بعبارة الاسترداد في مكان آمن',
+            },
+            {
+              en: "Don't forget where your recovery phrase is&nbsp;saved",
+              ru: 'Не забудьте, где&nbsp;хранится ваша фраза восстановления',
+              nl: 'Vergeet niet waar uw herstelzin is&nbsp;opgeslagen',
+              de: 'Vergessen Sie nicht, wo Ihre&nbsp;Wiederherstellungsphrase gespeichert ist',
+              es: 'No olvide dónde está guardada&nbsp;su frase de recuperación',
+              pl: 'Nie zapomnij, gdzie&nbsp;jest zapisana fraza odzyskiwania',
+              pt: 'Não te esqueças onde está a tua frase de recuperação&nbsp;salva',
+              ko: "복구 문구가 저장된 위치를 잊지 마세요.",
+              ar: 'لا تنس مكان حفظ عبارة الاسترداد الخاصة بك',
+            },
+          ],
+        };
+        // Determine if the passphrase is saved
+        const mnemonic = window.localStorage.getItem('testnet:twentywords') || window.localStorage.getItem('mainnet:twentywords');
+        const isBackup = mnemonic === `-`;
+        const relevantTips = tips[!isBackup ? 'beforeBackup' : 'afterBackup'];
+        const currentTip = relevantTips[Math.floor(Math.random() * relevantTips.length)][locale];
+        const tipNode = document.getElementById('beforeJSTip');
+        tipNode.innerHTML = currentTip;
+      })();
+
+      if (localStorage.length === 0) {
+        const informationTexts = {
+          nl: 'Even geduld a.u.b. terwijl de applicatie wordt geladen,\n het kan een minuut duren...',
+          de: 'Bitte warten Sie, während die Anwendung geladen wird,\n es kann eine Minute dauern...',
+          en: 'Please wait while the application is loading,\n it may take one minute...',
+          ru: 'Пожалуйста подождите пока приложение запускается,\n это не займет больше минуты...',
+          es: 'Espere mientras se carga la aplicación,\n puede tardar un minuto...',
+          pl: 'Poczekaj na wczytywanie aplikacji,\n może to potrwać minutę...',
+          pt: 'Espere por favor enquanto a aplicação está a carregar,\npode demorar um minuto...',
+          ko: '애플리케이션이 로드되는 동안 잠시 기다려 주십시오.\n 1분 정도 걸릴 수 있습니다...',
+          ar: 'الرجاء الانتظار أثناء تحميل التطبيق ، \n قد يستغرق الأمر دقيقة واحدة ...',
+        }
+        const information = document.getElementById('usersInform');
+        information.innerText = informationTexts[locale]
+      }
+
+      window.prerenderReady = false;
+      window.isUserRegisteredAndLoggedIn = false;
+      window.DEFAULT_FIAT = 'USD';
+      window.DefaultCountryCode = '+1';
+      window.widgetName = 'own widget name';
+      window.buyViaCreditCardLink = 'https://buy.itez.com/'; // need replace at 'https://buy.itez.com/swaponline' by default
+
+      if (window.brandColor) {
+        document.documentElement.style.setProperty("--color-brand", window.brandColor);
+      }
+
+      if (window.brandColorHover) {
+        document.documentElement.style.setProperty("--color-brand-hover", window.brandColorHover);
+      }
+
+      /* /Loader before any JS */
+
+      /* Start Modal Scripts */
+
+      /**
+       * For setCookie() function
+       */
+      const SEC_IN_HOUR = 60 * 60
+      const SEC_IN_DAY = SEC_IN_HOUR * 24
+      const SEC_IN_MONTH = SEC_IN_DAY * daysInThisMonth()
+      const SEC_IN_YEAR = SEC_IN_MONTH * 12
+
+      function daysInThisMonth() {
+        const date = new Date()
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+      }
+
+      function swapIsHome() {
+        const swapLocationHash = window.location.hash;
+        if (swapLocationHash == '' || swapLocationHash == '#/') {
+          return true;
+        }
+        return false;
+      }
+
+      function swapIsWalletCreate() {
+        const swapLocalStorageWallet = localStorage.getItem('isWalletCreate');
+        return swapLocalStorageWallet !== null
+      }
+
+      // Swap Modal
+      const startedSplashScreenIsDisabled = getCookie('startedSplashScreenIsDisabled');
+      const isBinanceBuild = ('<%= htmlWebpackPlugin.options.isBinanceBuild %>' === 'true') ? true : false;
+
+      // Open modal if cookie false
+      if (
+        startedSplashScreenIsDisabled != 'true' &&
+        swapIsHome() &&
+        !isWidgetBuild &&
+        !swapIsWalletCreate() &&
+        !isBinanceBuild &&
+        !hasCriticalProblems
+      ) {
+        document.getElementById('starter-modal').classList.remove('d-none');
+      }
+
+      const urlHash = window.location.hash
+      const host = window.location.host
+
+      const isHomePath = (urlHash === '#/' || urlHash === '#/createWallet' || urlHash === '' )
+
+      if (host === 'bsc.swap.io' && isHomePath) {
+        redirectionTo('#/exchange/btc-to-{BNB}btcb}')
+      }
+
+      if (host === 'matic.swap.io' && isHomePath) {
+        redirectionTo('#/exchange/btc-to-{MATIC}wbtc')
+      }
+
+      const btnCreateWallet = document.getElementById('preloaderCreateBtn');
+      const btnConnectWallet = document.getElementById('preloaderConnectBtn');
+      const btnSkip = document.getElementById('preloaderSkipBtn');
+      const btnRestoryWallet = document.getElementById('preloaderRestoreBtn');
+
+      btnCreateWallet.addEventListener('click', function () {
+        redirectionTo('#/createWallet')
+      });
+
+      btnConnectWallet.addEventListener('click', function () {
+        redirectionTo('#/connectWallet')
+      });
+
+      btnRestoryWallet.addEventListener('click', function () {
+        redirectionTo('#/restoreWallet')
+      })
+
+      btnSkip.addEventListener('click', function () {
+        redirectionTo('#/exchange/quick')
+      });
+
+      function redirectionTo(urlPath) {
+        document.location.href = urlPath;
+        document.getElementById('starter-modal').classList.add('d-none');
+
+        setCookie('swapDisalbeStarter', 'true', {
+          expires: SEC_IN_YEAR * 5,
+        });
+      }
+
+      window.logoUrl = window.logoUrl || '#';
+      window.darkLogoUrl = window.darkLogoUrl || '';
+      window.loaderLogoUrl = window.loaderLogoUrl || '';
+
+      if (window.localStorage.getItem('isDark')) {
+        window.logoUrl = window.darkLogoUrl || window.logoUrl;
+      }
+
+      if (
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "swaponline.github.io" ||
+        window.location.hostname === "swaponline.io"
+      ) {
+        // used by Loader component
+        window.loaderLogoUrl = "https://wiki.swaponline.io/assets/swaponline_io.svg";
+        document.getElementById("loaderImg").src = window.loaderLogoUrl;
+      } else {
+        if (window.logoUrl != '#') {
+          document.getElementById("loaderImg").src = window.localStorage.getItem("isDark") ? window.darkLogoUrl : window.logoUrl;
+        } else {
+          document.getElementById("loaderImg").style.display = 'none'
+        }
+      }
+      /* End Modal Scripts */
+
+
+      /* Google Analytics */
       const isMainDomain = window.location.hostname === 'swaponline.io';
       const isExtension =
         window.location.hostname === 'jbhhiineefefhcaoocmnkbmgfjbhninc';
@@ -971,7 +1020,7 @@
         gtag('js', new Date());
         gtag('config', gtagId);
       }
+      /* End Google Analytics */
     </script>
-    <!-- /Google Analytics -->
   </body>
 </html>

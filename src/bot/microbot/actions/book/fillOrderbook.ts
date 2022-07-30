@@ -5,8 +5,8 @@ import handleError from '../../../app/actions/errors/handleError'
 import fetchPrice from '../../../app/actions/fetchPrice'
 import * as configStorage from '../../../config/storage'
 import Pair from '../../Pair'
-import * as colors from 'common/utils/colorString'
-
+import { FG_COLORS as COLORS, BG_COLORS , colorString } from 'common/utils/colorString'
+import { checkSwapsCountLimit } from '../../core/checkSwapsCountLimit'
 
 import {
   TRADE_CONFIG as DEFAULT_TRADE_CONFIG,
@@ -25,8 +25,8 @@ const TRADE_TICKERS = (configStorage.hasTradeConfig()) ? configStorage.getTradeT
 
 
 const debug = (...args) => console.log(new Date().toISOString(), ...args) //_debug('swap.bot')
+
 const n = (n) => (cb) => Array(n).fill(null).map((el, i) => cb(i, el))
-const TEN = new BigNumber(10)
 
 const getCurrenciesBalance = (balances, ticker) => {
   const [ pair_main, pair_base ] = ticker.split('-')
@@ -48,7 +48,7 @@ const checkCanCreateCurrentOrder = (tickerOrder, orderType) =>
     : tickerOrder[orderType]
 
 const checkHaveSpread = (tickerOrder, orderType) =>
-  tickerOrder[`spread${orderType === 'buy' ? 'Buy' : 'Sell'}`] > 0
+  tickerOrder[`spread${orderType === 'buy' ? 'Buy' : 'Sell'}`] >= 0
     ? true
     : false
 
@@ -88,15 +88,19 @@ const createOrders = (orderType, balance, ticker, tickerOrders, basePrice) => {
 
       const spread = getSpread(tickerOrder, orderType)
       const price = basePrice.multipliedBy(spread)
+
+      const TEN = new BigNumber(10)
       const amount = tickerOrder.amount
         ? new BigNumber(tickerOrder.amount)
         : new BigNumber(TRADE_ORDER_MINAMOUNTS.default).times(TEN.pow(index))
+
       const isEnoughBalance = checkIsEnoughBalance(price, amount)
 
       if (isEnoughBalance) {
         return
       }
 
+      //@ts-ignore: strictNullChecks
       orders.push(new Pair({ ticker, price, type, amount }))
     })
   }
@@ -107,7 +111,7 @@ const createOrders = (orderType, balance, ticker, tickerOrders, basePrice) => {
 const createAllOrders = async (balances, ticker) => {
   const price = TRADE_CONFIG[ticker].sellPrice
     ? new BigNumber(TRADE_CONFIG[ticker].sellPrice)
-    : await fetchPrice(ticker,  TRADE_CONFIG[ticker].type)
+    : await fetchPrice(ticker, TRADE_CONFIG[ticker].type)
 
   if (!price) {
     throw new Error(`${ticker} price is empty`)
@@ -140,6 +144,7 @@ const fillOrders = async (balances, ticker, create) => {
     debug('new orders', orders.length)
 
     orders
+      //@ts-ignore: strictNullChecks
       .map(pair => ({ ...pair.toOrder(), isPartial: true }))
       .map(create)
       .map((order: Order) => order.setRequestHandlerForPartial('buyAmount',
@@ -201,8 +206,21 @@ const fillOrders = async (balances, ticker, create) => {
   }
 }
 
-export default async (wallet, orders) => {
+export default async (wallet, orders): Promise<Promise<void>[]> => {
+  console.log(
+    colorString(`Prepare order book...`, COLORS.GREEN)
+  )
+
   removeMyOrders(orders)
+
+  // Check paraller swaps limit
+  if (!checkSwapsCountLimit()) {
+    console.log(
+      colorString(`Prepare order book:`, COLORS.GREEN),
+      colorString(`Break - Paraller swap limit`, COLORS.RED)
+    )
+    return []
+  }
 
   const symbols = Object.keys(TRADE_CONFIG)
     .filter((item) => TRADE_CONFIG[item].active)
@@ -220,7 +238,14 @@ export default async (wallet, orders) => {
 
   debug('balances', balanceForSymbol)
 
-  return Object.keys(TRADE_CONFIG)
+  const filledOrders = Object.keys(TRADE_CONFIG)
     .filter((item) => TRADE_CONFIG[item].active)
-    .map(ticker => fillOrders(balanceForSymbol, ticker, createOrder(orders)))
+    .map(async ticker => await fillOrders(balanceForSymbol, ticker, createOrder(orders)))
+
+  console.log(
+    colorString(`Prepare order book:`, COLORS.GREEN),
+    colorString(`Ready. Start fill...`, COLORS.RED)
+  )
+
+  return filledOrders
 }

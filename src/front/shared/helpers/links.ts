@@ -1,39 +1,37 @@
-import actions from '../redux/actions'
-
-
 const linksManager = {
   home: '/',
   hashHome: '#/',
+
   exchange: '/exchange',
-  pointOfSell: '/buy',
+  quickSwap: '/exchange/quick',
+
+  // Market maker page - for run parallel swaps in background
+  marketmaker: '/marketmaker',
+  marketmaker_short: '/mm',
+
   history: '/history',
   createWallet: '/createWallet',
   restoreWallet: '/restoreWallet',
   connectWallet: '/connectWallet',
   invoices: '/invoices',
   invoice: '/invoice',
+  farm: 'https://farm.wpmix.net/',
   localStorage: '/localStorage',
 
-  creditCardDeposit: '/creditCardDeposit',
   wallets: '/wallets',
   send: '/withdraw',
   savePrivateSeed: '/savePrivateSeed',
   savePrivateKeys: '/savePrivateKeys',
   currencyWallet: '/wallet',
-  swap: '/swaps',
+  atomicSwap: '/atomic-swaps',
+  turboSwap: '/turbo-swaps',
   feed: '/feed',
-  aboutUs: '/aboutUs',
   test: 'https://testnet.swaponline.io',
   main: 'https://swaponline.io/',
-  ieo: '/IEO',
   wallet: '/wallet',
-  coins: '/coins',
-  partial: '/partial',
   notFound: '/NotFound',
   multisign: '/multisign',
   createInvoice: '/createinvoice',
-  BtcWallet: '/Bitcoin-wallet',
-  EthWallet: '/Ethereum-wallet',
 
   // social networks
   medium: '#',
@@ -46,6 +44,13 @@ const linksManager = {
   reddit: '#',
   youtube: '#',
 
+  transak: 'https://global.transak.com/',
+  transakDev: 'https://staging-global.transak.com/',
+  transactionRate: 'https://en.bitcoin.it/wiki/Maximum_transaction_rate#:~:text=Each%20transaction%20input%20requires%20at,the%20minimum-sized%20Bitcoin%20transaction',
+  impermanentLoss: 'https://academy.binance.com/en/articles/impermanent-loss-explained',
+  swapAudit: 'https://medium.com/swaponline/technical-audit-of-swap-core-is-finished-successfully-65a67bc5f58a',
+  currencyCourses: 'https://noxon.wpmix.net/cursAll.php',
+
   // footer links
   etherdelta: 'https://etherdelta.com/#0x14a52cf6b4f68431bd5d9524e4fcd6f41ce4ade9-ETH',
   button: 'https://wiki.swaponline.io/about-swap-online/#b2b',
@@ -56,9 +61,7 @@ const linksManager = {
   concept: 'https://wiki.swaponline.io/en.pdf',
   description: 'https://docs.google.com/document/d/1MWrDR5pc3FB7AiWBO0GyBWBSci3VuDKNvknkPHtTzl8/edit#heading=h.tml4qc7dhie9',
   research: 'https://docs.google.com/spreadsheets/d/1qWFLK2y8oMH5Gfam-iwqXPzLtwNabzp_EL6QFxjSBc0/edit?usp=sharing',
-  reuters: 'https://www.reuters.com/brandfeatures/venture-capital/article?id=37488',
   wiki: 'https://wiki.swaponline.io',
-  githubButton: 'https://github.com/swaponline/swap.button',
   bitcointalkSendTx: 'https://bitcointalk.org/index.php?topic=1938621.0',
   privacyPolicy: 'https://drive.google.com/file/d/1LdsCOfX_pOJAMqlL4g6DfUpZrGF5eRe9/view?usp=sharing',
   privacyPolicyDoc: 'https://drive.google.com/file/d/0Bz2ZwZCmFtj_N29fQVk4bV9tUXRscjFEcUkxVkFXdF9tY0ow/view?usp=sharing',
@@ -133,7 +136,6 @@ const linksManager = {
     forstablecoin: 'https://wiki.swaponline.io/for_stablecoins/',
     fordexses: 'https://wiki.swaponline.io/for_dexs/',
     forblockchains: 'https://wiki.swaponline.io/for_blockchains/',
-    fornewswebsites: 'https://generator.swaponline.site/generator/',
     whitepaper: 'https://wiki.swaponline.io/en.pdf',
     wiki: 'https://wiki.swaponline.io/',
     github: 'https://github.com/swaponline',
@@ -158,33 +160,6 @@ const linksManager = {
     return false
   },
 }
-
-export const getBitcoinWallet = () => {
-  const { address } = actions.user.getAuthData('btc')
-  return `/btc/${address}`
-}
-
-export const getEtherWallet = () => {
-  const { address } = actions.user.getAuthData('eth')
-  return `/eth/${address}`
-}
-
-export const getGhostWallet = () => {
-  const { address } = actions.user.getAuthData('ghost')
-  return `/ghost/${address}`
-}
-
-export const getNextWallet = () => {
-  const { address } = actions.user.getAuthData('next')
-  return `/next/${address}`
-}
-
-export const getTokenWallet = (token) => {
-  const { address } = actions.user.getAuthData('eth')
-  return `/token/${token.toUpperCase()}/${address}`
-}
-
-window.getTokenWallet = getTokenWallet
 
 export const getFullOrigin = () => `${location.origin}${location.pathname}#`
 

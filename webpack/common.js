@@ -1,13 +1,15 @@
 import child_process from 'child_process'
 import webpack from 'webpack'
 import ProgressBarPlugin from 'progress-bar-webpack-plugin'
-import WebappWebpackPlugin from 'webapp-webpack-plugin'
+import FaviconsWebpackPlugin from 'favicons-webpack-plugin'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 import AppConfigPlugin from 'app-config/webpack'
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
 import config from 'app-config'
 import rulesMap from './rules'
 
+// NOTE: Should be removed for webpack debugging, updating, or refactoring
+process.noDeprecation = true
 
 const versionBuffer = child_process.execSync('git rev-parse HEAD')
 const version = versionBuffer.toString('utf8')
@@ -41,16 +43,11 @@ const webpackConfig = {
     rules,
   },
 
-  node: {
-    fs: 'empty',
-  },
-
   resolve: {
     alias: {
       'shared': config.paths.front('shared'),
       'local_modules': config.paths.front('local_modules'),
       'domain': config.paths.common('domain'),
-      'common': config.paths.common(),
       'swap.auth': config.paths.core('swap.auth'),
       'swap.orders': config.paths.core('swap.orders'),
       'swap.room': config.paths.core('swap.room'),
@@ -70,7 +67,18 @@ const webpackConfig = {
       config.paths.core(''),
     ],
     extensions: [ '.js', '.jsx', '.tsx', '.ts', '.scss' ],
-    plugins: [],
+    fallback: {
+      fs: false,
+      os: false,
+      url: false,
+      http: require.resolve('http-browserify'),
+      https: require.resolve('https-browserify'),
+      stream: require.resolve('stream-browserify'),
+      assert: require.resolve('assert/'),
+      path: require.resolve('path-browserify'),
+      crypto: require.resolve('crypto-browserify'),
+      buffer: require.resolve('buffer/')
+    }
   },
 
   plugins: [
@@ -84,10 +92,13 @@ const webpackConfig = {
       'swap.flows': 'swap.flows',
       'swap.swap': 'swap.swap',
       'swap.swaps': 'swap.swaps',
+      'Buffer': ['buffer', 'Buffer'],
+      'process': 'process/browser',
+
     }),
     new ProgressBarPlugin({ clear: false }),
-    new WebappWebpackPlugin({
-      logo: 'favicon.png',
+    new FaviconsWebpackPlugin({
+      logo: config.paths.client('favicon.png'),
       path: config.base,
       favicons: {
         appName: 'Wallet',
@@ -97,13 +108,14 @@ const webpackConfig = {
     new HtmlWebpackPlugin({
       title: 'Hot Wallet with p2p exchange',
       isWidget: config.isWidget,
+      isBinanceBuild: config.binance,
       template: config.paths.client('index.html'),
       hash: false,
       filename: 'index.html',
       inject: 'body',
       ... (config.firebug) ? {
-        firebugMark: `debug="true"`,
-        firebugScript: `<script type="text/javascript" src="./firebug/firebug.js"></script>`,
+        firebugMark: 'debug="true"',
+        firebugScript: '<script type="text/javascript" src="./firebug/firebug.js"></script>',
       } : {},
     }),
     new webpack.ContextReplacementPlugin(

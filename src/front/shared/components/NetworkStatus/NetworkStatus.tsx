@@ -18,9 +18,6 @@ import { FormattedMessage } from 'react-intl'
 )
 @cssModules(styles, { allowMultiple: true })
 export default class NetworkStatus extends React.Component<any, any> {
-
-  props: any
-
   static propTypes = {
     isOnline: PropTypes.bool.isRequired,
     onlineUsers: PropTypes.number,
@@ -43,7 +40,7 @@ export default class NetworkStatus extends React.Component<any, any> {
           <span styleName="status">Offline</span>
         }
         {
-          isOnline && (onlineUsers === 0
+          isOnline && (onlineUsers <= 0
             ? <span styleName="status">Connecting...</span>
             : <span styleName="status">{`${onlineUsers} peers online`}</span>)
         }

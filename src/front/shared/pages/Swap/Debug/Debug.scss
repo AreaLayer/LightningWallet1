@@ -1,7 +1,7 @@
 .debug {
   padding: 0.5em;
   border-radius: 0.3em;
-  border: 1px solid $notice-color;
+  border: 1px solid var(--color-notice);
 }
 
 .title {
@@ -16,5 +16,6 @@
 
 .information {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
+  color: var(--color);
 }

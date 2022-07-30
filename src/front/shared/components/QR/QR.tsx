@@ -1,56 +1,57 @@
 import React, { Component } from 'react'
 import CSSModules from 'react-css-modules'
-import cx from 'classnames'
-import PropTypes from 'prop-types'
-import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import animateFetching from 'components/loaders/ContentLoader/ElementLoading.scss'
 
 import styles from './QR.scss'
 
-/**
- * @todo Amount support?
- */
+type ComponentProps = {
+  address: string
+}
+
+type ComponentState = {
+  qrIsLoaded: boolean
+}
+
 @CSSModules({ ...styles, ...animateFetching }, { allowMultiple: true })
-export default class QR extends Component<any, any> {
+export default class QR extends Component<ComponentProps, ComponentState> {
 
   constructor(props) {
-    //@ts-ignore
-    super()
+    super(props)
 
     this.state = {
-      renderQr: false,
+      qrIsLoaded: false,
     }
   }
 
-  static propTypes = {
-    address: PropTypes.string.isRequired,
-  }
+  setSuccessLoading = () => {
+    const { qrIsLoaded } = this.state
 
-  componentDidMount() {
-    setTimeout(() => {
-      this.setState({ renderQr: true })
-    }, 3000)
+    if (!qrIsLoaded) {
+      this.setState(() => ({
+        qrIsLoaded: true
+      }))
+    }
   }
 
   render() {
     const { address } = this.props
+    const { qrIsLoaded } = this.state
     const size = 270
+
     return (
-      <React.Fragment>
+      <>
         <div className={styles.relativeWrapper}>
           <div className={styles.imageWrapper}>
             <img
+              styleName={`${qrIsLoaded ? '' : 'hiddenEl'}`}
               src={`https://chart.googleapis.com/chart?chs=${size}x${size}&cht=qr&chl=${address}`}
+              onLoad={this.setSuccessLoading}
               alt={address}
             />
-            <span className={cx({
-              [styles.imageLoader]: true,
-              [animateFetching['animate-fetching']]: !this.state.renderQr,
-              [styles.hiddenEl]: this.state.renderQr,
-            })} />
+            <span styleName={`imageLoader ${qrIsLoaded ? 'hiddenEl' : 'animate-fetching'}`} />
           </div>
         </div>
-      </React.Fragment>
+      </>
     )
   }
 }

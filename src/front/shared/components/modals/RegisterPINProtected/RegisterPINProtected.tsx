@@ -1,27 +1,19 @@
 import React, { Fragment } from 'react'
-import PropTypes from 'prop-types'
-import helpers, { constants } from 'helpers'
+import { constants } from 'helpers'
 import actions from 'redux/actions'
 import Link from 'local_modules/sw-valuelink'
 import { connect } from 'redaction'
-import config from 'app-config'
 
 import cssModules from 'react-css-modules'
 import styles from '../Styles/default.scss'
 import ownStyle from './RegisterPINProtected.scss'
-
-import { BigNumber } from 'bignumber.js'
+import * as mnemonicUtils from 'common/utils/mnemonic'
 import Modal from 'components/modal/Modal/Modal'
 import FieldLabel from 'components/forms/FieldLabel/FieldLabel'
 import Input from 'components/forms/Input/Input'
 import Button from 'components/controls/Button/Button'
-import Tooltip from 'components/ui/Tooltip/Tooltip'
 import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-import ReactTooltip from 'react-tooltip'
-import { isMobile } from 'react-device-detect'
 
-import typeforce from 'swap.app/util/typeforce'
-import { inputReplaceCommaWithDot } from 'helpers/domUtils'
 import CopyToClipboard from 'react-copy-to-clipboard'
 import moment from 'moment/moment'
 import okSvg from 'shared/images/ok.svg'
@@ -175,20 +167,12 @@ const langs = defineMessages({
   },
 })
 
-@injectIntl
 @connect(({ user: { btcData, btcMultisigPinData } }) => ({
   btcData,
   btcMultisigPinData,
 }))
 @cssModules({ ...styles, ...ownStyle }, { allowMultiple: true })
-export default class RegisterPINProtected extends React.Component<any, any> {
-  props: any
-
-  static propTypes = {
-    name: PropTypes.string,
-    data: PropTypes.object,
-  }
-
+class RegisterPINProtected extends React.Component<any, any> {
   constructor(props) {
     super(props)
 
@@ -224,7 +208,6 @@ export default class RegisterPINProtected extends React.Component<any, any> {
       mnemonicSaved,
       mnemonic: ``,
       mnemonicWallet: false,
-      isMnemonicCopied: false,
       isMnemonicGenerated: false,
       isMnemonicValid: true,
       isWalletLockedOtherPin: false,
@@ -246,7 +229,7 @@ export default class RegisterPINProtected extends React.Component<any, any> {
         isShipped: true,
       },
       async () => {
-        if (!mnemonic || !actions.btc.validateMnemonicWords(mnemonic.trim())) {
+        if (!mnemonic || !mnemonicUtils.validateMnemonicWords(mnemonic)) {
           this.setState({
             error: <FormattedMessage {...langs.errorMnemonicInvalid} />,
             isShipped: false,
@@ -270,21 +253,6 @@ export default class RegisterPINProtected extends React.Component<any, any> {
           isShipped: false,
           step: 'ready',
         })
-      }
-    )
-  }
-
-  handleCopyMnemonic = async () => {
-    this.setState(
-      {
-        isMnemonicCopied: true,
-      },
-      () => {
-        setTimeout(() => {
-          this.setState({
-            isMnemonicCopied: false,
-          })
-        }, 1000)
       }
     )
   }
@@ -355,23 +323,6 @@ export default class RegisterPINProtected extends React.Component<any, any> {
       pinServerOffline: false,
       step: `restory`,
     })
-  }
-
-  handleGenerateMnemonic = async () => {
-    this.setState(
-      {
-        isMnemonicGenerated: true,
-        isMnemonicValid: true,
-        mnemonic: actions.btc.getRandomMnemonicWords(),
-      },
-      () => {
-        setTimeout(() => {
-          this.setState({
-            isMnemonicGenerated: false,
-          })
-        }, 1000)
-      }
-    )
   }
 
   handleFinish = async () => {
@@ -501,7 +452,7 @@ export default class RegisterPINProtected extends React.Component<any, any> {
           })
           return
         }
-        const result = await actions.btcmultisig.register_PIN(
+        const result = await actions.btcmultisig.registerPinWallet(
           pinCode,
           mnemonic ? mnemonic.trim() : false,
           useGeneratedKey && useGeneratedKeyEnabled ? generatedKey : false
@@ -556,7 +507,6 @@ export default class RegisterPINProtected extends React.Component<any, any> {
       useGeneratedKeyEnabled,
       mnemonic,
       mnemonicWallet,
-      isMnemonicCopied,
       isMnemonicGenerated,
       isMnemonicValid,
       pinServerOffline,
@@ -778,3 +728,5 @@ export default class RegisterPINProtected extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(RegisterPINProtected)

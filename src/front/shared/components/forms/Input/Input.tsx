@@ -1,19 +1,17 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { Input as ValueLinkInput } from "local_modules/sw-valuelink";
-import { constants } from 'helpers'
+import React, { Component } from "react"
+import PropTypes from "prop-types"
+import { Input as ValueLinkInput } from "local_modules/sw-valuelink"
 import cx from "classnames";
-import { ignoreProps } from "helpers";
-import reducers from "redux/core/reducers";
-import { isMobile } from "react-device-detect";
+import { ignoreProps } from "helpers"
+import reducers from "redux/core/reducers"
+import { isMobile } from "react-device-detect"
 
-import cssModules from "react-css-modules";
-import styles from "./Input.scss";
+import cssModules from "react-css-modules"
+import styles from "./Input.scss"
 import "./style.css"
-import TextArea from "components/forms/TextArea/TextArea";
+import TextArea from "components/forms/TextArea/TextArea"
 
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 @cssModules(styles, { allowMultiple: true })
 export default class Input extends Component<any, any> {
   static propTypes = {
@@ -48,6 +46,7 @@ export default class Input extends Component<any, any> {
       onFocus();
     }
 
+    // Hide the Header if Input is blured
     if (isMobile) {
       const header = document.getElementById('header-mobile')
       if (header) {
@@ -57,13 +56,14 @@ export default class Input extends Component<any, any> {
     reducers.inputActive.setInputActive(true);
   };
 
-  handleBlur = () => {
-    const { onBlur } = this.props;
+  handleBlur = (event) => {
+    const { onBlur } = this.props
 
     if (onBlur) {
-      onBlur();
+      onBlur(event)
     }
 
+    // Show the Header if Input is blured
     if (isMobile) {
       const header = document.getElementById('header-mobile')
       if (header) {
@@ -75,6 +75,7 @@ export default class Input extends Component<any, any> {
 
   render() {
     const {
+      styleName,
       className,
       inputContainerClassName,
       inputClassName,
@@ -95,13 +96,15 @@ export default class Input extends Component<any, any> {
       fiat,
       srollingForm,
       activeFiat,
+      id,
       ...rest
     } = this.props;
 
     const inputContainerStyleName = cx("inputContainer", {
       withError: error,
       withMargin: withMargin,
-      smallFontSize: smallFontSize
+      smallFontSize: smallFontSize,
+      withQr: qr,
     });
 
     const focusEvent = !isMobile
@@ -111,13 +114,12 @@ export default class Input extends Component<any, any> {
         onBlur: this.handleBlur
       };
 
-    let style = errorStyle ? "input inputError" : "input ";
-    if (srollingForm) {
-      style = style + "srollingForm";
-    }
+    const style = `input ${errorStyle ? 'inputError' : ''} ${srollingForm ? 'srollingForm' : ''} ${
+      styleName ? styleName : ''
+    }`
 
     return (
-      <div styleName={`root ${isDark ? '--dark' : ''}`} className={className}>
+      <div styleName="root" className={className}>
         <div styleName={inputContainerStyleName} className={inputContainerClassName}>
           {React.createElement(multiline ? TextArea : ValueLinkInput, {
             ...ignoreProps(rest, "styles"),
@@ -126,6 +128,7 @@ export default class Input extends Component<any, any> {
             style: inputCustomStyle,
             valueLink,
             type,
+            id,
             disabled: disabled || readOnly,
             autoFocus: !!focusOnInit,
             dir: "auto",
@@ -134,7 +137,7 @@ export default class Input extends Component<any, any> {
           })}
           {fiat > 0 && <p styleName="dollar">{`~${fiat}`}{activeFiat}</p>}
           {qr && (
-            <p styleName="rightEl qr">
+            <p styleName="qrWrapper">
               <i className="fas fa-qrcode" onClick={openScan} />
             </p>
           )}

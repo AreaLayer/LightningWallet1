@@ -1,116 +1,61 @@
-import React, { useState, useEffect } from 'react'
-import config from 'app-config'
+/* eslint-disable no-restricted-syntax */
+import { useState, useEffect } from 'react'
+import config from 'helpers/externalConfig'
 
 import CSSModules from 'react-css-modules'
-import styles from './CreateWallet.scss'
-
 import { connect } from 'redaction'
 import actions from 'redux/actions'
-
-import { FormattedMessage, injectIntl } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { withRouter } from 'react-router-dom'
 import { isMobile } from 'react-device-detect'
 import reducers from 'redux/core/reducers'
+import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 import links from 'helpers/links'
 import metamask from 'helpers/metamask'
 import { localisedUrl } from 'helpers/locale'
 
-import LogicForSteps from './Steps/LogicForSteps'
 import Tooltip from 'components/ui/Tooltip/Tooltip'
+import Button from 'shared/components/controls/Button/Button'
 
 import { constants, localStorage } from 'helpers'
 import CloseIcon from 'components/ui/CloseIcon/CloseIcon'
-import web3Icons from '../../images'
+import web3Icons from 'images'
+import StepsWrapper from './Steps/StepsWrapper'
+import styles from './CreateWallet.scss'
 
-const isWidgetBuild = config && config.isWidget
-const isDark = localStorage.getItem(constants.localStorage.isDark)
+const noInternalWallet = !!(config?.opts?.ui?.disableInternalWallet)
+const addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase = !!config?.opts?.addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase
 
-const CreateWallet = (props) => {
+function CreateWallet(props) {
   const {
     history,
-    intl: { locale },
+    currencies: { items: allCurrencies },
     createWallet: { currencies, secure },
-    location: { pathname },
+    location: { pathname, hash },
     userData,
     core: { hiddenCoinsList },
-    activeFiat,
   } = props
 
-  const allCurrencies = props.currencies.items
+  const { locale } = useIntl()
+
+  const forcedCurrency = pathname.split('/')[2]
 
   const {
-    ethData,
     btcData,
-    ghostData,
-    nextData,
-    btcMultisigSMSData,
-    btcMultisigUserData,
   } = userData
 
   const userWallets = actions.core
     .getWallets({})
     .filter(({ currency }) => !hiddenCoinsList.includes(currency))
 
-  const currencyBalance = [
-    btcData,
-    btcMultisigSMSData,
-    btcMultisigUserData,
-    ethData,
-    ghostData,
-    nextData,
-  ].map(({ balance, currency, infoAboutCurrency }) => ({
-    balance,
-    infoAboutCurrency,
-    name: currency,
-  }))
-
-  let btcBalance = 0
-  let fiatBalance = 0
-
-  const widgetCurrencies = [
-    'BTC',
-    'BTC (SMS-Protected)',
-    'BTC (PIN-Protected)',
-    'BTC (Multisig)',
-    'ETH',
-    'GHOST',
-    'NEXT',
-  ]
-
-  if (isWidgetBuild) {
-    if (window.widgetERC20Tokens && Object.keys(window.widgetERC20Tokens).length) {
-      // Multi token widget build
-      Object.keys(window.widgetERC20Tokens).forEach((key) => {
-        widgetCurrencies.push(key.toUpperCase())
-      })
-    } else {
-      widgetCurrencies.push(config.erc20token.toUpperCase())
-    }
-  }
-
-  if (currencyBalance) {
-    currencyBalance.forEach(async (item) => {
-      if (
-        (!isWidgetBuild || widgetCurrencies.includes(item.name)) &&
-        item.infoAboutCurrency &&
-        item.balance !== 0
-      ) {
-        btcBalance += item.balance * item.infoAboutCurrency.price_btc
-        fiatBalance +=
-          item.balance * (item.infoAboutCurrency.price_fiat ? item.infoAboutCurrency.price_fiat : 1)
-      }
-    })
-  }
-
   useEffect(() => {
-    const forcedCurrency = pathname.split('/')[2]
-
     if (forcedCurrency) {
       const hiddenList = localStorage.getItem('hiddenCoinsList')
 
       const isExist = hiddenList.find((el) => {
         if (el.includes(':')) {
-          return el.includes(forcedCurrency.toUpperCase())
+          const [elCoin, elAddress] = el.split(':')
+          return elCoin === forcedCurrency.toUpperCase()
         }
         return el === forcedCurrency.toUpperCase()
       })
@@ -131,44 +76,6 @@ const CreateWallet = (props) => {
     }
   }, [pathname])
 
-  useEffect(() => {
-    const widgetCurrencies = [
-      'BTC',
-      'BTC (SMS-Protected)',
-      'BTC (PIN-Protected)',
-      'BTC (Multisig)',
-      'ETH',
-      'GHOST',
-      'NEXT',
-    ]
-
-    if (isWidgetBuild) {
-      if (window.widgetERC20Tokens && Object.keys(window.widgetERC20Tokens).length) {
-        // Multi token widget build
-        Object.keys(window.widgetERC20Tokens).forEach((key) => {
-          widgetCurrencies.push(key.toUpperCase())
-        })
-      } else {
-        widgetCurrencies.push(config.erc20token.toUpperCase())
-      }
-    }
-
-    if (currencyBalance) {
-      currencyBalance.forEach((item) => {
-        if (
-          (!isWidgetBuild || widgetCurrencies.includes(item.name)) &&
-          item.infoAboutCurrency &&
-          item.balance !== 0
-        ) {
-          btcBalance += item.balance * item.infoAboutCurrency.price_btc
-          fiatBalance +=
-            item.balance *
-            (item.infoAboutCurrency.price_fiat ? item.infoAboutCurrency.price_fiat : 1)
-        }
-      })
-    }
-  }, [])
-
   const [step, setStep] = useState(1)
   const [error, setError] = useState('Choose something')
   const [isExist, setExist] = useState(false)
@@ -182,6 +89,7 @@ const CreateWallet = (props) => {
   }
 
   const handleClick = () => {
+    // @ts-ignore: strictNullChecks
     setError(null)
     if (step !== 2 && !forcedCurrencyData) {
       reducers.createWallet.newWalletData({ type: 'step', data: step + 1 })
@@ -191,11 +99,16 @@ const CreateWallet = (props) => {
     goHome()
   }
 
+  const handleShowMnemonic = () => {
+    actions.modals.open(constants.modals.SaveMnemonicModal)
+  }
+
   const handleRestoreMnemonic = () => {
-    actions.modals.open(constants.modals.RestoryMnemonicWallet, { btcBalance, fiatBalance })
+    actions.modals.open(constants.modals.RestoryMnemonicWallet)
   }
 
   const validate = () => {
+    // @ts-ignore: strictNullChecks
     setError(null)
 
     if (!Object.values(currencies).includes(true) && step === 1) {
@@ -203,9 +116,30 @@ const CreateWallet = (props) => {
       return
     }
 
-    const isIgnoreSecondStep = !Object.keys(currencies).includes('BTC') // ['ETH', 'SWAP', 'EURS', 'Custom ERC20'].find(el => Object.keys(currencies).includes(el))
+    const isIgnoreSecondStep = !Object.keys(currencies).includes('BTC') || (Object.keys(currencies).includes('BTC') && hash !== '#pin')
+    const tokenStandards = Object.keys(TOKEN_STANDARDS).map((key) => TOKEN_STANDARDS[key])
 
-    if (isIgnoreSecondStep && !currencies['Custom ERC20']) {
+    for (const standardObj of tokenStandards) {
+      const standardName = standardObj.standard.toUpperCase()
+      const baseCurrency = standardObj.currency.toUpperCase()
+      const key = `{${baseCurrency}}${standardName}`
+
+      if (currencies[key] && isIgnoreSecondStep) {
+        actions.core.markCoinAsVisible(standardObj.currency.toUpperCase(), true)
+        localStorage.setItem(constants.localStorage.isWalletCreate, true)
+
+        goHome()
+
+        actions.modals.open(constants.modals.AddCustomToken, {
+          standard: standardName,
+          baseCurrency: standardObj.currency,
+        })
+
+        return
+      }
+    }
+
+    if (isIgnoreSecondStep) {
       Object.keys(currencies).forEach((currency) => {
         if (currencies[currency]) {
           actions.core.markCoinAsVisible(currency.toUpperCase(), true)
@@ -221,12 +155,6 @@ const CreateWallet = (props) => {
       return
     }
 
-    if (currencies['Custom ERC20']) {
-      goHome()
-      actions.modals.open(constants.modals.AddCustomERC20)
-      return
-    }
-
     if (step === 2 || forcedCurrencyData) {
       switch (secure) {
         case 'withoutSecure':
@@ -239,48 +167,6 @@ const CreateWallet = (props) => {
             }
           })
           break
-        case 'sms':
-          if (currencies.BTC) {
-            if (!actions.btcmultisig.checkSMSActivated()) {
-              actions.modals.open(constants.modals.RegisterSMSProtected, {
-                callback: () => {
-                  actions.core.markCoinAsVisible('BTC (SMS-Protected)', true)
-                  handleClick()
-                },
-              })
-              return
-            }
-            actions.modals.open(constants.modals.Confirm, {
-              title: (
-                <FormattedMessage
-                  id="ConfirmActivateSMS_Title"
-                  defaultMessage="Добавление кошелька BTC (SMS-Protected)"
-                />
-              ),
-              message: (
-                <FormattedMessage
-                  id="ConfirmActivateSMS_Message"
-                  defaultMessage="У вас уже активирован этот тип кошелька. Хотите активировать другой кошелек?"
-                />
-              ),
-              labelYes: <FormattedMessage id="ConfirmActivateSMS_Yes" defaultMessage="Да" />,
-              labelNo: <FormattedMessage id="ConfirmActivateSMS_No" defaultMessage="Нет" />,
-              onAccept: () => {
-                actions.modals.open(constants.modals.RegisterSMSProtected, {
-                  callback: () => {
-                    actions.core.markCoinAsVisible('BTC (SMS-Protected)', true)
-                    handleClick()
-                  },
-                })
-              },
-              onCancel: () => {
-                actions.core.markCoinAsVisible('BTC (SMS-Protected)', true)
-                handleClick()
-              },
-            })
-            return
-          }
-          break
         case 'pin':
           if (currencies.BTC) {
             if (!actions.btcmultisig.checkPINActivated()) {
@@ -292,6 +178,7 @@ const CreateWallet = (props) => {
               })
               return
             }
+
             actions.modals.open(constants.modals.Confirm, {
               title: (
                 <FormattedMessage
@@ -342,11 +229,10 @@ const CreateWallet = (props) => {
     handleClick()
   }
 
-  const forcedCurrency = pathname.split('/')[2]
   let forcedCurrencyData
 
   if (forcedCurrency) {
-    forcedCurrencyData = allCurrencies.find(({ name }) => name === forcedCurrency.toUpperCase())
+    forcedCurrencyData = allCurrencies.find(({ name, standard, value }) => (standard ? value.toUpperCase() : name) === forcedCurrency.toUpperCase())
     if (forcedCurrencyData) {
       currencies[forcedCurrency.toLowerCase()] = true
     }
@@ -356,81 +242,53 @@ const CreateWallet = (props) => {
     goHome()
   }
 
-  useEffect(() => {
-    // Link from index.html (first screen)
-    const starterModalRestoreWallet = document.getElementById('starter-modal__link-restore-wallet')
-    if (starterModalRestoreWallet) {
-      starterModalRestoreWallet.addEventListener('click', redirectToRestoreWallet)
-
-      return () => {
-        starterModalRestoreWallet.removeEventListener('click', redirectToRestoreWallet)
-      }
-
-      function redirectToRestoreWallet() {
-        document.location.href = '#/restoreWallet'
-        handleRestoreMnemonic()
-        document.getElementById('starter-modal').classList.add('d-none')
-      }
-    }
-  }, [])
-
   const web3Type = metamask.web3connect.getInjectedType()
   const web3Icon = (web3Icons[web3Type] && web3Type !== `UNKNOWN` && web3Type !== `NONE`) ? web3Icons[web3Type] : false
 
   return (
-    <div styleName={`wrapper ${isDark ? '--dark' : ''}`}>
-      {
-        //@ts-ignore
-        userWallets.length && !localStorage.getItem(constants.wasOnWallet) ? (
-          <>
-            {/*
-            //@ts-ignore */}
-            <CloseIcon
-              styleName="closeButton"
-              onClick={() => goHome()}
-              data-testid="modalCloseIcon"
-            />
-          </>
-        ) : (
-          ''
-        )
-      }
+    <div styleName="wrapper">
+      {userWallets.length ? (
+        <CloseIcon
+          styleName="closeButton"
+          onClick={goHome}
+          data-testid="modalCloseIcon"
+        />
+      ) : null}
 
       <div styleName={isMobile ? 'mobileFormBody' : 'formBody'}>
         <h2>
-          <FormattedMessage id="createWalletHeader1" defaultMessage="Создание кошелька" />{' '}
+          <FormattedMessage id="createWalletHeader1" defaultMessage="Создание кошелька" />
+          {' '}
           {forcedCurrency && forcedCurrency.toUpperCase()}
         </h2>
         <div styleName="buttonWrapper">
-          <div>
-            <button onClick={handleRestoreMnemonic}>
-              <FormattedMessage id="ImportKeys_RestoreMnemonic" defaultMessage="Restore from 12-word seed" />
-            </button>
-            &nbsp;
-            <Tooltip id="ImportKeys_RestoreMnemonic_tooltip">
-              <span>
-                <FormattedMessage
-                  id="ImportKeys_RestoreMnemonic_Tooltip"
-                  defaultMessage="12-word backup phrase"
-                />
-                {(btcBalance > 0 || fiatBalance > 0) && (
-                  <React.Fragment>
-                    <br />
-                    <br />
-                    <div styleName="alertTooltipWrapper">
-                      <FormattedMessage
-                        id="ImportKeys_RestoreMnemonic_Tooltip_withBalance"
-                        defaultMessage="Please, be causious!"
-                      />
-                    </div>
-                  </React.Fragment>
-                )}
-              </span>
-            </Tooltip>
-          </div>
+          {!noInternalWallet && (
+            <div>
+              <button onClick={handleRestoreMnemonic} type="button">
+                <FormattedMessage id="ImportKeys_RestoreMnemonic" defaultMessage="Restore from 12-word seed" />
+              </button>
+              &nbsp;
+              <Tooltip id="ImportKeys_RestoreMnemonic_tooltip">
+                <span>
+                  <FormattedMessage
+                    id="ImportKeys_RestoreMnemonic_Tooltip"
+                    defaultMessage="12-word backup phrase"
+                  />
+                  <br />
+                  <br />
+                  <div styleName="alertTooltipWrapper">
+                    <FormattedMessage
+                      id="ImportKeys_RestoreMnemonic_Tooltip_withBalance"
+                      defaultMessage="Please, be causious!"
+                    />
+                  </div>
+                </span>
+              </Tooltip>
+            </div>
+          )}
           {!metamask.isConnected() && (
             <div>
-              <button onClick={handleConnectWallet}>
+              <button onClick={handleConnectWallet} type="button">
                 {web3Icon && (
                   <img styleName="connectWalletIcon" src={web3Icon} />
                 )}
@@ -446,17 +304,32 @@ const CreateWallet = (props) => {
             </div>
           )}
         </div>
-        {/* TODO: переименовать компонент */}
-        <LogicForSteps
-          step={step}
-          forcedCurrencyData={forcedCurrencyData}
-          error={error}
-          onClick={validate}
-          setError={setError}
-          btcData={btcData}
-          currenciesForSecondStep={currencies}
-          ethData={ethData}
-        />
+
+        {
+          addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase
+            ? (
+              <div style={{ display: 'flex', justifyContent: 'center', width: '60%', margin: 'auto' }}>
+                <Button blue fullWidth onClick={handleShowMnemonic}>
+                  <FormattedMessage
+                    id="BTCMS_SaveMnemonicButton"
+                    defaultMessage="Save secret phrase"
+                  />
+                </Button>
+              </div>
+            )
+            : (
+              <StepsWrapper
+                step={step}
+                forcedCurrencyData={forcedCurrencyData}
+                error={error}
+                onClick={validate}
+                setError={setError}
+                btcData={btcData}
+                currenciesForSecondStep={currencies}
+                showPinContent={hash === '#pin'}
+              />
+            )
+        }
       </div>
     </div>
   )
@@ -466,5 +339,4 @@ export default connect({
   currencies: 'currencies',
   userData: 'user',
   core: 'core',
-  activeFiat: 'user.activeFiat',
-})(injectIntl(withRouter(CSSModules(CreateWallet, styles, { allowMultiple: true }))))
+})(withRouter(CSSModules(CreateWallet, styles, { allowMultiple: true })))

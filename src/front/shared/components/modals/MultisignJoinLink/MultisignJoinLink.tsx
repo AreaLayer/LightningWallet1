@@ -1,39 +1,23 @@
 import React, { Fragment } from 'react'
 import PropTypes from 'prop-types'
-import helpers, { constants } from 'helpers'
+import { constants } from 'helpers'
 import actions from 'redux/actions'
-import Link from 'local_modules/sw-valuelink'
 import { connect } from 'redaction'
-import config from 'app-config'
 
 import cssModules from 'react-css-modules'
 
 import defaultStyles from '../Styles/default.scss'
 import styles from './MultisignJoinLink.scss'
 
-import { BigNumber } from 'bignumber.js'
 import Modal from 'components/modal/Modal/Modal'
-import FieldLabel from 'components/forms/FieldLabel/FieldLabel'
-import Input from 'components/forms/Input/Input'
 import Button from 'components/controls/Button/Button'
-import Tooltip from 'components/ui/Tooltip/Tooltip'
 import { ShareLink } from 'components/controls'
 import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-import ReactTooltip from 'react-tooltip'
-import { isMobile } from 'react-device-detect'
-
-import typeforce from 'swap.app/util/typeforce'
-// import { isCoinAddress } from 'swap.app/util/typeforce'
-import minAmount from 'helpers/constants/minAmount'
-import { inputReplaceCommaWithDot } from 'helpers/domUtils'
 
 import links from 'helpers/links'
 import { getFullOrigin } from 'helpers/links'
 
 import SwapApp from 'swap.app'
-
-
-import CopyToClipboard from 'react-copy-to-clipboard'
 
 
 const langLabels = defineMessages({
@@ -44,14 +28,6 @@ const langLabels = defineMessages({
   multiSignJoinLink: {
     id: 'multiSignJoinLink',
     defaultMessage: `Создание BTC-Multisign кошелька`,
-  },
-  multiSignJoinLinkCopied: {
-    id: 'multiSignJoinLinkCopied',
-    defaultMessage: `Ready. Link copied to clipboard`,
-  },
-  multiSignJoinLinkCopy: {
-    id: 'multiSignJoinLinkCopy',
-    defaultMessage: `Copy to clipboard`,
   },
   needSaveMnemonicToContinue: {
     id: 'multiSignJoinLink_YouNeedSaveMnemonic',
@@ -71,7 +47,6 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @connect(
   ({
     user: {
@@ -82,10 +57,7 @@ const langLabels = defineMessages({
   })
 )
 @cssModules({ ...defaultStyles, ...styles }, { allowMultiple: true })
-export default class MultisignJoinLink extends React.Component<any, any> {
-
-  props: any
-
+class MultisignJoinLink extends React.Component<any, any> {
   static propTypes = {
     name: PropTypes.string,
     data: PropTypes.object,
@@ -113,14 +85,14 @@ export default class MultisignJoinLink extends React.Component<any, any> {
     } = this.props
 
     const publicKey = btcData.publicKey.toString('Hex')
+    const linkAction = action || `join`
 
-    const linkAction = (action) ? action : `join`
-
+    //@ts-ignore: strictNullChecks
     const joinLink = `${getFullOrigin()}${links.multisign}/btc/${linkAction}/${publicKey}/${SwapApp.shared().services.room.peer}`
 
-    this.setState({
+    this.setState(() => ({
       joinLink,
-    })
+    }))
   }
 
   handleBeginSaveMnemonic = async () => {
@@ -182,6 +154,7 @@ export default class MultisignJoinLink extends React.Component<any, any> {
     } = this.props
 
     return (
+      //@ts-ignore: strictNullChecks
       <Modal name={name} title={`${intl.formatMessage(langLabels.multiSignJoinLink)}`} onClose={this.handleClose} showCloseButton={showCloseButton}>
         {step === 'savemnemonic' && (
           <Fragment>
@@ -223,3 +196,5 @@ export default class MultisignJoinLink extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(MultisignJoinLink)

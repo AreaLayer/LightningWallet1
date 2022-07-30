@@ -13,7 +13,6 @@ import actions from 'redux/actions'
 import typeforce from 'swap.app/util/typeforce'
 import config from 'app-config'
 const bitcore = require('ghost-bitcore-lib');
-import { localisePrefix } from 'helpers/locale'
 
 import * as mnemonicUtils from '../../../../common/utils/mnemonic'
 
@@ -28,15 +27,6 @@ const hasAdminFee = (config
   && config.opts.fee.ghost.min
 ) ? config.opts.fee.ghost : false
 
-const getRandomMnemonicWords = () => bip39.generateMnemonic()
-const validateMnemonicWords = (mnemonic) => bip39.validateMnemonic(mnemonicUtils.convertMnemonicToValid(mnemonic))
-
-
-const sweepToMnemonic = (mnemonic, path) => {
-  const wallet = getWalletByWords(mnemonic, path)
-  localStorage.setItem(constants.privateKeyNames.ghostMnemonic, wallet.WIF)
-  return wallet.WIF
-}
 
 const getMainPublicKey = () => {
   const {
@@ -46,35 +36,6 @@ const getMainPublicKey = () => {
   } = getState()
 
   return ghostData.publicKey.toString('Hex')
-}
-
-const isSweeped = () => {
-  const {
-    user: {
-      ghostData,
-      ghostMnemonicData,
-    },
-  } = getState()
-
-  if (ghostMnemonicData
-    && ghostMnemonicData.address
-    && ghostData
-    && ghostData.address
-    && ghostData.address.toLowerCase() !== ghostMnemonicData.address.toLowerCase()
-  ) return false
-
-  return true
-}
-
-const getSweepAddress = () => {
-  const {
-    user: {
-      ghostMnemonicData,
-    },
-  } = getState()
-
-  if (ghostMnemonicData && ghostMnemonicData.address) return ghostMnemonicData.address
-  return false
 }
 
 const getWalletByWords = (mnemonic: string, walletNumber: number = 0, path: string = '') => {
@@ -107,35 +68,19 @@ const getPrivateKeyByAddress = (address) => {
   const {
     user: {
       ghostData: {
-        address: oldAddress,
+        address: dataAddress,
         privateKey,
       }
     },
   } = getState()
-  /*
-  const ghostMnemonicData
-      ghostMnemonicData: {
-        address: mnemonicAddress,
-        privateKey: mnemonicKey,
-      },
-    },
-  } = getState()
-  */
-  if (oldAddress === address) return privateKey
-    //@ts-ignore
-  if (mnemonicAddress === address) return mnemonicKey
+
+  if (dataAddress === address) return privateKey
 }
 
-const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
-  let sweepToMnemonicReady = false
-
-  if (privateKey
-    && mnemonic
-    && mnemonicKeys
-    && mnemonicKeys.ghost === privateKey
-  ) sweepToMnemonicReady = true
-
-  if (!privateKey && mnemonic) sweepToMnemonicReady = true
+const login = (
+  privateKey,
+  mnemonic: string | null = null,
+) => {
 
   if (privateKey) {
     const hash = bitcoin.crypto.sha256(privateKey)
@@ -148,20 +93,19 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
     // keyPair     = bitcoin.ECPair.makeRandom({ network: ghost.network })
     // privateKey  = keyPair.toWIF()
     // use random 12 words
+    //@ts-ignore: strictNullChecks
     if (!mnemonic) mnemonic = bip39.generateMnemonic()
 
+    //@ts-ignore: strictNullChecks
     const accData = getWalletByWords(mnemonic)
-    console.log('Ghost. Generated wallet from random 12 words')
-    console.log(accData)
+
     privateKey = accData.WIF
-    localStorage.setItem(constants.privateKeyNames.ghostMnemonic, privateKey)
   }
 
   localStorage.setItem(constants.privateKeyNames.ghost, privateKey)
 
   const data = {
     ...auth(privateKey),
-    isMnemonic: sweepToMnemonicReady,
     currency: 'GHOST',
     fullName: 'ghost',
   }
@@ -169,56 +113,7 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
   window.getGhostAddress = () => data.address
   window.getGhostData = () => data
 
-  console.info('Logged in with Ghost', data)
   reducers.user.setAuthData({ name: 'ghostData', data })
-  if (!sweepToMnemonicReady) {
-    // Auth with our mnemonic account
-    if (mnemonic === `-`) {
-      console.error('Sweep. Cant auth. Need new mnemonic or enter own for re-login')
-      return
-    }
-
-    if (!mnemonicKeys
-      || !mnemonicKeys.ghost
-    ) {
-      console.error('Sweep. Cant auth. Login key undefined')
-      return
-    }
-
-    const mnemonicData = {
-      ...auth(mnemonicKeys.ghost),
-      isMnemonic: true,
-    }
-    console.info('Logged in with Ghost Mnemonic', mnemonicData)
-    reducers.user.addWallet({
-      name: 'ghostMnemonicData',
-      data: {
-        currency: 'GHOST',
-        fullName: 'Ghost (New)',
-        balance: 0,
-        isBalanceFetched: false,
-        balanceError: null,
-        infoAboutCurrency: null,
-        ...mnemonicData,
-      },
-    })
-    new Promise(async (resolve) => {
-      const balanceData = await fetchBalanceStatus(mnemonicData.address)
-      if (balanceData) {
-        reducers.user.setAuthData({
-          name: 'ghostMnemonicData',
-          data: {
-            //@ts-ignore
-            ...balanceData,
-            isBalanceFetched: true,
-          },
-        })
-      } else {
-        reducers.user.setBalanceError({ name: 'ghostMnemonicData' })
-      }
-      resolve(true)
-    })
-  }
 
   return privateKey
 }
@@ -275,8 +170,6 @@ const getBalance = () => {
       return false
     },
   }).then(({ balance, unconfirmedBalance }) => {
-    console.log('GHOST Balance: ', balance)
-    console.log('GHOST unconfirmedBalance Balance: ', unconfirmedBalance)
     reducers.user.setBalance({ name: 'ghostData', amount: balance, unconfirmedBalance })
     return balance
   })
@@ -301,10 +194,12 @@ const fetchTx = (hash, cacheResponse) =>
     checkStatus: (answer) => {
       try {
         if (answer && answer.fees !== undefined) return true
-      } catch (e) { /* */ }
+      } catch (e) {
+        console.error(e)
+      }
       return false
     },
-  }).then(({ fees, ...rest }) => ({
+  }).then(({ fees, ...rest }): IUniversalObj => ({
     fees: new BigNumber(fees).multipliedBy(1e8),
     ...rest,
   }))
@@ -315,14 +210,15 @@ const fetchTxRaw = (txId, cacheResponse) =>
     checkStatus: (answer) => {
       try {
         if (answer && answer.rawtx !== undefined) return true
-      } catch (e) { /* */ }
+      } catch (e) {
+        console.error(e)
+      }
       return false
     },
   }).then(({ rawtx }) => rawtx)
 
-const fetchTxInfo = (hash, cacheResponse) =>
+const fetchTxInfo = (hash, cacheResponse?) =>
   fetchTx(hash, cacheResponse)
-    //@ts-ignore
     .then(({ vin, vout, ...rest }) => {
       const senderAddress = vin ? vin[0].addr : null
       const amount = vout ? new BigNumber(vout[0].value).toNumber() : null
@@ -334,6 +230,7 @@ const fetchTxInfo = (hash, cacheResponse) =>
         const adminOutput = vout.filter((out) => (
           out.scriptPubKey.addresses
           && out.scriptPubKey.addresses[0] === hasAdminFee.address
+          //@ts-ignore: strictNullChecks
           && !(new BigNumber(out.value).eq(amount))
         ))
 
@@ -357,7 +254,6 @@ const fetchTxInfo = (hash, cacheResponse) =>
         afterBalance,
         senderAddress,
         receiverAddress: vout ? vout[0].scriptPubKey.addresses : null,
-        //@ts-ignore
         confirmed: !!(rest.confirmations),
         minerFee: rest.fees.dividedBy(1e8).toNumber(),
         adminFee,
@@ -387,38 +283,32 @@ const getAllMyAddresses = () => {
   const {
     user: {
       ghostData,
-      ghostMnemonicData,
       ghostMultisigSMSData,
       ghostMultisigUserData,
-      ghostMultisigG2FAData,
       ghostMultisigPinData,
     },
   } = getState()
 
   const retData = []
-  // Проверяем, был ли sweep
-  if (ghostMnemonicData
-    && ghostMnemonicData.address
-    && ghostData
-    && ghostData.address
-    && ghostMnemonicData.address !== ghostData.address
-  ) {
-    retData.push(ghostMnemonicData.address.toLowerCase())
-  }
 
+  //@ts-ignore: strictNullChecks
   retData.push(ghostData.address.toLowerCase())
 
-  if (ghostMultisigSMSData && ghostMultisigSMSData.address) retData.push(ghostMultisigSMSData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigSMSData?.address) retData.push(ghostMultisigSMSData.address.toLowerCase())
   // @ToDo - SMS MultiWallet
 
-  if (ghostMultisigUserData && ghostMultisigUserData.address) retData.push(ghostMultisigUserData.address.toLowerCase())
-  if (ghostMultisigUserData && ghostMultisigUserData.wallets && ghostMultisigUserData.wallets.length) {
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigUserData?.address) retData.push(ghostMultisigUserData.address.toLowerCase())
+  if (ghostMultisigUserData?.wallets?.length) {
     ghostMultisigUserData.wallets.map((wallet) => {
+      //@ts-ignore: strictNullChecks
       retData.push(wallet.address.toLowerCase())
     })
   }
 
-  if (ghostMultisigPinData && ghostMultisigPinData.address) retData.push(ghostMultisigPinData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigPinData?.address) retData.push(ghostMultisigPinData.address.toLowerCase())
 
   return retData
 }
@@ -427,7 +317,6 @@ const getDataByAddress = (address) => {
   const {
     user: {
       ghostData,
-      ghostMnemonicData,
       ghostMultisigSMSData,
       ghostMultisigUserData,
       ghostMultisigG2FAData,
@@ -436,7 +325,6 @@ const getDataByAddress = (address) => {
 
   const founded = [
     ghostData,
-    ghostMnemonicData,
     ghostMultisigSMSData,
     ghostMultisigUserData,
     ...(
@@ -487,6 +375,7 @@ const getTransaction = (address: string = ``, ownType: string = ``) =>
         return ({
           type,
           hash: item.txid,
+          //@ts-ignore: strictNullChecks
           canEdit: (myAllWallets.indexOf(address) !== -1),
           confirmations: item.confirmations,
           value: isSelf
@@ -515,217 +404,6 @@ const send = (data) => {
 }
 
 //@ts-ignore
-const sendV5WithAdminFee = async ({ from, to, amount, feeValue, speed } = {}) => {
-  const privateKey = getPrivateKeyByAddress(from)
-  const keyPair = bitcoin.ECPair.fromWIF(privateKey, ghost.network)
-  const {
-    fee: adminFee,
-    address: adminFeeAddress,
-    min: adminFeeMinValue,
-  } = config.opts.fee.ghost
-
-  const adminFeeMin = new BigNumber(adminFeeMinValue)
-  feeValue = feeValue || await ghost.estimateFeeValue({
-    inSatoshis: true,
-    speed
-  })
-
-
-  // fee - from amount - percent
-
-  let feeFromAmount: number | BigNumber = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-  if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-  feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue().toNumber()
-
-  const unspents = await fetchUnspents(from)
-  const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-
-  const skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
-
-
-  const psbt = new bitcoin.Psbt({ network: ghost.network })
-
-  psbt.setVersion(160);
-
-  psbt.addOutput({
-    address: to,
-    value: fundValue,
-  })
-
-  if (skipValue > 546) {
-    psbt.addOutput({
-      address: from,
-      value: skipValue,
-    })
-  }
-
-  // admin fee output
-  psbt.addOutput({
-    address: adminFeeAddress,
-    value: feeFromAmount,
-  })
-
-  for (let i = 0; i < unspents.length; i++) {
-    const { txid, vout } = unspents[i]
-    //@ts-ignore
-    const rawTx = await fetchTxRaw(txid)
-    psbt.addInput({
-      hash: txid,
-      index: vout,
-      nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
-    })
-  }
-
-  psbt.signAllInputs(keyPair)
-
-  psbt.finalizeAllInputs()
-
-  const rawTx = psbt.extractTransaction().toHex();
-
-  const broadcastAnswer = await broadcastTx(rawTx)
-
-  const { txid } = broadcastAnswer
-  return txid
-}
-//@ts-ignore
-const sendWithAdminFee = async ({ from, to, amount, feeValue, speed } = {}) => {
-
-  const {
-    fee: adminFee,
-    address: adminFeeAddress,
-    min: adminFeeMinValue,
-  } = config.opts.fee.ghost
-
-  const adminFeeMin = new BigNumber(adminFeeMinValue)
-
-  // fee - from amount - percent
-
-  let feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-  if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-  feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue() // Admin fee in satoshi
-  feeValue = feeValue || await ghost.estimateFeeValue({ inSatoshis: true, speed })
-
-  const tx = new bitcoin.TransactionBuilder(ghost.network)
-  const unspents = await fetchUnspents(from)
-
-  let fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  //@ts-ignore
-  const skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
-
-  unspents.forEach(({ txid, vout }) => tx.addInput(txid, vout, 0xfffffffe))
-  tx.addOutput(to, fundValue)
-
-  if (skipValue > 546) {
-    tx.addOutput(from, skipValue)
-  }
-
-  // admin fee output
-  tx.addOutput(adminFeeAddress, feeFromAmount.toNumber())
-
-  const txRaw = signAndBuild(tx, from)
-
-  await broadcastTx(txRaw.toHex())
-
-  return txRaw
-}
-
-//@ts-ignore
-const sendV5Default = async ({ from, to, amount, feeValue, speed } = {}) => {
-  const privateKey = getPrivateKeyByAddress(from)
-  const keyPair = bitcoin.ECPair.fromWIF(privateKey, ghost.network)
-  
-  let feeFromAmount = new BigNumber(0)
-  if (hasAdminFee) {
-    const {
-      fee: adminFee,
-      min: adminFeeMinValue,
-    } = config.opts.fee.btc
-
-    const adminFeeMin = new BigNumber(adminFeeMinValue)
-    feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-    if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-    //@ts-ignore
-    feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue().toNumber() // Admin fee in satoshi
-  }
-
-  feeValue = feeValue || await ghost.estimateFeeValue({ inSatoshis: true, speed })
-
-  const unspents = await fetchUnspents(from)
-  const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  //@ts-ignore
-  const skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
-
-  const psbt = new bitcoin.Psbt({ network: ghost.network })
-  
-  psbt.setVersion(160);
-
-  psbt.addOutput({
-    address: to,
-    value: fundValue,
-  })
-
-  if (skipValue > 546) {
-    psbt.addOutput({
-      address: from,
-      value: skipValue
-    })
-  }
-
-  for (let i = 0; i < unspents.length; i++) {
-    const { txid, vout } = unspents[i]
-    let rawTx = false
-    //@ts-ignore
-    rawTx = await fetchTxRaw(txid)
-
-    psbt.addInput({
-      hash: txid,
-      index: vout,
-      //@ts-ignore
-      nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
-    })
-  }
-
-  psbt.signAllInputs(keyPair)
-  psbt.finalizeAllInputs()
-
-  const rawTx = psbt.extractTransaction().toHex();
-
-
-  const broadcastAnswer = await broadcastTx(rawTx)
-
-  const { txid } = broadcastAnswer
-  return txid
-}
-//@ts-ignore
-const sendDefault = async ({ from, to, amount, feeValue, speed } = {}) => {
-  feeValue = feeValue || await ghost.estimateFeeValue({ inSatoshis: true, speed })
-  const tx = new bitcoin.TransactionBuilder(ghost.network)
-  tx.setVersion(160);
-  const unspents = await fetchUnspents(from)
-
-  const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  const skipValue = totalUnspent - fundValue - feeValue
-  unspents.forEach(({ txid, vout }) => tx.addInput(txid, vout, 0xfffffffe))
-  tx.addOutput(to, fundValue)
-
-  if (skipValue > 546) {
-    tx.addOutput(from, skipValue)
-  }
-
-  const txRaw = signAndBuild(tx, from)
-  
-  await broadcastTx(txRaw.toHex())
-
-  return txRaw
-}
-//@ts-ignore
 const sendBitcore = ({ from, to, amount, feeValue, speed } = {}) => {
   return new Promise(async (ready) => {
     const privKey = getPrivateKeyByAddress(from)
@@ -746,24 +424,6 @@ const sendBitcore = ({ from, to, amount, feeValue, speed } = {}) => {
   })
 }
 
-const signAndBuild = (transactionBuilder, address) => {
-  let { user: { ghostData: { privateKey } } } = getState()
-
-  if (address) {
-    // multi wallet - sweep upgrade
-    privateKey = getPrivateKeyByAddress(address)
-  } else {
-    // single wallet - use ghostData
-  }
-
-  const keyPair = bitcoin.ECPair.fromWIF(privateKey, ghost.network)
-
-  transactionBuilder.__INPUTS.forEach((input, index) => {
-    transactionBuilder.sign(index, keyPair)
-  })
-  return transactionBuilder.buildIncomplete()
-}
-
 const fetchUnspents = (address) => {
   const result: any = apiLooper.get('ghostscan', `/addr/${address}/utxo`, { cacheResponse: 5000 })
   return result
@@ -780,14 +440,13 @@ const broadcastTx = (txRaw) => {
 
 const signMessage = (message, encodedPrivateKey) => {
   const keyPair = bitcoin.ECPair.fromWIF(encodedPrivateKey, [ghost.networks.mainnet, ghost.networks.testnet])
+  //@ts-ignore: strictNullChecks
   const privateKeyBuff = Buffer.from(keyPair.privateKey)
 
   const signature = bitcoinMessage.sign(message, privateKeyBuff, keyPair.compressed)
 
   return signature.toString('base64')
 }
-
-const getReputation = () => Promise.resolve(0)
 
 window.getMainPublicKey = getMainPublicKey
 
@@ -839,16 +498,10 @@ export default {
   fetchTxInfo,
   fetchBalance,
   signMessage,
-  getReputation,
   getTx,
   getLinkToInfo,
   getInvoices,
   getWalletByWords,
-  getRandomMnemonicWords,
-  validateMnemonicWords,
-  sweepToMnemonic,
-  isSweeped,
-  getSweepAddress,
   getAllMyAddresses,
   getDataByAddress,
   getMainPublicKey,

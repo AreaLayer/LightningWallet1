@@ -7,7 +7,6 @@ import { links, constants } from 'helpers'
 import CSSModules from 'react-css-modules'
 import styles from './Logo.scss'
 
-import { localisedUrl } from 'helpers/locale'
 import ThemeTooltip from '../../ui/Tooltip/ThemeTooltip'
 
 import logoBlack from 'shared/images/logo/logo-black.svg'
@@ -29,9 +28,8 @@ const isDark = localStorage.getItem(constants.localStorage.isDark)
 const isMainnet = process.env.MAINNET
 
 @withRouter
-@injectIntl
 @CSSModules(styles, { allowMultiple: true })
-export default class Logo extends Component<any, {}> {
+class Logo extends Component<any, {}> {
 
   render() {
     const {
@@ -54,10 +52,7 @@ export default class Logo extends Component<any, {}> {
 
     const imgAlt = window.location.hostname
 
-    const goToUrl = isCustomLogoLink ?
-      customLogoLink
-      :
-      localisedUrl(locale, links.home);
+    const goToUrl = isCustomLogoLink ? customLogoLink : links.home
 
     return (
       <div styleName="logoWrapper">
@@ -79,3 +74,5 @@ export default class Logo extends Component<any, {}> {
     );
   }
 }
+
+export default injectIntl(Logo)

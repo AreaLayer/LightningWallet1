@@ -1,27 +1,30 @@
-import React, { Fragment, PureComponent } from 'react'
-import PropTypes from 'prop-types'
-
-import { isMobile } from 'react-device-detect'
+import { PureComponent } from 'react'
 import { connect } from 'redaction'
 import { constants } from 'helpers'
 import { localisedUrl } from 'helpers/locale'
-import { FormattedMessage, injectIntl } from 'react-intl'
-import { withRouter } from 'react-router-dom'
+import { injectIntl } from 'react-intl'
 import actions from 'redux/actions'
 import { links }    from 'helpers'
-import Button from 'components/controls/Button/Button'
 
-import moment from 'moment'
-
-import CSSModules from 'react-css-modules'
-import styles from './styles.scss'
-import config from 'app-config'
-
+type CreateInvoiceProps = {
+  history: IUniversalObj
+  match: IUniversalObj
+  data: IUniversalObj
+}
 
 @connect(({
   user: {
     btcData,
     ethData,
+    bnbData,
+    maticData,
+    arbethData,
+    aurethData,
+    xdaiData,
+    ftmData,
+    avaxData,
+    movrData,
+    oneData,
     ghostData,
     nextData,
   },
@@ -30,40 +33,46 @@ import config from 'app-config'
     data: {
       btc: btcData,
       eth: ethData,
+      bnb: bnbData,
+      matic: maticData,
+      arbeth: arbethData,
+      aureth: aurethData,
+      xdai: xdaiData,
+      ftm: ftmData,
+      avax: avaxData,
+      movr: movrData,
+      one: oneData,
       ghost: ghostData,
       next: nextData,
     }
   }
 })
-@injectIntl
-@CSSModules(styles, { allowMultiple: true })
-export default class CreateInvoice extends PureComponent<any, any> {
-
-  static propTypes = {
-    history: PropTypes.object,
-    location: PropTypes.object,
-    intl: PropTypes.object.isRequired,
-  };
-
-  timerWaitOnlineJoin: any
-
-  constructor() {
-    //@ts-ignore
-    super()
-    
-    this.timerWaitOnlineJoin = false
-    this.state = {
-    }
+class CreateInvoice extends PureComponent<CreateInvoiceProps> {
+  constructor(props) {
+    super(props)
   }
 
   async componentDidMount() {
-    console.log('CreateInvoice mounted')
-    let { match : { params : { type, wallet } }, history, location: { pathname } , data } = this.props
+    let {
+      match: {
+        params: {
+          type,
+          wallet,
+        },
+      },
+      data,
+    } = this.props
 
-    if (type && wallet && ['btc', 'eth', 'ghost', 'next'].includes(type) && data[type]) {
+    if (!data[type]) {
+      data[type] = actions.core.getWallet({
+        currency: type,
+      })
+    }
+
+    if (type && wallet && data[type]) {
       const address = data[type].address
 
-      console.log(1)
+      //@ts-ignore: strictNullChecks
       actions.modals.open(constants.modals.InvoiceModal, {
         currency: type.toUpperCase(),
         toAddress: wallet,
@@ -79,11 +88,9 @@ export default class CreateInvoice extends PureComponent<any, any> {
     }
   }
 
-  async componentWillUnmount() {
-    console.log('CreateInvoice unmounted')
-  }
-
   render() {
     return null
   }
 }
+
+export default injectIntl(CreateInvoice)

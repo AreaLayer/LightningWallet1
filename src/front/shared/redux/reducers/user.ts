@@ -23,6 +23,78 @@ export const initialState = {
     balanceError: null,
     infoAboutCurrency: null,
   },
+  bnbData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'BNB',
+    fullName: 'Binance Coin',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  maticData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'MATIC',
+    fullName: 'MATIC Token',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  arbethData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'ARBETH',
+    fullName: 'Arbitrum ETH',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  aurethData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'AURETH',
+    fullName: 'Aurora ETH',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  xdaiData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'XDAI',
+    fullName: 'xDai',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  ftmData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'FTM',
+    fullName: 'Fantom',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  avaxData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'AVAX',
+    fullName: 'Avalanche',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  movrData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'MOVR',
+    fullName: 'Moonriver',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
+  oneData: {
+    balance: 0,
+    isBalanceFetched: false,
+    currency: 'ONE',
+    fullName: 'Harmony One',
+    balanceError: null,
+    infoAboutCurrency: null,
+  },
   btcData: {
     balance: 0,
     isBalanceFetched: false,
@@ -63,16 +135,17 @@ export const initialState = {
     balanceError: null,
     infoAboutCurrency: null,
   },
+  /*
   usdtData: {
-    address: '0x0',
-    publicKey: '0x0',
+    address: '0x0', // ? for what
+    publicKey: '0x0', // ?
     balance: 0,
     isBalanceFetched: false,
     currency: 'USDT',
     fullName: 'Tether',
     balanceError: null,
   },
-  fiats: [],
+  */
   tokensData: {},
   isFetching: false,
   isBalanceFetching: false,
@@ -81,7 +154,6 @@ export const initialState = {
   activeCurrency: 'BTC',
   multisigStatus: {},
   multisigPendingCount: 0,
-  messagingToken: null,
   metamaskData: false,
 }
 
@@ -116,11 +188,6 @@ export const addWallet = (state, { name, data }) => ({
   },
 })
 
-export const addMessagingToken = (state, { token }) => ({
-  ...state,
-  messagingToken: token,
-})
-
 export const setAuthData = (state, { name, data }) => ({
   ...state,
   [name]: {
@@ -134,16 +201,20 @@ export const setTokenSigned = (state, booleanValue) => ({
   isTokenSigned: booleanValue,
 })
 
-export const setTokenAuthData = (state, { name, data }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      ...data,
+export const setTokenAuthData = (state, { name, baseCurrency, data }) => {
+  const tokenKey = `{${baseCurrency}}${name}`
+
+  return {
+    ...state,
+    tokensData: {
+      ...state.tokensData,
+      [tokenKey]: {
+        ...state.tokensData[tokenKey],
+        ...data,
+      },
     },
-  },
-})
+  }
+}
 
 export const setBtcMultisigBalance = (state, { address, amount, unconfirmedBalance }) => {
   state.btcMultisigUserData.wallets.forEach((wallet) => {
@@ -161,9 +232,6 @@ export const setBtcMultisigBalance = (state, { address, amount, unconfirmedBalan
 
 export const setBalance = (state, { name, amount, unconfirmedBalance }) => ({
   ...state,
-  tokensData: {
-    ...state.tokensData,
-  },
   [name]: {
     ...state[name],
     balance: Number(amount),
@@ -173,26 +241,23 @@ export const setBalance = (state, { name, amount, unconfirmedBalance }) => ({
   },
 })
 
-export const setInfoAboutToken = (state, { name, infoAboutCurrency }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      infoAboutCurrency,
+export const setInfoAboutToken = (state, { name, baseCurrency, infoAboutCurrency }) => {
+  const tokenKey = `{${baseCurrency}}${name}`
+
+  return {
+    ...state,
+    tokensData: {
+      ...state.tokensData,
+      [tokenKey]: {
+        ...state.tokensData[tokenKey],
+        infoAboutCurrency,
+      },
     },
-  },
-})
+  }
+}
 
 export const setInfoAboutCurrency = (state, { name, infoAboutCurrency }) => ({
   ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      infoAboutCurrency,
-    },
-  },
   [name]: {
     ...state[name],
     infoAboutCurrency,
@@ -207,40 +272,37 @@ export const setBalanceError = (state, { name }) => ({
   },
 })
 
-export const setTokenBalanceError = (state, { name }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      balanceError: true,
-    },
-  },
-})
+export const setTokenBalanceError = (state, { name, baseCurrency }) => {
+  const tokenKey = `{${baseCurrency}}${name}`
 
-export const setTokenBalance = (state, { name, amount }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      balance: Number(amount),
-      isBalanceFetched: true,
-      balanceError: false,
+  return {
+    ...state,
+    tokensData: {
+      ...state.tokensData,
+      [tokenKey]: {
+        ...state.tokensData[tokenKey],
+        balanceError: true,
+      },
     },
-  },
-})
+  }
+}
 
-export const setTokenApprove = (state, { name, approve }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-    [name]: {
-      ...state.tokensData[name],
-      approve,
+export const setTokenBalance = (state, { name, baseCurrency, amount }) => {
+  const tokenKey = `{${baseCurrency}}${name}`
+
+  return {
+    ...state,
+    tokensData: {
+      ...state.tokensData,
+      [tokenKey]: {
+        ...state.tokensData[tokenKey],
+        balance: Number(amount),
+        isBalanceFetched: true,
+        balanceError: false,
+      },
     },
-  },
-})
+  }
+}
 
 export const setIsBalanceFetching = (state, { isBalanceFetching }) => ({
   ...state,
@@ -252,20 +314,6 @@ export const setIsFetching = (state, { isFetching }) => ({
   isFetching,
 })
 
-export const setFiats = (state, { fiats }) => ({ ...state, fiats })
-
 export const setActiveCurrency = (state, { activeCurrency }) => ({ ...state, activeCurrency })
 
 export const setActiveFiat = (state, { activeFiat }) => ({ ...state, activeFiat })
-
-export const setReputation = (state, { name, reputation, reputationOracleSignature }) => ({
-  ...state,
-  tokensData: {
-    ...state.tokensData,
-  },
-  [name]: {
-    ...state[name],
-    reputation: Number(reputation),
-    reputationProof: reputationOracleSignature,
-  },
-})

@@ -1,30 +1,10 @@
 import React from 'react'
 import { FormattedMessage, injectIntl } from 'react-intl'
-import { constants } from 'helpers'
-
 import CSSModules from 'react-css-modules'
 import styles from './VideoAndFeatures.scss'
 
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 const VideoAndFeatures = (props) => (
-  <div styleName={`VidNdFeatures ${isDark ? 'dark' : ''}`}>
-    {/* <h3 styleName="VidNdFeatures__title">
-      <FormattedMessage
-        id="partialVideoAndFeaturesTitle"
-        defaultMessage="The {purplefastest} cross-chain Atomic Swap exchange"
-        values={{
-          purplefastest: (
-            <span className="purple">
-              <FormattedMessage
-                id="partialVideoAndFeaturesTitlePur"
-                defaultMessage="fastest"
-              />
-            </span>
-          ),
-        }}
-      />
-    </h3> */}
+  <div styleName="VidNdFeatures">
     <div styleName="VidNdFeatures__container">
       <div styleName="VidNdFeatures__item VidNdFeatures__item_features">
         <ul>

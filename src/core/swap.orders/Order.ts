@@ -8,11 +8,14 @@ class Order {
 
   id: string
   isMy: any
+  isTurbo: boolean
   owner: any
   participant: any
   buyCurrency: any
+  buyBlockchain: any
   exchangeRate: any
   sellCurrency: any
+  sellBlockchain: any
   buyAmount: any
   sellAmount: any
   collection: any
@@ -44,11 +47,15 @@ class Order {
   constructor(app, parentCollection, data) {
     this.id             = data.id
     this.isMy           = null
+    //@ts-ignore: strictNullChecks
+    this.isTurbo        = null
     this.owner          = null
     this.participant    = null
     this.buyCurrency    = null
+    this.buyBlockchain  = null
     this.exchangeRate   = null
     this.sellCurrency   = null
+    this.sellBlockchain = null
     this.buyAmount      = null
     this.sellAmount     = null
 
@@ -158,6 +165,7 @@ class Order {
   }
 
   _autoReplyToPartial(changedKey, updatedOrder, participant) {
+    console.log('>>> _autoReplyToPartial')
     if (!this.isPartial) {
       return
     }
@@ -314,6 +322,9 @@ class Order {
    * @param conditionHandler - autoreply to new order proposal
    */
   sendRequestForPartial(updatedOrder, requestOptions, callback, conditionHandler) {
+    console.log('>>> sendRequestForPartial')
+    console.log('updatedOrder', updatedOrder)
+    console.log('requestOptions', requestOptions)
     if (!this.isPartial) {
       throw new Error(`Cant request partial fulfilment for order ${this.id}`)
     }
@@ -414,8 +425,8 @@ class Order {
    * @param {String} participantPeer - participant peer id
    */
   acceptRequestForPartial(newValues, participantPeer) {
-    console.log('>>> core:acceptRequestForPartial')
-    const { buyCurrency, sellCurrency } = this
+    console.log('>>> acceptRequestForPartial() newValues =', newValues)
+    const { buyCurrency, sellCurrency, isTurbo, buyBlockchain, sellBlockchain } = this
     const { buyAmount, sellAmount } = newValues
 
     const updatedRequests = this.requests.filter(({ participant: { peer } }) => {
@@ -433,7 +444,10 @@ class Order {
       buyAmount,
       sellAmount,
       buyCurrency,
+      buyBlockchain,
       sellCurrency,
+      sellBlockchain,
+      isTurbo
     })
 
     console.log('new order = ', newOrder)

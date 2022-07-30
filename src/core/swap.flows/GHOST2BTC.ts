@@ -72,7 +72,7 @@ class GHOST2BTC extends Flow {
       secret: null,
 
       isGhostWithdrawn: false,
-      isBtcWithdrawn: false,
+      isbtcWithdrawn: false,
 
       refundTransactionHash: null,
       isRefunded: false,
@@ -89,6 +89,7 @@ class GHOST2BTC extends Flow {
     super._persistState()
   }
 
+  //@ts-ignore: strictNullChecks
   _getSteps() {
     const flow = this
 
@@ -142,6 +143,7 @@ class GHOST2BTC extends Flow {
 
         const scriptCheckResult = await flow.btcSwap.checkScript(flow.state.btcScriptValues, {
           value: buyAmount,
+          //@ts-ignore: strictNullChecks
           recipientPublicKey: this.app.services.auth.accounts.btc.getPublicKey(),
           lockTime: getLockTime(),
         })
@@ -154,6 +156,7 @@ class GHOST2BTC extends Flow {
 
         const scriptValues = {
           secretHash:         flow.state.secretHash,
+          //@ts-ignore: strictNullChecks
           ownerPublicKey:     this.app.services.auth.accounts.ghost.getPublicKey(),
           recipientPublicKey: participant.ghost.publicKey,
           lockTime:           getLockTime(),
@@ -247,7 +250,7 @@ class GHOST2BTC extends Flow {
         })
 
         flow.finishStep({
-          isBtcWithdrawn: true,
+          isbtcWithdrawn: true,
         }, { step: 'withdraw-btc' })
       },
 
@@ -274,6 +277,7 @@ class GHOST2BTC extends Flow {
     const { participant } = this.swap
 
     const swapData = {
+      //@ts-ignore: strictNullChecks
       ownerAddress:       this.app.services.auth.accounts.ghost.address,
       participantAddress: participant.ghost.address
     }
@@ -338,6 +342,7 @@ class GHOST2BTC extends Flow {
       isBalanceFetching: true,
     })
 
+    //@ts-ignore: strictNullChecks
     const balance = await this.ghostSwap.fetchBalance(this.app.services.auth.accounts.ghost.getAddress())
 
     const isEnoughMoney = sellAmount.isLessThanOrEqualTo(balance)
@@ -371,8 +376,6 @@ class GHOST2BTC extends Flow {
   }
 
   tryRefund() {
-    const { participant } = this.swap
-
     return this.ghostSwap.refund({
       scriptValues: this.state.ghostScriptValues,
       secret: this.state.secret,
@@ -398,7 +401,7 @@ class GHOST2BTC extends Flow {
   }
 
   async tryWithdraw(_secret) {
-    const { secret, secretHash, isGhostWithdrawn, isBtcWithdrawn, btcScriptValues } = this.state
+    const { secret, secretHash, isGhostWithdrawn, isbtcWithdrawn, btcScriptValues } = this.state
     if (!_secret)
       throw new Error(`Withdrawal is automatic. For manual withdrawal, provide a secret`)
 
@@ -408,7 +411,7 @@ class GHOST2BTC extends Flow {
     if (secret && secret != _secret)
       console.warn(`Secret already known and is different. Are you sure?`)
 
-    if (isBtcWithdrawn)
+    if (isbtcWithdrawn)
       console.warn(`Looks like money were already withdrawn, are you sure?`)
 
     debug('swap.core:flow')(`WITHDRAW using secret = ${_secret}`)
@@ -424,7 +427,7 @@ class GHOST2BTC extends Flow {
 
     if (balance === 0) {
       this.finishStep({
-        isBtcWithdrawn: true,
+        isbtcWithdrawn: true,
       }, { step: 'withdraw-btc' })
       throw new Error(`Already withdrawn: address=${scriptAddress},balance=${balance}`)
     }
@@ -441,7 +444,7 @@ class GHOST2BTC extends Flow {
     debug('swap.core:flow')(`TX withdraw sent: ${this.state.btcSwapWithdrawTransactionHash}`)
 
     this.finishStep({
-      isBtcWithdrawn: true,
+      isbtcWithdrawn: true,
     }, { step: 'withdraw-btc' })
   }
 

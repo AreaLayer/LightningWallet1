@@ -4,9 +4,6 @@ export default [
     exclude: /(node_modules|bower_components)/,
     use: [
       {
-        loader: 'cache-loader',
-      },
-      {
         loader: 'babel-loader',
         options: {
           presets: ['@babel/preset-env'],
@@ -19,6 +16,22 @@ export default [
   {
     test: /\.js$/,
     enforce: 'pre',
-    use: ['source-map-loader'],
+    use: [
+      {
+        loader: 'source-map-loader',
+        options: {
+          filterSourceMappingUrl: (url, resourcePath) => {
+            if (
+              /.*\/node_modules\/.*/.test(resourcePath) // Unix
+              ||
+              /.*\\node_modules\\.*/.test(resourcePath) // Windows
+            ) {
+              return false
+            }
+            return true
+          }
+        }
+      }
+    ],
   },
 ]

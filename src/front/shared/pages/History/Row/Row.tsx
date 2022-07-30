@@ -1,128 +1,88 @@
-import React, { Fragment } from 'react'
+import { PureComponent } from 'react'
 import cx from 'classnames'
-import moment from 'moment-with-locales-es6'
-import { connect } from 'redaction'
-
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
-
 import { FormattedMessage } from 'react-intl'
 import actions from 'redux/actions'
-import { constants, links } from 'helpers'
-import CommentRow from 'components/Comment/Comment'
-import Tooltip from 'components/ui/Tooltip/Tooltip'
+import { constants, links, utils } from 'helpers'
 import { Link } from 'react-router-dom'
-import getCurrencyKey from 'helpers/getCurrencyKey'
-
-import ethToken from 'helpers/ethToken'
 import { getFullOrigin } from 'helpers/links'
 
+import CommentRow from 'components/Comment/Comment'
+import Tooltip from 'components/ui/Tooltip/Tooltip'
+import getCurrencyKey from 'helpers/getCurrencyKey'
+import Address from 'components/ui/Address/Address'
+import { AddressFormat } from 'domain/address'
+import erc20Like from 'common/erc20Like'
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-@connect(({
-  user: { tokensData },
-}) => ({
-  tokensData,
-}))
 @cssModules(styles, { allowMultiple: true })
-
-export default class Row extends React.PureComponent<any, any> {
-
-  props: any
-
+export default class Row extends PureComponent<any, any> {
   constructor(props) {
-    //@ts-ignore
-    super()
+    super(props)
+
     const { hash, type, hiddenList, invoiceData, viewType } = props
     const dataInd = invoiceData && invoiceData.id
     const ind = `${dataInd || hash}-${type}`
 
-
     this.state = {
-      ind,
       viewType: (viewType || 'transaction'),
       exCurrencyRate: 0,
       comment: actions.comments.returnDefaultComment(hiddenList, ind),
       cancelled: false,
       payed: false,
-      showFiat: true,
+      showFiat: false,
     }
   }
 
   componentDidMount() {
-    const { type, tokensData } = this.props
-    /* 
-    * request fiat balance if token have currency price 
-    */
-    Object.keys(tokensData).forEach(key => {
-      if (key.includes(type)) {
-        if (tokensData[key].infoAboutCurrency) {
-          this.getFiatBalance(type)
-        } else {
-          this.setState({
-            showFiat: false
-          })
-        }
-      }
-    })
+    this.fetchFiatBalance()
   }
 
-  getFiatBalance = async (type) => {
-    const { activeFiat } = this.props
+  fetchFiatBalance = async () => {
+    const { activeFiat, type } = this.props
 
     if (activeFiat) {
       actions.user.getExchangeRate(type, activeFiat.toLowerCase()).then((exCurrencyRate) => {
         this.setState(() => ({
           exCurrencyRate,
+          showFiat: true,
         }))
       })
     }
   }
 
   handlePayInvoice = async () => {
-    const { invoiceData } = this.props
+    const {
+      invoiceData: {
+        type,
+        toAddress: address,
+        amount,
+        destAddress,
+        fromAddress,
+      },
+      invoiceData: invoice,
+    } = this.props
 
-    let withdrawModalType = null
-    let data = null
-    const btcData = actions.btc.getDataByAddress(invoiceData.toAddress)
+    const walletData = actions.core.getWallet({
+      address,
+      currency: type,
+    })
+    if (walletData) {
+      const {
+        currency,
+        balance,
+        unconfirmedBalance
+      } = walletData
 
-    if (btcData) {
-      data = btcData
-      withdrawModalType = constants.modals.Withdraw
-      const { currency } = btcData
-
-      if (currency === 'BTC (SMS-Protected)') withdrawModalType = constants.modals.WithdrawMultisigSMS
-      if (currency === 'BTC (Multisig)') withdrawModalType = constants.modals.WithdrawMultisigUser
-    }
-
-    const ghostData = actions.ghost.getDataByAddress(invoiceData.toAddress)
-    if (ghostData) {
-      data = ghostData
-      withdrawModalType = constants.modals.Withdraw
-    }
-
-    const nextData = actions.next.getDataByAddress(invoiceData.toAddress)
-    if (nextData) {
-      data = nextData
-      withdrawModalType = constants.modals.Withdraw
-    }
-
-    const ethData = actions.eth.isETHAddress(invoiceData.toAddress)
-    if (ethData) {
-      withdrawModalType = constants.modals.Withdraw
-      data = ethData
-    }
-
-    if (withdrawModalType) {
-      actions.modals.open(withdrawModalType, {
-        currency: data.currency,
-        address: invoiceData.toAddress,
-        balance: data.balance,
-        unconfirmedBalance: data.unconfirmedBalance,
-        toAddress: (invoiceData.destAddress) ? invoiceData.destAddress : invoiceData.fromAddress,
-        amount: invoiceData.amount,
-        invoice: invoiceData,
+      actions.modals.open(constants.modals.Withdraw, {
+        currency,
+        address,
+        balance,
+        itemCurrency: walletData,
+        unconfirmedBalance,
+        toAddress: destAddress || fromAddress,
+        amount,
+        invoice,
         hiddenCoinsList: [],
         onReady: () => {
           this.setState({
@@ -148,7 +108,6 @@ export default class Row extends React.PureComponent<any, any> {
 
   handleSendConfirmLink = () => {
     const {
-      history,
       confirmTx: {
         uniqhash,
       },
@@ -156,7 +115,6 @@ export default class Row extends React.PureComponent<any, any> {
 
     const link = `${getFullOrigin()}${links.multisign}/btc/confirm/${uniqhash}`
 
-    // history.push(shareLink)
     actions.modals.open(constants.modals.Share, {
       link,
       title: `Confirm multisignature transaction`,
@@ -177,7 +135,7 @@ export default class Row extends React.PureComponent<any, any> {
   }
 
   parseFloat = (direction, value, directionType, type) => {
-    const { txType } = this.props
+    const { txType, standard } = this.props
     switch (type) {
       case 'btc (sms-protected)': type = 'BTC'
         break
@@ -188,21 +146,61 @@ export default class Row extends React.PureComponent<any, any> {
     }
 
     return (
-      <Fragment>
-        {direction === directionType ?
-          <div styleName="amount">{`+ ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}
-            {txType === 'INVOICE' ? <span styleName="smallTooltip"><Tooltip id='RowTooltipInvoice'>Invoice</Tooltip></span> : ''}
-          </div> :
-          <div styleName="amount">{`- ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}</div>
+      <div id="historyRowAmountInfo">
+        {direction === directionType ? (
+            <div styleName="amount">
+              {`+ ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}
+              {standard ? (
+                <span styleName="tokenStandard">{standard.toUpperCase()}</span>
+              ) : ''}
+              {txType === 'INVOICE' ? (
+                <span styleName="smallTooltip"><Tooltip id='RowTooltipInvoice'>Invoice</Tooltip></span>
+              ) : ''}
+            </div>
+          ) : (
+            <div styleName="amount">
+              {`- ${parseFloat(Number(value).toFixed(5))}`}{' '}
+              {type.toUpperCase()}
+              {standard ? (
+                <span styleName="tokenStandard">{standard.toUpperCase()}</span>
+              ) : ''}
+            </div>
+          )
         }
-      </Fragment>
+      </div>
     )
+  }
+
+  returnLinkRouter = (params) => {
+    let {
+      location,
+      targetPath,
+      tokenPart,
+      name,
+      hash,
+    } = params
+
+    if (erc20Like.isToken({ name })) {
+      // react router doesn't rewrite url
+      // it fix problem with token transaction info url
+      if (location.pathname.includes(tokenPart)) {
+        targetPath = `tx/${hash}`
+      } else {
+        targetPath = `token/${name}/tx/${hash}`
+      }
+    }
+
+    return {
+      ...location,
+      pathname: targetPath,
+    }
   }
 
   render() {
     const {
       activeFiat,
       address,
+      baseCurrency: tokenBaseCurrency,
       type,
       direction,
       value,
@@ -212,7 +210,6 @@ export default class Row extends React.PureComponent<any, any> {
       invoiceData,
       date,
       confirmTx,
-      tokensData,
     } = this.props
 
     const {
@@ -220,14 +217,19 @@ export default class Row extends React.PureComponent<any, any> {
     } = this.state
 
     const substrAddress = address ? `${address.slice(0, 2)}...${address.slice(-2)}` : ''
-
     const hash = (invoiceData && invoiceData.txInfo) ? invoiceData.txInfo : propsHash
 
-    const { ind } = this.state
+    const { exCurrencyRate, cancelled, payed } = this.state
+    const fiatValue = exCurrencyRate ? utils.toMeaningfulFloatValue({
+      rate: exCurrencyRate,
+      value,
+    }) : false
 
-    const { exCurrencyRate, isOpen, comment, cancelled, payed } = this.state
-
-    const getFiat = value * exCurrencyRate
+    const paymentAddress = invoiceData
+      ? invoiceData.destAddress
+        ? invoiceData.destAddress
+        : invoiceData.fromAddress
+      : ''
 
     const statusStyleName = cx('status', {
       'in': direction === 'in',
@@ -255,11 +257,8 @@ export default class Row extends React.PureComponent<any, any> {
       invoiceStatusClass = 'confirm red'
       invoiceStatusText = <FormattedMessage id="RowHistoryInvoiceCancelled" defaultMessage="Отклонен" />
     }
-    /* eslint-disable */
+
     let txLink = `/${getCurrencyKey(type, false)}/tx/${hash}`
-    if (ethToken.isEthToken({ name: type })) {
-      txLink = `/token/${type}/tx/${hash}`
-    }
 
     if (txType === 'INVOICE' && invoiceData.uniqhash) {
       txLink = `${links.invoice}/${invoiceData.uniqhash}`
@@ -271,7 +270,7 @@ export default class Row extends React.PureComponent<any, any> {
 
     return (
       <>
-        <tr styleName={`historyRow ${isDark ? 'dark' : ''}`}>
+        <tr styleName="historyRow">
           <td>
             <div styleName={`${statusStyleAmount} circleIcon`}>
               <div styleName='arrowWrap'>
@@ -290,10 +289,9 @@ export default class Row extends React.PureComponent<any, any> {
                     <Link to={txLink}>
                       <FormattedMessage
                         id="RowHistoryInvoce"
-                        defaultMessage="Инвойс #{number} ({contact})"
+                        defaultMessage="Invoice #{number}"
                         values={{
                           number: `${invoiceData.id}-${invoiceData.invoiceNumber}`,
-                          contact: (invoiceData.contact) ? `(${invoiceData.contact})` : ''
                         }}
                       />
                     </Link>
@@ -302,9 +300,17 @@ export default class Row extends React.PureComponent<any, any> {
                     </div>
                   </> :
                   <>
-                    <Link to={txLink}>
+                    <Link
+                      to={(location) => this.returnLinkRouter({
+                        location,
+                        targetPath: txLink,
+                        tokenPart: `token/{${tokenBaseCurrency}}${type}/`,
+                        name: tokenBaseCurrency ? `{${tokenBaseCurrency}}${type}` : type,
+                        hash: hash,
+                      })}
+                    >
                       {(txType === 'CONFIRM') ? (
-                        <FormattedMessage id="RowHistory_Confirm_Sending" defaultMessage="Отправление" />
+                        <FormattedMessage id="RowHistory_Confirm_Sending" defaultMessage="Sent" />
                       ) : (
                           <>
                             {
@@ -323,21 +329,23 @@ export default class Row extends React.PureComponent<any, any> {
                           </>
                         )}
                     </Link>
+
+                    {/* Transaction status */}
                     {(txType === 'CONFIRM') ? (
                       <>
                         {confirmTx.status === 'pending' && (
                           <div styleName="unconfirmed cell">
-                            <FormattedMessage id="RowHistory_Confirm_InProgress" defaultMessage="В процессе" />
+                            <FormattedMessage id="RowHistory_Confirm_InProgress" defaultMessage="Pending" />
                           </div>
                         )}
                         {confirmTx.status === 'reject' && (
                           <div styleName="confirm red">
-                            <FormattedMessage id="RowHistory_Confirm_Rejected" defaultMessage="Отклонён" />
+                            <FormattedMessage id="RowHistory_Confirm_Rejected" defaultMessage="Rejected" />
                           </div>
                         )}
                         {confirmTx.status === 'cancel' && (
                           <div styleName="confirm red">
-                            <FormattedMessage id="RowHistory_Confirm_Cancelled" defaultMessage="Отменено" />
+                            <FormattedMessage id="RowHistory_Confirm_Cancelled" defaultMessage="Canceled" />
                           </div>
                         )}
                       </>
@@ -353,40 +361,53 @@ export default class Row extends React.PureComponent<any, any> {
                   </>
                 }
               </div>
+
+              {/* Date */}
               <CommentRow
-                comment={comment}
                 label={invoiceData && invoiceData.label}
                 date={date}
                 showComment={true}
                 commentKey={hash}
               />
-              {txType === 'INVOICE' && direction === 'in' &&
-                <div styleName={(hasInvoiceButtons) ? 'info' : 'info noButtons'}>
-                  {/* {
-                    invoiceData && invoiceData.label && <div styleName='comment'>{invoiceData.label}</div>
-                  } */}
+
+              {/* Contacts */}
+              {invoiceData && invoiceData.contact &&
+                <div styleName='invoiceContactWrapper'>
                   <FormattedMessage
-                    styleName="address"
+                    id="RowHistoryInvoiceContact"
+                    defaultMessage='Contact:'
+                  />{' '}
+                  <span styleName='contact'>{invoiceData.contact}</span>
+                </div>
+              }
+
+              {/* Payment address */}
+              {txType === 'INVOICE' && direction === 'in' &&
+                <div styleName='addressWrapper'>
+                  <FormattedMessage
                     id="RowHistoryInvoiceAddress"
-                    defaultMessage='Адрес для оплаты: {address} ({number})'
-                    values={{
-                      address: `${(invoiceData.destAddress) ? invoiceData.destAddress : invoiceData.fromAddress}`,
-                      number: invoiceData.totalCount,
-                    }}
-                  />
+                    defaultMessage='Payment address:'
+                  />{' '}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Address address={paymentAddress} format={AddressFormat.Short} />
+                    <span styleName='requests'>({invoiceData.totalCount})</span>
+                  </div>
                 </div>
               }
             </div>
+
+            {/* Invoice buttons */}
             {hasInvoiceButtons &&
               <div styleName="btnWrapper">
                 <button onClick={this.handlePayInvoice}>
-                  <FormattedMessage id='RowHistoryPayInvoice' defaultMessage='Оплатить' />
+                  <FormattedMessage id='RowHistoryPayInvoice' defaultMessage='Pay' />
                 </button>
                 <button onClick={this.handleCancelInvoice}>
-                  <FormattedMessage id='RowHistoryCancelInvoice' defaultMessage='Отклонить' />
+                  <FormattedMessage id='RowHistoryCancelInvoice' defaultMessage='Decline' />
                 </button>
               </div>
             }
+
             {txType === 'CONFIRM' && confirmTx.status === 'pending' && (
               <div styleName="confirmWrapper">
                 {(confirmTx.isHolder) ? (
@@ -394,12 +415,12 @@ export default class Row extends React.PureComponent<any, any> {
                     <span>
                       <FormattedMessage
                         id="RowHistory_ConfirmTX_NeedConfirm"
-                        defaultMessage="Требуется подтверждение другого участника" />
+                        defaultMessage="Confirmation of another participant is required" />
                     </span>
                     <button onClick={this.handleSendConfirmLink}>
                       <FormattedMessage
                         id="RowHistory_ConfirmTX_SendLink"
-                        defaultMessage="Отправить ссылку"
+                        defaultMessage="Send link"
                       />
                     </button>
                   </>
@@ -408,28 +429,33 @@ export default class Row extends React.PureComponent<any, any> {
                       <span>
                         <FormattedMessage
                           id="RowHistory_ConfirmTX_NeedYourSign"
-                          defaultMessage="Требуется ваша подпись"
+                          defaultMessage="Your signature is required"
                         />
                       </span>
                       <button onClick={this.handleConfirmTx}>
                         <FormattedMessage
                           id="RowHistory_ConfirmTX_Sign"
-                          defaultMessage="Подтвердить"
+                          defaultMessage="Confirm"
                         />
                       </button>
                     </>
                   )}
               </div>
             )}
+
+            {/* Currency amount */}
             <div styleName={statusStyleAmount}>
-              {invoiceData ? this.parseFloat(direction, value, 'out', type) : this.parseFloat(direction, value, 'in', type)}
-              {
-                showFiat
-                  ? <span styleName='amountUsd'>{`~${getFiat.toFixed(2)}`}{` `}{activeFiat}</span>
-                  : null
-              }
+              {invoiceData
+                ? this.parseFloat(direction, value, 'out', type)
+                : this.parseFloat(direction, value, 'in', type)}
+              {showFiat && fiatValue ? (
+                <span styleName="amountUsd">
+                  ~{fiatValue}
+                  {` `}
+                  {activeFiat}
+                </span>
+              ) : null}
             </div>
-            {/* <LinkTransaction type={type} styleName='address' hash={hash} >{hash}</LinkTransaction> */}
           </td>
         </tr>
       </>

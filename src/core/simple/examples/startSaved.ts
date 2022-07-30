@@ -1,4 +1,4 @@
-import swap from './../src'
+import * as swap from './../src'
 
 const {
   on: { onFinish },
@@ -7,8 +7,9 @@ const {
   swap: { onStep, start, get },
   history: { saveInProgress, removeInProgress, saveFinished, getAllInProgress },
 } = swap.helpers
-//@ts-ignore
-const { wallet, auth, room, orders } = swap.setup()
+
+const app = swap.setup({})
+const { wallet, auth, room, orders } = app
 
 const _ = (async () => {
   const info = await wallet.getBalance()
@@ -16,6 +17,6 @@ const _ = (async () => {
 
   await ready(room)
   console.log('info:', wallet.view())
-  //@ts-ignore
-  getAllInProgress().map(id => get(id)).map(swap => start(swap))
+
+  getAllInProgress().map(id => get(app, id)).map(swap => start(swap))
 })()

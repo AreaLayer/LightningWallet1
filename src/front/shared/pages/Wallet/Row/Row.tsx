@@ -1,29 +1,48 @@
-//@ts-ignore
-import React, { Component, Fragment } from 'react'
+import { Component, Fragment } from 'react'
 import actions from 'redux/actions'
 import { connect } from 'redaction'
-import helpers, { constants, links } from 'helpers'
+import erc20Like from 'common/erc20Like'
+import { constants, metamask, utils, externalConfig } from 'helpers'
 import config from 'helpers/externalConfig'
 import { isMobile } from 'react-device-detect'
 
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
-
 import Coin from 'components/Coin/Coin'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import DropdownMenu from 'components/ui/DropdownMenu/DropdownMenu'
-// import LinkAccount from '../LinkAccount/LinkAcount'
 import { withRouter } from 'react-router-dom'
 import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
 import { localisedUrl } from 'helpers/locale'
-import SwapApp from 'swap.app'
 import { BigNumber } from 'bignumber.js'
+import { Button } from 'components/controls'
+import PartOfAddress from '../PartOfAddress'
+import Tooltip from 'components/ui/Tooltip/Tooltip'
+import { ApiEndpoint } from '../Endpoints'
+import Copy from 'components/ui/Copy/Copy'
 
-import dollar from '../images/dollar.svg'
-import PartOfAddress from '../components/PartOfAddress'
-import Copy from '../../../components/ui/Copy/Copy'
-import metamask from 'helpers/metamask'
+type RowProps = {
+  // from component
+  currency: IUniversalObj
+  itemData: IUniversalObj
+  // from store
+  activeFiat?: string
+  ethDataHelper?: {
+    address: string
+    privateKey: string
+  }
+  history?: IUniversalObj
+  intl?: IUniversalObj
+  multisigStatus?: any
+}
 
+type RowState = {
+  isBalanceFetching: boolean
+  isBalanceEmpty: boolean
+  isDropdownOpen: boolean
+  isToken: boolean
+  reduxActionName: string
+}
 
 const langLabels = defineMessages({
   unconfirmedBalance: {
@@ -36,12 +55,10 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @withRouter
 @connect(
   (
     {
-      rememberedOrders,
       user: {
         activeFiat,
         ethData: {
@@ -50,11 +67,9 @@ const langLabels = defineMessages({
         },
         multisigStatus,
       }
-    },
-    { currency }
+    }
   ) => ({
     activeFiat,
-    decline: rememberedOrders.savedOrders,
     multisigStatus,
     ethDataHelper: {
       address,
@@ -63,59 +78,68 @@ const langLabels = defineMessages({
   })
 )
 @cssModules(styles, { allowMultiple: true })
-export default class Row extends Component<any, any> {
-  state = {
-    isBalanceFetching: false,
-    viewText: false,
-    tradeAllowed: false,
-    isAddressCopied: false,
-    isTouch: false,
-    isBalanceEmpty: true,
-    showButtons: false,
-    exCurrencyRate: 0,
-    existUnfinished: false,
-    isDropdownOpen: false,
-  }
+class Row extends Component<RowProps, RowState> {
+  constructor(props) {
+    super(props)
+    
+    const { currency, itemData } = props
+    const currencyName = currency.currency
+    const isToken = erc20Like.isToken({ name: currencyName })
+    const reduxActionName = itemData.standard || currencyName.toLowerCase()
 
-  static getDerivedStateFromProps({ itemData: { balance } }) {
-    return {
-      isBalanceEmpty: balance === 0,
+    this.state = {
+      isBalanceFetching: false,
+      isBalanceEmpty: true,
+      isDropdownOpen: false,
+      isToken,
+      reduxActionName,
     }
   }
 
-  constructor(props) {
-    super(props)
-
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('resize', this.handleSliceAddress)
-  }
-
   async componentDidMount() {
-    window.addEventListener('resize', this.handleSliceAddress)
+    const { balance } = this.props.itemData
+
+    this.setState({
+      isBalanceEmpty: balance === 0,
+    })
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps) {
     const {
-      itemData: { currency, balance },
-    //@ts-ignore
+      itemData: { 
+        balance: prevBalance
+      }
+    } = prevProps
+
+    const {
+      itemData: { 
+        currency, 
+        balance 
+      }
     } = this.props
 
     if (balance > 0) {
       actions.analytics.balanceEvent({ action: 'have', currency, balance })
     }
+
+    if (prevBalance !== balance) {
+      this.setState({
+        isBalanceEmpty: balance === 0,
+      })
+    }
   }
 
   handleReloadBalance = () => {
-    const { isBalanceFetching } = this.state
+    const {
+      isBalanceFetching,
+      isToken,
+      reduxActionName,
+    } = this.state
     const {
       itemData: {
         isMetamask,
         isConnected,
-        isERC20,
       }
-    //@ts-ignore
     } = this.props
 
     if (isBalanceFetching) {
@@ -133,16 +157,14 @@ export default class Row extends Component<any, any> {
       return null
     }
 
-    //@ts-ignore
     this.setState({
       isBalanceFetching: true,
     }, () => {
+      // here is timeout for the impression of the balance request
       setTimeout(async () => {
         const {
           itemData: { currency, address },
-        //@ts-ignore
         } = this.props
-
         switch (currency) {
           case 'BTC (SMS-Protected)':
             await actions.btcmultisig.getBalance()
@@ -154,16 +176,13 @@ export default class Row extends Component<any, any> {
             await actions.btcmultisig.getBalancePin()
             break
           default:
-            if (isMetamask && !isERC20) {
+            if (isMetamask && !isToken && metamask.isAvailableNetwork()) {
               await metamask.getBalance()
             } else {
-              await actions[currency.toLowerCase()].getBalance(
-                currency.toLowerCase(),
-                address
-              )
+              await actions[reduxActionName].getBalance(currency)
             }
         }
-        //@ts-ignore
+
         this.setState(() => ({
           isBalanceFetching: false,
         }))
@@ -190,74 +209,9 @@ export default class Row extends Component<any, any> {
     )
   }
 
-  handleTouch = (e) => {
-    //@ts-ignore
-    this.setState({
-      isTouch: true,
-    })
-  }
-
-  handleSliceAddress = () => {
-    const {
-      itemData: { address },
-    //@ts-ignore
-    } = this.props
-
-    const firstPart = address.substr(0, 6)
-    const secondPart = address.substr(address.length - 4)
-
-    return window.innerWidth < 700 || isMobile || address.length > 42
-      ? `${firstPart}...${secondPart}`
-      : address
-  }
-
-  handleTouchClear = (e) => {
-    //@ts-ignore
-    this.setState({
-      isTouch: false,
-    })
-  }
-
-  handleCopyAddress = () => {
-    //@ts-ignore
-    this.setState(
-      {
-        isAddressCopied: true,
-      },
-      () => {
-        setTimeout(() => {
-          //@ts-ignore
-          this.setState({
-            isAddressCopied: false,
-          })
-        }, 500)
-      }
-    )
-  }
-
-  handleDisconnectWallet() {
-    if (metamask.isEnabled()) {
-      metamask.disconnect().then(async () => {
-        await actions.user.sign()
-        await actions.user.getBalances()
-      })
-    }
-  }
-
-  handleConnectMetamask = () => {
-    metamask.connect({}).then(async (connected) => {
-      if (connected) {
-        await actions.user.sign()
-        await actions.user.getBalances()
-      }
-    })
-  }
-
   handleWithdrawPopup = () => {
     const {
-      itemData: { currency },
       itemData
-    //@ts-ignore
     } = this.props
 
     actions.modals.open(constants.modals.Withdraw, itemData)
@@ -265,24 +219,23 @@ export default class Row extends Component<any, any> {
 
   handleWithdraw = () => {
     const {
-      itemData: { currency, address },
+      itemData,
       history,
-      intl: { locale },
-    //@ts-ignore
+      intl
     } = this.props
 
-    if (currency.toLowerCase() === 'ghost') {
+    if (itemData.currency.toLowerCase() === 'ghost') {
       this.handleWithdrawPopup()
       return
     }
 
-    if (currency.toLowerCase() === 'next') {
+    if (itemData.currency.toLowerCase() === 'next') {
       this.handleWithdrawPopup()
       return
     }
 
-    let targetCurrency = currency
-    switch (currency.toLowerCase()) {
+    let targetCurrency = itemData.currency
+    switch (itemData.currency.toLowerCase()) {
       case 'btc (multisig)':
       case 'btc (sms-protected)':
       case 'btc (pin-protected)':
@@ -290,124 +243,22 @@ export default class Row extends Component<any, any> {
         break
     }
 
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
+    const firstUrlPart = itemData.tokenKey ? `/token/${itemData.tokenKey}` : `/${targetCurrency}`
 
-    history.push(
-      localisedUrl(
-        locale,
-        (isToken ? '/token' : '') + `/${targetCurrency}/${address}/send`
-      )
+    history?.push(
+      localisedUrl(intl?.locale, `${firstUrlPart}/${itemData.address}/send`)
     )
-  }
-
-  handleHowToExport = () => {
-    //@ts-ignore
-    const { itemData } = this.props
-
-    if (itemData.isUserProtected) {
-      console.log('Not implements')
-      return
-    }
-    if (itemData.isSmsProtected) {
-      this.handleHowExportSMS()
-      return
-    }
-    if (itemData.isPinProtected) {
-      this.handleHowExportPIN()
-      return
-    }
-
-    actions.modals.open(constants.modals.HowToExportModal, {
-      item: itemData,
-    })
-  }
-
-  handleHowExportSMS = () => {
-    actions.modals.open(constants.modals.RegisterSMSProtected, {
-      initStep: 'export',
-    })
-  }
-
-  handleHowExportPIN = () => {
-    actions.modals.open(constants.modals.RegisterPINProtected, {
-      initStep: 'export',
-    })
   }
 
   handleReceive = () => {
     const {
       itemData: { currency, address },
-    //@ts-ignore
     } = this.props
 
     actions.modals.open(constants.modals.ReceiveModal, {
       currency,
       address,
     })
-  }
-
-  handleShowOptions = () => {
-    //@ts-ignore
-    this.setState({
-      showMobileButtons: true,
-    })
-  }
-
-  handleGoTrade = (currency) => {
-    const {
-      intl: { locale },
-      decline,
-    //@ts-ignore
-    } = this.props
-
-    const pair = currency.toLowerCase() === 'btc' ? 'eth' : 'btc'
-
-    if (decline.length === 0) {
-      window.scrollTo(0, 0)
-      this.props.history.push(
-        localisedUrl(
-          locale,
-          `${links.exchange}/${currency.toLowerCase()}-to-${pair}`
-        )
-      )
-    } else {
-      const getDeclinedExistedSwapIndex = helpers.handleGoTrade.getDeclinedExistedSwapIndex(
-        { currency, decline }
-      )
-      if (getDeclinedExistedSwapIndex !== false) {
-        this.handleDeclineOrdersModalOpen(getDeclinedExistedSwapIndex)
-      } else {
-        window.scrollTo(0, 0)
-        this.props.history.push(
-          localisedUrl(
-            locale,
-            `${links.exchange}/${currency.toLowerCase()}-to-${pair}`
-          )
-        )
-      }
-    }
-  }
-
-  handleDeclineOrdersModalOpen = (indexOfDecline) => {
-    const orders = SwapApp.shared().services.orders.items
-    const declineSwap = actions.core.getSwapById(
-      //@ts-ignore
-      this.props.decline[indexOfDecline]
-    )
-
-    if (declineSwap !== undefined) {
-      actions.modals.open(constants.modals.DeclineOrdersModal, {
-        declineSwap,
-      })
-    }
-  }
-
-  handleMarkCoinAsHidden = (coin) => {
-    actions.core.markCoinAsHidden(coin)
-  }
-
-  handleActivateProtected = async () => {
-    actions.modals.open(constants.modals.RegisterSMSProtected, {})
   }
 
   handleActivatePinProtected = async () => {
@@ -421,7 +272,6 @@ export default class Row extends Component<any, any> {
   handleHowToWithdraw = () => {
     const {
       itemData: { currency, address },
-    //@ts-ignore
     } = this.props
 
     actions.modals.open(constants.modals.HowToWithdrawModal, {
@@ -431,7 +281,6 @@ export default class Row extends Component<any, any> {
   }
 
   handleOpenDropdown = () => {
-    //@ts-ignore
     this.setState({
       isDropdownOpen: true,
     })
@@ -439,18 +288,17 @@ export default class Row extends Component<any, any> {
 
   handleCreateInvoiceLink = () => {
     const {
-      itemData: { currency, address },
-    //@ts-ignore
+      itemData: { currency, address, tokenKey },
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceLinkModal, {
       currency,
       address,
+      tokenKey,
     })
   }
 
   handleSwitchMultisign = () => {
-    //@ts-ignore
     actions.modals.open(constants.modals.BtcMultisignSwitch)
   }
 
@@ -462,14 +310,15 @@ export default class Row extends Component<any, any> {
         contractAddress,
         unconfirmedBalance,
         currency,
+        tokenKey,
         address,
         balance,
       },
-    //@ts-ignore
+      itemData
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceModal, {
-      currency,
+      currency: ((tokenKey) ? tokenKey : currency).toUpperCase(),
       address,
       contractAddress,
       decimals,
@@ -479,57 +328,24 @@ export default class Row extends Component<any, any> {
     })
   }
 
-  goToHistory = () => {
-    const {
-      history,
-      intl: { locale },
-    //@ts-ignore
-    } = this.props
-    history.push(localisedUrl(locale, '/history'))
-  }
-
   goToExchange = () => {
     const {
       history,
-      intl: { locale },
-    //@ts-ignore
+      intl,
     } = this.props
-    history.push(localisedUrl(locale, '/exchange'))
-  }
-
-  goToBuy = () => {
-    const {
-      history,
-      intl: { locale },
-      currency,
-    //@ts-ignore
-    } = this.props
-
-    // was pointOfSell
-
-    history.push(
-      localisedUrl(
-        locale,
-        `${links.exchange}/btc-to-${currency.currency.toLowerCase()}`
-      )
-    )
-  }
-
-  deleteThisSwap = () => {
-    //@ts-ignore
-    actions.core.forgetOrders(this.props.decline[0])
+    history?.push(localisedUrl(intl?.locale, '/exchange'))
   }
 
   goToCurrencyHistory = () => {
     const {
       history,
-      intl: { locale },
-      itemData: { currency, balance, address },
-    //@ts-ignore
+      intl,
+      itemData,
     } = this.props
 
-    let targetCurrency = currency
-    switch (currency.toLowerCase()) {
+
+    let targetCurrency = itemData.currency
+    switch (itemData.currency.toLowerCase()) {
       case 'btc (multisig)':
       case 'btc (sms-protected)':
       case 'btc (pin-protected)':
@@ -537,20 +353,17 @@ export default class Row extends Component<any, any> {
         break
     }
 
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
 
-    history.push(
-      localisedUrl(
-        locale,
-        (isToken ? '/token' : '') + `/${targetCurrency}/${address}`
-      )
+    const firstUrlPart = itemData.tokenKey ? `/token/${itemData.tokenKey}` : `/${targetCurrency}`
+
+    history?.push(
+      localisedUrl(intl?.locale, `${firstUrlPart}/${itemData.address}`)
     )
   }
 
   hideCurrency = () => {
     const {
-      itemData: { currency, address, balance },
-    //@ts-ignore
+      itemData: { currency, address, balance, isToken, tokenKey },
     } = this.props
 
     if (balance > 0) {
@@ -563,7 +376,7 @@ export default class Row extends Component<any, any> {
         ),
       })
     } else {
-      actions.core.markCoinAsHidden(`${currency}:${address}`)
+      actions.core.markCoinAsHidden(`${isToken ? tokenKey.toUpperCase() : currency}:${address}`)
       actions.notifications.show(constants.notifications.Message, {
         message: (
           <FormattedMessage
@@ -578,7 +391,6 @@ export default class Row extends Component<any, any> {
   copy = () => {
     const {
       itemData: { address, fullName },
-    //@ts-ignore
     } = this.props
 
     actions.modals.open(constants.modals.WalletAddressModal, {
@@ -591,83 +403,86 @@ export default class Row extends Component<any, any> {
     const {
       itemData: { address, privateKey, fullName },
       ethDataHelper,
-    //@ts-ignore
     } = this.props
 
     actions.modals.open(constants.modals.PrivateKeysModal, {
-      key: address === ethDataHelper.address ? ethDataHelper.privateKey : privateKey,
+      key: address === ethDataHelper?.address ? ethDataHelper?.privateKey : privateKey,
       fullName,
     })
-  }
-
-
-
-  getCustomRate = (cur) => {
-    const wTokens = window.widgetERC20Tokens
-
-    const dataobj = wTokens && Object.keys(wTokens).find(el => el === cur.toLowerCase())
-    return dataobj ? (wTokens[dataobj] || { customEcxchangeRate: null }).customEcxchangeRate : null
   }
 
   handleShowMnemonic = () => {
     actions.modals.open(constants.modals.SaveMnemonicModal)
   }
 
+  connectMetamask = () => {
+    metamask.handleConnectMetamask()
+  }
+
   render() {
     const {
       isBalanceFetching,
-      // @ToDo Remove this
-      // tradeAllowed,
       isBalanceEmpty,
     } = this.state
 
     const {
       itemData,
-      intl: { locale },
       intl,
       activeFiat,
-      isDark,
       multisigStatus,
     } = this.props
 
     const {
       currency,
+      baseCurrency,
       balance,
       isBalanceFetched,
       fullName,
-      title,
       unconfirmedBalance,
       balanceError,
+      standard,
     } = itemData
 
+    let nodeDownErrorShow = true
+    let currencyFiatBalance
     let currencyView = currency
 
-    let nodeDownErrorShow = true
-    let currencyFiatBalance = 0
+    switch (currencyView) {
+      case 'BTC (Multisig)':
+      case 'BTC (SMS-Protected)':
+      case 'BTC (PIN-Protected)':
+        currencyView = 'BTC'
+        break
+    }
 
-    const isWidgetBuild = config && config.isWidget
-
-    if (itemData.infoAboutCurrency && itemData.infoAboutCurrency.price_fiat) {
-      currencyFiatBalance = new BigNumber(balance).multipliedBy(itemData.infoAboutCurrency.price_fiat).dp(2, BigNumber.ROUND_FLOOR).toNumber()
+    if (itemData?.infoAboutCurrency?.price_fiat) {
+      currencyFiatBalance = utils.toMeaningfulFloatValue({
+        value: balance,
+        rate: itemData.infoAboutCurrency.price_fiat,
+      })
     }
 
     let hasHowToWithdraw = false
     if (
-      config &&
-      config.erc20 &&
-      //@ts-ignore
-      config.erc20[this.props.currency.currency.toLowerCase()] &&
-      //@ts-ignore
-      config.erc20[this.props.currency.currency.toLowerCase()].howToWithdraw
-    )
+      config?.erc20?.[this.props.currency.currency.toLowerCase()]?.howToWithdraw
+    ) {
       hasHowToWithdraw = true
+    }
 
     const isSafari = 'safari' in window
 
     const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
     const mnemonicSaved = (mnemonic === `-`)
 
-    let dropDownMenuItems = [
+    type DropDownItem = {
+      action: () => void
+      disabled?: boolean
+      title: JSX.Element
+      id: number
+    }
+
+    //@ts-ignore: strictNullChecks
+    let dropDownMenuItems: DropDownItem[] = [
       {
         id: 1001,
         title: (
@@ -685,7 +500,7 @@ export default class Row extends Component<any, any> {
             id: 10021,
             title: (
               <FormattedMessage
-                id="WalletRow_Menu_HowToWithdraw"
+                id="HowToWithdrawModal_Title"
                 defaultMessage="How to withdraw"
               />
             ),
@@ -705,7 +520,7 @@ export default class Row extends Component<any, any> {
         id: 1004,
         title: (
           <FormattedMessage
-            id="WalletRow_Menu_Exchange"
+            id="menu.exchange"
             defaultMessage="Exchange"
           />
         ),
@@ -755,16 +570,7 @@ export default class Row extends Component<any, any> {
       },
     ].filter((el) => el)
 
-
-    if (currencyView == 'BTC (Multisig)') currencyView = 'BTC'
-    if (currencyView == 'BTC (SMS-Protected)') currencyView = 'BTC'
-    if (currencyView == 'BTC (PIN-Protected)') currencyView = 'BTC'
-
-
-
     if (
-      ['BTC', 'ETH'].includes(currencyView) &&
-      !isWidgetBuild &&
       config.opts.invoiceEnabled
     ) {
       dropDownMenuItems.push({
@@ -776,8 +582,7 @@ export default class Row extends Component<any, any> {
           />
         ),
         action: this.handleCreateInvoice,
-        //@ts-ignore
-        disable: false,
+        disabled: false,
       })
       dropDownMenuItems.push({
         id: 1005,
@@ -788,15 +593,12 @@ export default class Row extends Component<any, any> {
           />
         ),
         action: this.handleCreateInvoiceLink,
-        //@ts-ignore
-        disable: false,
+        disabled: false,
       })
     }
 
-    //@ts-ignore
-    if (this.props.itemData.isMetamask
-      //@ts-ignore
-      && !this.props.itemData.isConnected
+    if (itemData.isMetamask
+      && !itemData.isConnected
     ) {
       dropDownMenuItems = [{
         id: 1,
@@ -806,44 +608,40 @@ export default class Row extends Component<any, any> {
             defaultMessage="Подключить"
           />
         ),
-        action: this.handleConnectMetamask,
-        //@ts-ignore
-        disable: false,
+        action: metamask.handleConnectMetamask,
+        disabled: false,
       }]
     }
-    //@ts-ignore
-    if (this.props.itemData.isMetamask
-      //@ts-ignore
-      && this.props.itemData.isConnected
+
+    if (itemData.isMetamask
+      && itemData.isConnected
     ) {
       dropDownMenuItems = [
         {
           id: 1123,
           title: (
             <FormattedMessage
-              id="WalletRow_MetamaskDisconnect"
-              defaultMessage="Отключить кошелек"
+              id="MetamaskDisconnect"
+              defaultMessage="Disconnect wallet"
             />
           ),
-          action: this.handleDisconnectWallet,
-          //@ts-ignore
-          disable: false
+          action: metamask.handleDisconnectWallet,
+          disabled: false
         },
         ...dropDownMenuItems
       ]
     }
 
     let showBalance = true
-    let statusInfo = false
+    let statusInfo = ''
 
+    // Prevent render SMS wallet
+    if (itemData.isSmsProtected) return null
 
     if (
-      //@ts-ignore
-      this.props.itemData.isPinProtected &&
-      //@ts-ignore
-      !this.props.itemData.isRegistered
+      itemData.isPinProtected &&
+      !itemData.isRegistered
     ) {
-      //@ts-ignore
       statusInfo = 'Not activated'
       showBalance = false
       nodeDownErrorShow = false
@@ -877,43 +675,8 @@ export default class Row extends Component<any, any> {
       && multisigStatus[itemData.address].count
     ) ? multisigStatus[itemData.address].count : false
 
-    if (
-      //@ts-ignore
-      this.props.itemData.isSmsProtected &&
-      //@ts-ignore
-      !this.props.itemData.isRegistered
-    ) {
-      //@ts-ignore
-      statusInfo = 'Not activated'
-      showBalance = false
-      nodeDownErrorShow = false
-      dropDownMenuItems = [
-        {
-          id: 1,
-          title: (
-            <FormattedMessage
-              id="WalletRow_Menu_ActivateSMSProtected"
-              defaultMessage="Activate"
-            />
-          ),
-          action: this.handleActivateProtected,
-          disabled: false,
-        },
-        {
-          id: 1011,
-          title: (
-            <FormattedMessage id="WalletRow_Menu_Hide" defaultMessage="Hide" />
-          ),
-          action: this.hideCurrency,
-          disabled: false,
-        },
-      ]
-    }
-    //@ts-ignore
-    if (this.props.itemData.isUserProtected) {
-      //@ts-ignore
-      if (!this.props.itemData.active) {
-        //@ts-ignore
+    if (itemData.isUserProtected) {
+      if (!itemData.active) {
         statusInfo = 'Not joined'
         showBalance = false
         nodeDownErrorShow = false
@@ -942,8 +705,7 @@ export default class Row extends Component<any, any> {
         action: this.handleGenerateMultisignLink,
         disabled: false,
       })
-      //@ts-ignore
-      if (!this.props.itemData.active) {
+      if (!itemData.active) {
         dropDownMenuItems.push({
           id: 1011,
           title: (
@@ -955,181 +717,254 @@ export default class Row extends Component<any, any> {
       }
     }
 
-    const metamaskIsOk = this.props.itemData.isMetamask && this.props.itemData.isConnected
-    const addressIsOk = !metamaskIsOk && mnemonicSaved
+    const ethRowWithoutExternalProvider = itemData.address.toLowerCase() === 'not connected' && !metamask.web3connect.isInjectedEnabled()
+    const web3Type = metamask.web3connect.getInjectedType()
+
+    const isMetamask = itemData.isMetamask
+    const metamaskIsConnected = isMetamask && itemData.isConnected
+    const metamaskDisconnected = isMetamask && !itemData.isConnected
+    const isAvailableMetamaskNetwork = isMetamask && metamask.isAvailableNetwork()
+    const isNotAvailableMetamaskNetwork = isMetamask && !metamask.isAvailableNetwork()
+    const currencyTitleId = `${standard ? standard.toLowerCase() : ''}${currency.toLowerCase()}`
+    const showFiatBalance =
+      currencyFiatBalance !== undefined &&
+      !Number.isNaN(currencyFiatBalance) &&
+      showBalance &&
+      !balanceError
 
     return (
-      <tr>
-        <td styleName={`assetsTableRow ${isDark ? 'dark' : ''}`}>
+      !ethRowWithoutExternalProvider
+      && <tr>
+        <td styleName={`assetsTableRow`}>
           <div styleName="assetsTableCurrency">
-            {/* Currency icon */}
-            {/*
-            //@ts-ignore */}
-            <Coin className={styles.assetsTableIcon} name={currency} />
-            <div styleName="assetsTableInfo">
+            <Coin
+              className={styles.assetsTableIcon}
+              name={metamaskDisconnected || isNotAvailableMetamaskNetwork ? web3Type : currency }
+            />
+
+            {/* Title-Link */}
+            <div id={currencyTitleId + 'WalletTitle'} styleName="assetsTableInfo">
               <div styleName="nameRow">
-                <a /* Redirect to history if connect wallet */
-                  onClick={ addressIsOk || metamaskIsOk ? this.goToCurrencyHistory : () => null }
+                <a onClick={
+                  metamaskDisconnected
+                    ? this.connectMetamask
+                    : isNotAvailableMetamaskNetwork
+                      ? () => null
+                      : mnemonicSaved || (metamaskIsConnected && isAvailableMetamaskNetwork)
+                        ? this.goToCurrencyHistory
+                        : () => null
+                  }
                   styleName={`${
-                    addressIsOk && isMobile
+                    mnemonicSaved && isMobile
                       ? 'linkToHistory mobile'
-                      : addressIsOk || metamaskIsOk
-                        ? 'linkToHistory desktop'
-                        : ''
+                        : mnemonicSaved || (metamaskIsConnected && isAvailableMetamaskNetwork)
+                          ? 'linkToHistory desktop'
+                          : ''
                   }`}
                   title={`Online ${fullName} wallet`}
                 >
                   {fullName}
+                  {/* label for tokens */}
+                  {standard ? (
+                    <span styleName="tokenStandard">
+                      {` ${standard.toUpperCase()}`}
+                    </span>
+                  ) : ''}
                 </a>
               </div>
-              {title ? <strong>{title}</strong> : ''}
             </div>
-            {balanceError && nodeDownErrorShow ? (
+
+            {/* Tip - if something wrong with endpoint */}
+            {balanceError && nodeDownErrorShow && (
               <div className={styles.errorMessage}>
-                <FormattedMessage
-                  id="RowWallet276"
-                  defaultMessage=" node is down (You can not perform transactions). "
-                />
-                <a href="https://wiki.swaponline.io/faq/bitcoin-node-is-down-you-cannot-make-transactions/">
+                <ApiEndpoint
+                  contractAddress={itemData.contractAddress}
+                  address={itemData.address}
+                  symbol={itemData.currency}
+                  isERC20={itemData.isERC20}
+                  isBTC={itemData.isBTC}
+                >
                   <FormattedMessage
-                    id="RowWallet282"
-                    defaultMessage="No connection..."
+                    id="RowWallet276"
+                    defaultMessage="Node is down"
                   />
-                </a>
+                </ApiEndpoint>
+                {' '}
+                <Tooltip id="WalletRowNodeIsDownTooltip">
+                  <div style={{ textAlign: 'center' }}>
+                    <FormattedMessage
+                      id="WalletRowNodeIsDownTooltipMessage"
+                      defaultMessage="You can not perform transactions"
+                    />
+                  </div>
+                </Tooltip>
               </div>
-            ) : (
-                ''
-              )}
+            )}
+
+            {/* Currency amount */}
             <span styleName="assetsTableCurrencyWrapper">
               {showBalance && (
                 <Fragment>
-                  {!isBalanceFetched || isBalanceFetching ? (
-                    //@ts-ignore
-                    this.props.itemData.isUserProtected &&
-                      //@ts-ignore
-                      !this.props.itemData.active ? (
-                        <span>
-                          <FormattedMessage
-                            id="walletMultisignNotJoined"
-                            defaultMessage="Not joined"
-                          />
-                        </span>
-                      ) : (
-                        <div styleName="loader">
-                          {!(balanceError && nodeDownErrorShow) && <InlineLoader />}
-                        </div>
-                      )
-                  ) : (
-                      <div
-                        styleName="no-select-inline"
-                        onClick={this.handleReloadBalance}
-                      >
-                        <i className="fas fa-sync-alt" styleName="icon" />
-                        <span>
-                          {balanceError
-                            ? '?'
-                            : new BigNumber(balance)
-                              .dp(5, BigNumber.ROUND_FLOOR)
-                              .toString()}{' '}
-                        </span>
-                        <span styleName="assetsTableCurrencyBalance">
-                          {currencyView}
-                        </span>
-                        {unconfirmedBalance !== 0 && (
-                          <Fragment>
-                            <br />
-                            <span
-                              styleName="unconfirmedBalance"
-                              title={intl.formatMessage(
-                                langLabels.unconfirmedBalance
-                              )}
-                            >
-                              {unconfirmedBalance > 0 && <>{'+'}</>}
-                              {unconfirmedBalance}{' '}
+                  {/*
+                  If it's a metamask and it disconnected then showing connect button
+                  else if balance fetched or fetching then showing loader
+                  else showing fetch-button and currency balance
+                  */}
+                  {metamaskDisconnected ? (
+                      <Button small empty onClick={metamask.handleConnectMetamask}>
+                        <FormattedMessage id="CommonTextConnect" defaultMessage="Connect" />
+                      </Button>
+                    ) :
+                      isNotAvailableMetamaskNetwork
+                        ? (
+                          <Button small empty onClick={metamask.handleDisconnectWallet}>
+                            <FormattedMessage id="MetamaskDisconnect" defaultMessage="Disconnect wallet" />
+                          </Button>
+                        )
+                        : !isBalanceFetched || isBalanceFetching ? (
+                          itemData.isUserProtected &&
+                            !itemData.active ? (
+                              <span>
+                                <FormattedMessage
+                                  id="walletMultisignNotJoined"
+                                  defaultMessage="Not joined"
+                                />
+                              </span>
+                            ) : (
+                              <div styleName="loader">
+                                {!(balanceError && nodeDownErrorShow) && <InlineLoader />}
+                              </div>
+                            )
+                        ) : (
+                          <button
+                            id="walletRowUpdateBalanceBtn"
+                            styleName="cryptoBalanceBtn"
+                            onClick={this.handleReloadBalance}
+                          >
+                            <i className="fas fa-sync-alt" styleName="icon" />
+                            <span id="walletRowCryptoBalance">
+                              {balanceError
+                                ? '?'
+                                : utils.toMeaningfulFloatValue({
+                                    value: balance,
+                                    meaningfulDecimals: 5,
+                                  })}{' '}
                             </span>
-                          </Fragment>
-                        )}
-                      </div>
-                    )}
+                            <span styleName="assetsTableCurrencyBalance">
+                              {currencyView}
+                            </span>
+                            {unconfirmedBalance !== 0 && (
+                              <Fragment>
+                                <br />
+                                <span
+                                  styleName="unconfirmedBalance"
+                                  title={intl?.formatMessage(
+                                    langLabels.unconfirmedBalance
+                                  )}
+                                >
+                                  {unconfirmedBalance > 0 && <>{'+'}</>}
+                                  {unconfirmedBalance}{' '}
+                                </span>
+                              </Fragment>
+                            )}
+                          </button>
+                        )
+                  }
                 </Fragment>
               )}
             </span>
 
+            {/* Address */}
             <Fragment>
               {statusInfo ?
                 <p styleName="statusStyle">{statusInfo}</p>
                 :
-                //@ts-ignore
-                !mnemonicSaved && !this.props.itemData.isMetamask ?
+                !mnemonicSaved && !itemData.isMetamask ?
                   <p styleName="showAddressStyle" onClick={this.handleShowMnemonic}>
                     <FormattedMessage
                       id="WalletRow_ShowAddress"
                       defaultMessage="Show address"
                     />
                   </p>
-                  :
-                  //@ts-ignore
-                  this.props.itemData.isMetamask && ! this.props.itemData.isConnected ?
+                  : // only for metamask
+                  metamaskDisconnected ?
                     <p styleName="addressStyle">
                       <FormattedMessage
                         id="WalletRow_MetamaskNotConnected"
                         defaultMessage="Not connected"
                       />
                     </p>
-                    : // Address shows 
-                    <div styleName="addressStyle">
-                      {/*
-                      //@ts-ignore */}
-                      <Copy text={itemData.address}>
-                        {
-                          isMobile ?
-                          <PartOfAddress {...itemData} style={{
-                            position: 'relative',
-                            bottom: '13px',
-                          }} />
-                          :
-                          <p>{itemData.address}</p>
-                        }
-                      </Copy>
-                    </div>
+                    : isNotAvailableMetamaskNetwork
+                      ?
+                        <p styleName="addressStyle">
+                          <FormattedMessage
+                            id="WalletRow_MetamaskNotAvailableNetwork"
+                            defaultMessage="Please choose another"
+                          />
+                        </p>
+                      : // Address shows
+                      <div styleName="addressStyle">
+                        <Copy text={itemData.address}>
+                          {isMobile ? (
+                              <PartOfAddress
+                                withoutLink
+                                currency={itemData.currency}
+                                contractAddress={itemData.contractAddress}
+                                address={itemData.address}
+                                style={{
+                                  position: 'relative',
+                                  bottom: '16px',
+                                }}
+                              />
+                            ) : (
+                              <p id={`${
+                                baseCurrency ? baseCurrency + currency.toLowerCase() : currency.toLowerCase()
+                              }Address`}>
+                                {itemData.address}
+                              </p>
+                            )
+                          }
+                        </Copy>
+                      </div>
               }
             </Fragment>
 
-            {(currencyFiatBalance && showBalance && !balanceError) || msConfirmCount ? (
+            {/* Fiat amount */}
+            {showFiatBalance || msConfirmCount ? (
               <div styleName="assetsTableValue">
                 {msConfirmCount && !isMobile && (
                   <p styleName="txWaitConfirm" onClick={this.goToCurrencyHistory}>
-                    {intl.formatMessage(
+                    {intl?.formatMessage(
                       langLabels.msConfirmCount,
                       {
                         count: msConfirmCount,
                       }
                     )}
                   </p>
-                )}  
-                {currencyFiatBalance && showBalance && !balanceError && (
+                )}
+                {showFiatBalance && (
                   <>
                     <p>{currencyFiatBalance}</p>
                     <strong>{activeFiat}</strong>
                   </>
                 )}
               </div>
-            ) : (
-                ''
-              )}
+            ) : null}
           </div>
 
-          <div onClick={this.handleOpenDropdown} styleName="assetsTableDots">
-            {/*
-            //@ts-ignore */}
-            <DropdownMenu
-              size="regular"
-              className="walletControls"
-              items={dropDownMenuItems}
-            />
-          </div>
+          {/* Additional option. Ethereum row with external wallet */}
+          {!metamaskDisconnected && !isNotAvailableMetamaskNetwork &&
+            <div onClick={this.handleOpenDropdown} styleName="assetsTableDots">
+              <DropdownMenu
+                className="walletControls"
+                items={dropDownMenuItems}
+              />
+            </div>
+          }
         </td>
       </tr>
     )
   }
 }
+
+export default injectIntl(Row)

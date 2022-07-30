@@ -1,20 +1,12 @@
 import React from 'react'
-import PropTypes from 'prop-types'
-
 import { FormattedMessage } from 'react-intl'
-
 import CSSModules from 'react-css-modules'
 import styles from './HowItWorks.scss'
 
-import { constants } from 'helpers'
-
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-const HowItWorks = ({ className }) => (
-  <div styleName={`HowItWorksContainer ${isDark ? 'dark' : ''}`}>
+const HowItWorks = () => (
+  <div styleName="HowItWorksContainer">
     <h3 styleName="HowItWorksTitle">
-      <FormattedMessage id="HowItWorks10" defaultMessage="How it works" />
+      <FormattedMessage id="HowItWorks10" defaultMessage="How Does It Work" />
     </h3>
     <div styleName="HowItWorksList">
       <div styleName="HowItWorksItem">

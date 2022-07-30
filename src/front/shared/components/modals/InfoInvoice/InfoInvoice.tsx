@@ -1,10 +1,9 @@
-import React, { Component, Fragment } from 'react'
+import React, { Fragment } from 'react'
 import { Modal } from 'components/modal'
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
 
 import actions from 'redux/actions'
 
-import helpers from 'helpers'
 import { links, constants } from 'helpers'
 import { getFullOrigin } from 'helpers/links'
 
@@ -19,11 +18,7 @@ import ShareButton from 'components/controls/ShareButton/ShareButton'
 import Button from 'components/controls/Button/Button'
 
 import { isMobile } from "react-device-detect"
-
-import imgReady from './images/ready.svg'
-import imgPending from './images/pending.svg'
-import imgCanceled from './images/cancel.svg'
-
+import { regularIcons } from 'images'
 
 const langPrefix = 'InvoiceInfoModal'
 const langLabels = defineMessages({
@@ -45,15 +40,11 @@ const langLabels = defineMessages({
   },
   invoiceComment: {
     id: `${langPrefix}_Comment`,
-    defaultMessage: `Комментарий`,
+    defaultMessage: `Comment`,
   },
   fromAddress: {
     id: `${langPrefix}_FromAddress`,
     defaultMessage: `Адресс отправителя`,
-  },
-  toAddress: {
-    id: `${langPrefix}_ToAddress`,
-    defaultMessage: `Адресс плательщика`,
   },
   buttonClose: {
     id: `${langPrefix}_CloseButton`,
@@ -93,17 +84,13 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @cssModules({
   ...defaultStyles,
   ...styles,
   ...animateFetching,
 }, { allowMultiple: true })
 
-export default class InfoInvoice extends React.Component<any, any> {
-
-  props: any
-
+class InfoInvoice extends React.Component<any, any> {
   constructor(props) {
     super(props)
 
@@ -179,14 +166,12 @@ export default class InfoInvoice extends React.Component<any, any> {
         toAddress,
       } = invoice
 
-
       const payWallet = actions.user.getWithdrawWallet(type, toAddress)
       if (payWallet) {
         // @ToDo - Добавить проверку по балансу
         let withdrawType = constants.modals.Withdraw
 
         if (payWallet.isUserProtected) withdrawType = constants.modals.WithdrawMultisigUser
-        if (payWallet.isSmsProtected) withdrawType = constants.modals.WithdrawMultisigSMS
 
         const {
           currency,
@@ -199,6 +184,7 @@ export default class InfoInvoice extends React.Component<any, any> {
           currency,
           address,
           balance,
+          itemCurrency: payWallet,
           unconfirmedBalance,
           toAddress: destAddress || fromAddress,
           amount: amount,
@@ -229,6 +215,7 @@ export default class InfoInvoice extends React.Component<any, any> {
       },
     } = this.state
 
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.Confirm, {
       onAccept: async () => {
         await actions.invoices.cancelInvoice(invoiceData.id)
@@ -250,28 +237,13 @@ export default class InfoInvoice extends React.Component<any, any> {
       invoice,
       isCancelled,
       isReady,
-      isPending,
       doshare,
       isShareReady,
-      isReadyShow,
     } = this.state
 
     const {
       invoiceData = false,
     } = (invoice || {})
-
-    const modalProps = (!isFetching && invoiceData) ? {
-      //@ts-ignore
-      name: constants.modals.WithdrawModal,
-      address: '',
-      data: {
-        currency: 'BTC',
-        amount: invoiceData.amount,
-        toAddress: invoiceData.destAddress,
-        invoice: invoiceData,
-      },
-      portalUI: true,
-    } : false
 
     let status = 'pending'
     if (!isFetching && invoiceData) status = invoiceData.status
@@ -310,19 +282,25 @@ export default class InfoInvoice extends React.Component<any, any> {
     switch (status) {
       case 'ready':
         infoIconTitle = intl.formatMessage(langLabels.infoStatusReady)
-        infoIconUrl = imgReady
+        infoIconUrl = regularIcons.OK
         break;
       case 'cancelled':
         infoIconTitle = intl.formatMessage(langLabels.infoStatusDeclimed)
-        infoIconUrl = imgCanceled
+        infoIconUrl = regularIcons.CANCELLED
         break;
       default:
         infoIconTitle = intl.formatMessage(langLabels.infoStatusPending)
-        infoIconUrl = imgPending
+        infoIconUrl = regularIcons.PENDING
     }
 
     return (
-      <Modal name={name} title={modalTitle} onClose={this.handleClose} showCloseButton={true} closeOnLocationChange={true} onLocationChange={this.handleChangeLocation}>
+      <Modal 
+        name="InfoInvoice" title={modalTitle} 
+        onClose={this.handleClose} 
+        showCloseButton={true} 
+        closeOnLocationChange={true} 
+        onLocationChange={this.handleChangeLocation}
+      >
         {doshare && !isShareReady && (
           <Fragment>
             <div styleName="convent-overlay">
@@ -370,7 +348,7 @@ export default class InfoInvoice extends React.Component<any, any> {
                       <div>
                         <span>
                           <FormattedMessage { ... langLabels.destination } values={{
-                            destination: invoiceData.destAddress,
+                            destination: <b>{invoiceData.destAddress}</b>,
                           }} />
                         </span>
                       </div>
@@ -382,20 +360,18 @@ export default class InfoInvoice extends React.Component<any, any> {
               <table styleName="blockCenter__table" className="table table-borderless">
                 <tbody>
                   {isFetching ? (
-                    <>
-                      <tr>
-                        <td styleName="animate-fetching" colSpan={2}></td>
-                      </tr>
-                    </>
+                    <tr>
+                      <td styleName="animate-fetching" colSpan={2}></td>
+                    </tr>
                   ) : (
                     <>
                       <tr>
                         <td styleName="header">
                           <FormattedMessage { ...langLabels.invoiceSender} />
                         </td>
-                        <td styleName="align-right">
-                          {invoiceData.contact}
-                        </td>
+                      </tr>
+                      <tr>
+                        <td styleName="responsiveBlock">{invoiceData.contact}</td>
                       </tr>
                       <tr>
                         <td styleName="header" colSpan={2}>
@@ -403,21 +379,19 @@ export default class InfoInvoice extends React.Component<any, any> {
                         </td>
                       </tr>
                       <tr>
-                        <td styleName="align-right" colSpan={2}>
-                          <span>{invoiceData.fromAddress} ({invoiceData.invoiceNumber})</span>
+                        <td styleName="responsiveBlock" colSpan={2}>
+                          <span>{invoiceData.fromAddress}{' '}({invoiceData.invoiceNumber})</span>
                         </td>
                       </tr>
-                      {invoiceData.toAddress && (
+                      {invoiceData.destAddress && (
                         <>
                           <tr>
                             <td styleName="header" colSpan={2}>
-                              <FormattedMessage { ...langLabels.toAddress } />
+                              <FormattedMessage id="InvoiceInfoModal_ToAddress" defaultMessage="Payer address" />
                             </td>
                           </tr>
                           <tr>
-                            <td styleName="align-right" colSpan={2}>
-                              <span>{invoiceData.toAddress}</span>
-                            </td>
+                            <td styleName="responsiveBlock" colSpan={2}>{invoiceData.destAddress}</td>
                           </tr>
                         </>
                       )}
@@ -429,8 +403,8 @@ export default class InfoInvoice extends React.Component<any, any> {
                             </td>
                           </tr>
                           <tr>
-                            <td styleName="invoiceComment" colSpan={2}>
-                              <span>{invoiceData.label}</span>
+                            <td styleName="responsiveBlock" colSpan={2}>
+                              {invoiceData.label}
                             </td>
                           </tr>
                         </>
@@ -484,3 +458,5 @@ export default class InfoInvoice extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(InfoInvoice)

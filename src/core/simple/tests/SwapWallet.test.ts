@@ -1,4 +1,4 @@
-import swap from '../src'
+import * as swap from '../src'
 
 const {
   on: { onFinish },
@@ -25,7 +25,6 @@ test('wallet can query balance', async () => {
 })
 
 test('wallet can return crypto data', async () => {
-  //@ts-ignore
   const data = await wallet.getData()
 
   expect(data.length).not.toBe(0)

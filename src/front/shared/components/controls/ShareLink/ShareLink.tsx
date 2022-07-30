@@ -12,9 +12,6 @@ import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 
 @CSSModules(styles, { allowMultiple: true })
 export default class ShareLink extends React.Component<any, any> {
-
-  props: any
-
   qrLoaderTimer = null
 
   constructor(props) {
@@ -27,6 +24,7 @@ export default class ShareLink extends React.Component<any, any> {
   }
 
   componentDidMount() {
+    //@ts-ignore: strictNullChecks
     this.qrLoaderTimer = setTimeout(() => {
       this.setState({
         qrLoaded: true,
@@ -35,6 +33,7 @@ export default class ShareLink extends React.Component<any, any> {
   }
 
   componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     clearTimeout(this.qrLoaderTimer)
   }
 
@@ -95,7 +94,7 @@ export default class ShareLink extends React.Component<any, any> {
               />
             </div>
             {(fullSize) ? (
-              <textarea styleName="shareLinkTextarea" value={link}>{link}</textarea>
+              <textarea styleName="shareLinkTextarea" value={link} readOnly>{link}</textarea>
             ) : (
               <div styleName="HolderLinkShorter">
                 <span>{link}</span>

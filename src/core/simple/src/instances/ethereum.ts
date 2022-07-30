@@ -1,13 +1,14 @@
-import request from '../helpers/request'
+import Web3 from 'web3'
+import BigNumber from 'bignumber.js'
 import debug from 'debug'
 
-import Web3 from 'web3'
+import request from '../helpers/request'
+
 
 // const MAINNET_PROVIDER = `https://mainnet.infura.io/JCnK5ifEPH9qcQkX0Ahl`
 const TESTNET_PROVIDER = `https://rinkeby.infura.io/v3/5ffc47f65c4042ce847ef66a3fa70d4c`
 
 const MAINNET_PROVIDER = process.env.WEB3_MAINNET_PROVIDER || `https://geth.swaponline.site`
-// const TESTNET_PROVIDER = process.env.WEB3_TESTNET_PROVIDER || `https://tgeth.swaponline.site`
 const LOCAL_PROVIDER = process.env.WEB3_LOCAL_PROVIDER || `http://localhost:7545`
 
 const WEB3_PROVIDERS = {
@@ -17,8 +18,6 @@ const WEB3_PROVIDERS = {
 
 const ETHERCHAIN_API = `https://www.etherchain.org/api/gasPriceOracle`
 const ETHGASSTATION_API = `https://ethgasstation.info/json/ethgasAPI.json`
-import BigNumber from 'bignumber.js'
-const TEN = new BigNumber(10)
 
 const ETHERSCAN_APIKEY = `87F9B9IH33JPVRM5ZVFEK1DQTM64FUZFMV`
 
@@ -46,7 +45,7 @@ class Ethereum {
     }
 
     this.etherscan = _network === 'testnet'
-      ? `https://rinkeby.etherscan.io`
+      ? `https://api-rinkeby.etherscan.io`
       : `https://api.etherscan.io`
   }
 
@@ -67,6 +66,7 @@ class Ethereum {
   }
 
   fetchTokenBalance(address, tokenAddress, decimals) {
+    const TEN = new BigNumber(10)
     const base = TEN.pow(decimals) // 1e18 usually
     const url = `${this.etherscan}/api?module=account&action=tokenbalance&contractaddress=${tokenAddress}&address=${address}&apikey=${ETHERSCAN_APIKEY}`
 
@@ -87,13 +87,13 @@ class Ethereum {
       })
   }
 
-  async sendTransaction({to, value}) {
+  async sendTransaction({ to, amount }) {
     const from = this.core.eth.accounts.wallet[0]
     const gas = 1e5
 
-    value = this.core.utils.toWei(value.toString())
+    amount = this.core.utils.toWei(amount.toString())
 
-    return this.core.eth.sendTransaction({ from, to, value, gas })
+    return this.core.eth.sendTransaction({ from, to, amount, gas })
   }
 
   async estimateGasPrice(options) {

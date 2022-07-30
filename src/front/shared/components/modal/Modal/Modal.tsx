@@ -2,54 +2,45 @@ import React, { Component } from 'react'
 import { connect } from 'redaction'
 
 import actions from 'redux/actions'
-import PropTypes from 'prop-types'
 import cx from 'classnames'
-import { constants } from 'helpers'
 import cssModules from 'react-css-modules'
-import styles from './Modal.scss'
 
 import WidthContainer from 'components/layout/WidthContainer/WidthContainer'
 import CloseIcon from 'components/ui/CloseIcon/CloseIcon'
 import Overlay from 'components/layout/Overlay/Overlay'
 import Center from 'components/layout/Center/Center'
+import styles from './Modal.scss'
 
+type ModalProps = {
+  title?: JSX.Element | string
+  closeOnLocationChange?: boolean | Function
+  onClose?: (isLocationChange) => boolean | void
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
+  children: JSX.Element | JSX.Element[]
+  data?: IUniversalObj
+  onLocationChange?: (hash: string) => boolean
+  name: string
+  className?: string
+  styleName?: string
+  showLogo?: boolean
+  whiteLogo?: boolean
+  delayClose?: boolean
+  disableClose?: boolean
+  dashboardView?: boolean
+  titleUppercase?: boolean
+  showCloseButton?: boolean
+  shouldCenterVertically?: boolean
+  shouldCenterHorizontally?: boolean
+  contentWithTabs?: boolean
+}
+
 @connect(({
   ui: { dashboardModalsAllowed },
 }) => ({
   dashboardView: dashboardModalsAllowed,
 }))
 @cssModules(styles, { allowMultiple: true })
-export default class Modal extends Component<any, any> {
-
-  static propTypes = {
-    children: PropTypes.node,
-    name: PropTypes.string,
-    title: PropTypes.any,
-    showCloseButton: PropTypes.bool,
-    data: PropTypes.object,
-    disableClose: PropTypes.bool,
-    titleUppercase: PropTypes.bool,
-    onClose: PropTypes.func,
-    shouldCenterVertically: PropTypes.bool,
-    shouldCenterHorizontally: PropTypes.bool,
-    whiteLogo: PropTypes.bool,
-    showLogo: PropTypes.bool,
-  }
-
-  static defaultProps = {
-    data: {},
-    whiteLogo: false,
-    showLogo: true,
-    showCloseButton: true,
-    fullWidth: false,
-    disableClose: false,
-    disableCloseOverlay: false,
-    uppercase: false,
-    shouldCenterVertically: true,
-    shouldCenterHorizontally: true,
-  }
+export default class Modal extends Component<ModalProps, object> {
 
   catchLocationChange = null
 
@@ -57,31 +48,40 @@ export default class Modal extends Component<any, any> {
     const {
       closeOnLocationChange,
       onLocationChange,
+      name,
     } = this.props
+
+    window.addEventListener('popstate', () => actions.modals.close(name))
 
     if (closeOnLocationChange) {
       let currentLocation = window.location.hash
 
+      // @ts-ignore: strictNullChecks
       this.catchLocationChange = setInterval(() => {
         if (window.location.hash != currentLocation) {
           if (typeof onLocationChange === 'function') {
             if (onLocationChange(window.location.hash)) {
               currentLocation = window.location.hash
             } else {
+              // @ts-ignore: strictNullChecks
               clearInterval(this.catchLocationChange)
               this.close(null, true)
             }
           } else {
+            // @ts-ignore: strictNullChecks
             clearInterval(this.catchLocationChange)
             this.close(null, true)
           }
         }
       }, 500)
     }
-
   }
 
   componentWillUnmount() {
+    const { name } = this.props
+
+    window.removeEventListener('popstate', () => actions.modals.close(name))
+    // @ts-ignore: strictNullChecks
     clearInterval(this.catchLocationChange)
   }
 
@@ -95,45 +95,57 @@ export default class Modal extends Component<any, any> {
     if (!disableClose) {
       actions.modals.close(name)
 
-      if (typeof onClose === 'function') {
+      if (onClose && typeof onClose === 'function') {
         onClose(isLocationChange)
       }
 
-      if (typeof data.onClose === 'function') {
+      // @ts-ignore: strictNullChecks
+      if (data?.onClose && typeof data.onClose === 'function') {
+        // @ts-ignore: strictNullChecks
         data.onClose(isLocationChange)
       }
     }
   }
 
   render() {
-    const { className, whiteLogo, showLogo, title, showCloseButton, disableClose, children,
-      titleUppercase, name, shouldCenterHorizontally, shouldCenterVertically, styleName, delayClose, data, dashboardView } = this.props
-
-    window.addEventListener('popstate', function (e) { actions.modals.close(name) }) // eslint-disable-line
+    const {
+      className,
+      title,
+      showCloseButton,
+      disableClose,
+      children,
+      titleUppercase,
+      shouldCenterHorizontally,
+      shouldCenterVertically,
+      styleName,
+      delayClose,
+      dashboardView,
+      contentWithTabs,
+    } = this.props
 
     const titleStyleName = cx('title', {
       'uppercase': titleUppercase,
     })
 
     return (
-      //@ts-ignore 
       <Overlay dashboardView={dashboardView} styleName={styleName}>
-        <div styleName={cx({
-          modal: true,
-          modal_dashboardView: dashboardView,
-          dark: isDark
-        })} className={className}>
+        <div
+          styleName={cx({
+            modal: true,
+            modal_dashboardView: dashboardView,
+          })}
+          className={className}
+        >
           {
             Boolean(title || showCloseButton) && (
               <div styleName="header">
                 {/*
-                //@ts-ignore */}
+                  //@ts-ignore */}
                 <WidthContainer styleName="headerContent">
                   <div styleName={titleStyleName} role="title">{title}</div>
                   {
                     showCloseButton && !disableClose && (
-                      //@ts-ignore 
-                      <CloseIcon styleName={`closeButton${delayClose ? ' delayClose' : ''}`} onClick={this.close} data-testid="modalCloseIcon" />
+                      <CloseIcon styleName={`closeButton ${delayClose ? 'delayClose' : ''}`} onClick={this.close} data-testid="modalCloseIcon" />
                     )
                   }
                 </WidthContainer>
@@ -147,14 +159,13 @@ export default class Modal extends Component<any, any> {
             {
               dashboardView
                 ? (
-                  <div styleName="content content_dashboardView" className="contentHeightEvaluateHere">
+                  <div styleName={contentWithTabs ? 'content content_dashboardView withTabs' : 'content content_dashboardView'} className="contentHeightEvaluateHere">
                     {children}
                   </div>
                 )
                 : (
-                  //@ts-ignore 
                   <Center scrollable centerHorizontally={shouldCenterHorizontally} centerVertically={shouldCenterVertically}>
-                    <div styleName="content">
+                    <div styleName={contentWithTabs ? 'content withTabs' : 'content'}>
                       {children}
                     </div>
                   </Center>

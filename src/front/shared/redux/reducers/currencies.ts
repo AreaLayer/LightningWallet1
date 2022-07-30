@@ -1,18 +1,21 @@
 import config from 'app-config'
+import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
+import { BLOCKCHAIN as BLOCKCHAIN_TYPE } from 'swap.app/constants/COINS'
 
+const NETWORK = process.env.MAINNET ? 'mainnet' : 'testnet'
 
-const GetCustromERC20 = () => {
-  const configStorage = (process.env.MAINNET) ? 'mainnet' : 'testnet'
-
-  let tokensInfo = JSON.parse(localStorage.getItem('customERC'))
-  if (!tokensInfo || !tokensInfo[configStorage]) return {}
-  return tokensInfo[configStorage]
+const getCustomTokenConfig = () => {
+  //@ts-ignore: strictNullChecks
+  let tokensInfo = JSON.parse(localStorage.getItem('customToken'))
+  if (!tokensInfo || !tokensInfo[NETWORK]) return {}
+  return tokensInfo[NETWORK]
 }
 
 let buildOpts = {
   curEnabled: false,
+  blockchainSwapEnabled: false,
   ownTokens: false,
-  addCustomERC20: true,
+  addCustomTokens: true,
   invoiceEnabled: true,
 }
 
@@ -24,29 +27,70 @@ if (window
   buildOpts = { ...buildOpts, ...window.buildOptions }
 }
 
-if (window
-  && window.widgetERC20Tokens
-  && Object.keys(window.widgetERC20Tokens)
-  && Object.keys(window.widgetERC20Tokens).length
-) {
-  buildOpts.ownTokens = window.widgetERC20Tokens
+if (window?.widgetEvmLikeTokens?.length) {
+  buildOpts.ownTokens = window.widgetEvmLikeTokens
 }
-if (buildOpts.ownTokens && Object.keys(buildOpts.ownTokens).length) {
-  // Multi token mode
-  const cleanERC20 = {}
-  // Обходим оптимизацию, нам нельзя, чтобы в этом месте было соптимизированно в целую строку {#WIDGETTOKENCODE#}
+
+if (Array.isArray(buildOpts.ownTokens) && buildOpts.ownTokens.length) {
+  // ? we can't use here as whole string {#WIDGETTOKENCODE#} ?
   const wcPb = `{#`
   const wcP = (`WIDGETTOKENCODE`).toUpperCase()
   const wcPe = `#}`
-  Object.keys(buildOpts.ownTokens).forEach((key) => {
-    if (key !== (`${wcPb}${wcP}${wcPe}`)) {
-      const tokenData = buildOpts.ownTokens[key]
-      cleanERC20[key] = tokenData
+
+  Object.keys(TOKEN_STANDARDS).forEach((key) => {
+    config[TOKEN_STANDARDS[key].standard.toLowerCase()] = {}
+  })
+
+  buildOpts.ownTokens.forEach((token) => {
+    const symbol = token.name.toLowerCase()
+    const standard = token.standard.toLowerCase()
+
+    if (symbol.toUpperCase() !== (`${wcPb}${wcP}${wcPe}`)) {
+      config[standard][symbol] = token
     }
   })
-  config.erc20 = cleanERC20
 }
 
+const tokenItems: IUniversalObj[] = []
+
+Object.keys(TOKEN_STANDARDS).forEach((key) => {
+  const standard = TOKEN_STANDARDS[key].standard
+  const blockchain = TOKEN_STANDARDS[key].currency
+
+  Object.keys(config[standard]).forEach((name) => {
+    tokenItems.push({
+      name: name.toUpperCase(),
+      title: name.toUpperCase(),
+      icon: name,
+      value: `{${blockchain.toUpperCase()}}${name}`,
+      fullTitle: name,
+      addAssets: true,
+      blockchain: BLOCKCHAIN_TYPE[blockchain.toUpperCase()],
+      standard,
+    })
+  })
+})
+
+const tokenPartialItems: IUniversalObj[] = []
+
+Object.keys(TOKEN_STANDARDS).forEach((key) => {
+  const standard = TOKEN_STANDARDS[key].standard
+  const blockchain = TOKEN_STANDARDS[key].currency
+
+  Object.keys(config[standard])
+    .filter((name) => config[standard][name].canSwap)
+    .forEach((name) => {
+      tokenPartialItems.push({
+        name: name.toUpperCase(),
+        title: name.toUpperCase(),
+        icon: name,
+        value: `{${blockchain.toUpperCase()}}${name}`,
+        fullTitle: config[standard][name].fullName || name,
+        blockchain: BLOCKCHAIN_TYPE[blockchain.toUpperCase()],
+        standard,
+      })
+    })
+})
 
 const initialState = {
   items: [
@@ -57,6 +101,97 @@ const initialState = {
       icon: 'eth',
       value: 'eth',
       fullTitle: 'ethereum',
+      blockchain: BLOCKCHAIN_TYPE.ETH,
+      addAssets: true,
+    }] : [],
+     //@ts-ignore
+     ...(!buildOpts.curEnabled || buildOpts.curEnabled.bnb) ? [{
+      name: 'BNB',
+      title: 'BNB',
+      icon: 'bnb',
+      value: 'bnb',
+      fullTitle: 'binance coin',
+      blockchain: BLOCKCHAIN_TYPE.BNB,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+      ...(!buildOpts.curEnabled || buildOpts.curEnabled.matic) ? [{
+      name: 'MATIC',
+      title: 'MATIC',
+      icon: 'matic',
+      value: 'matic',
+      fullTitle: 'matic token',
+      blockchain: BLOCKCHAIN_TYPE.MATIC,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.arbeth) ? [{
+      name: 'ARBETH',
+      title: 'ARBETH',
+      icon: 'arbeth',
+      value: 'arbeth',
+      fullTitle: 'arbitrum eth',
+      blockchain: BLOCKCHAIN_TYPE.ARBITRUM,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.aureth) ? [{
+      name: 'AURETH',
+      title: 'AURETH',
+      icon: 'aureth',
+      value: 'aureth',
+      fullTitle: 'aurora eth',
+      blockchain: BLOCKCHAIN_TYPE.AURETH,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.xdai) ? [{
+      name: 'XDAI',
+      title: 'XDAI',
+      icon: 'xdai',
+      value: 'xdai',
+      fullTitle: 'xdai',
+      blockchain: BLOCKCHAIN_TYPE.XDAI,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.ftm) ? [{
+      name: 'FTM',
+      title: 'FTM',
+      icon: 'ftm',
+      value: 'ftm',
+      fullTitle: 'ftm',
+      blockchain: BLOCKCHAIN_TYPE.FTM,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.avax) ? [{
+      name: 'AVAX',
+      title: 'AVAX',
+      icon: 'avax',
+      value: 'avax',
+      fullTitle: 'avax',
+      blockchain: BLOCKCHAIN_TYPE.AVAX,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.movr) ? [{
+      name: 'MOVR',
+      title: 'MOVR',
+      icon: 'movr',
+      value: 'movr',
+      fullTitle: 'moonriver',
+      blockchain: BLOCKCHAIN_TYPE.MOVR,
+      addAssets: true,
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.one) ? [{
+      name: 'ONE',
+      title: 'ONE',
+      icon: 'one',
+      value: 'one',
+      fullTitle: 'harmony one',
+      blockchain: BLOCKCHAIN_TYPE.ONE,
       addAssets: true,
     }] : [],
     //@ts-ignore
@@ -66,6 +201,7 @@ const initialState = {
       icon: 'ghost',
       value: 'ghost',
       fullTitle: 'ghost',
+      blockchain: BLOCKCHAIN_TYPE.GHOST,
       addAssets: true,
     }] : [],
     //@ts-ignore
@@ -75,6 +211,7 @@ const initialState = {
       icon: 'next',
       value: 'next',
       fullTitle: 'next',
+      blockchain: BLOCKCHAIN_TYPE.NEXT,
       addAssets: true,
     }] : [],
     //@ts-ignore
@@ -84,6 +221,7 @@ const initialState = {
       icon: 'btc',
       value: 'btc',
       fullTitle: 'bitcoin',
+      blockchain: BLOCKCHAIN_TYPE.BTC,
       addAssets: true,
     },
     {
@@ -93,6 +231,7 @@ const initialState = {
       value: 'btcMultisig',
       fullTitle: 'bitcoinMultisig',
       addAssets: false,
+      blockchain: BLOCKCHAIN_TYPE.BTC,
       dontCreateOrder: true,
     },
     {
@@ -101,6 +240,7 @@ const initialState = {
       icon: 'btc',
       value: 'btcMultisigPin',
       fullTitle: 'bitcoinMultisigPin',
+      blockchain: BLOCKCHAIN_TYPE.BTC,
       addAssets: false,
       dontCreateOrder: true,
     },
@@ -110,20 +250,125 @@ const initialState = {
       icon: 'btc',
       value: 'btcMultisig',
       fullTitle: 'bitcoinMultisig',
+      blockchain: BLOCKCHAIN_TYPE.BTC,
       addAssets: false,
       dontCreateOrder: true,
     }] : [],
-    ...(Object.keys(config.erc20)
-      .map(key => ({
-        name: key.toUpperCase(),
-        title: key.toUpperCase(),
-        icon: key,
-        value: key,
-        fullTitle: key,
-        addAssets: true,
-      }))),
+    ...tokenItems,
   ],
   partialItems: [
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.eth) ? [{
+      name: 'ETH',
+      title: 'ETH',
+      icon: 'eth',
+      value: 'eth',
+      fullTitle: 'ethereum',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.bnb) ? [{
+      name: 'BNB',
+      title: 'BNB',
+      icon: 'bnb',
+      value: 'bnb',
+      fullTitle: 'binance coin',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.matic) ? [{
+      name: 'MATIC',
+      title: 'MATIC',
+      icon: 'matic',
+      value: 'matic',
+      fullTitle: 'matic token',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.arbeth) ? [{
+      name: 'ARBETH',
+      title: 'ARBETH',
+      icon: 'arbeth',
+      value: 'arbeth',
+      fullTitle: 'arbitrum eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.aureth) ? [{
+      name: 'AURETH',
+      title: 'AURETH',
+      icon: 'aureth',
+      value: 'aureth',
+      fullTitle: 'aurora eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.xdai) ? [{
+      name: 'XDAI',
+      title: 'XDAI',
+      icon: 'xdai',
+      value: 'xdai',
+      fullTitle: 'xdai',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.ftm) ? [{
+      name: 'FTM',
+      title: 'FTM',
+      icon: 'ftm',
+      value: 'ftm',
+      fullTitle: 'fantom',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.avax) ? [{
+      name: 'AVAX',
+      title: 'AVAX',
+      icon: 'avax',
+      value: 'avax',
+      fullTitle: 'avalanche',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.movr) ? [{
+      name: 'MOVR',
+      title: 'MOVR',
+      icon: 'movr',
+      value: 'movr',
+      fullTitle: 'moonriver',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.one) ? [{
+      name: 'ONE',
+      title: 'ONE',
+      icon: 'one',
+      value: 'one',
+      fullTitle: 'harmony one',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.ghost) ? [{
+      name: 'GHOST',
+      title: 'GHOST',
+      icon: 'ghost',
+      value: 'ghost',
+      fullTitle: 'ghost',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.next) ? [{
+      name: 'NEXT',
+      title: 'NEXT',
+      icon: 'next',
+      value: 'next',
+      fullTitle: 'next',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.btc) ? [{
+      name: 'BTC',
+      title: 'BTC',
+      icon: 'btc',
+      value: 'btc',
+      fullTitle: 'bitcoin',
+    }] : [],
+    ...tokenPartialItems,
+  ],
+  addSelectedItems: [],
+  addPartialItems: [],
+}
+
+if (config.isWidget) {
+  initialState.items = [
     //@ts-ignore
     ...(!buildOpts.curEnabled || buildOpts.curEnabled.eth) ? [{
       name: 'ETH',
@@ -131,6 +376,86 @@ const initialState = {
       icon: 'eth',
       value: 'eth',
       fullTitle: 'ethereum',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.bnb) ? [{
+      name: 'BNB',
+      title: 'BNB',
+      icon: 'bnb',
+      value: 'bnb',
+      fullTitle: 'binance coin',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.matic) ? [{
+      name: 'MATIC',
+      title: 'MATIC',
+      icon: 'matic',
+      value: 'matic',
+      fullTitle: 'matic token',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.arbeth) ? [{
+      name: 'ARBETH',
+      title: 'ARBETH',
+      icon: 'arbeth',
+      value: 'arbeth',
+      fullTitle: 'arbitrum eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.aureth) ? [{
+      name: 'AURETH',
+      title: 'AURETH',
+      icon: 'aureth',
+      value: 'aureth',
+      fullTitle: 'aurora eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.xdai) ? [{
+      name: 'XDAI',
+      title: 'XDAI',
+      icon: 'xdai',
+      value: 'xdai',
+      fullTitle: 'xdai',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.ftm) ? [{
+      name: 'FTM',
+      title: 'FTM',
+      icon: 'ftm',
+      value: 'ftm',
+      fullTitle: 'fantom',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.avax) ? [{
+      name: 'AVAX',
+      title: 'AVAX',
+      icon: 'avax',
+      value: 'avax',
+      fullTitle: 'avalanche',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.movr) ? [{
+      name: 'MOVR',
+      title: 'MOVR',
+      icon: 'movr',
+      value: 'movr',
+      fullTitle: 'moonriver',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.one) ? [{
+      name: 'ONE',
+      title: 'ONE',
+      icon: 'one',
+      value: 'one',
+      fullTitle: 'harmony one',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.curEnabled || buildOpts.curEnabled.btc) ? [{
+      name: 'BTC',
+      title: 'BTC',
+      icon: 'btc',
+      value: 'btc',
+      fullTitle: 'bitcoin',
     }] : [],
     //@ts-ignore
     ...(!buildOpts.curEnabled || buildOpts.curEnabled.ghost) ? [{
@@ -148,197 +473,196 @@ const initialState = {
       value: 'next',
       fullTitle: 'next',
     }] : [],
+  ]
+
+  initialState.partialItems = [
     //@ts-ignore
-    ...(!buildOpts.curEnabled || buildOpts.curEnabled.btc) ? [{
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.eth) ? [{
+      name: 'ETH',
+      title: 'ETH',
+      icon: 'eth',
+      value: 'eth',
+      fullTitle: 'ethereum',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.bnb) ? [{
+      name: 'BNB',
+      title: 'BNB',
+      icon: 'bnb',
+      value: 'bnb',
+      fullTitle: 'binance coin',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.matic) ? [{
+      name: 'MATIC',
+      title: 'MATIC',
+      icon: 'matic',
+      value: 'matic',
+      fullTitle: 'matic token',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.arbeth) ? [{
+      name: 'ARBETH',
+      title: 'ARBETH',
+      icon: 'arbeth',
+      value: 'arbeth',
+      fullTitle: 'arbitrum eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.aureth) ? [{
+      name: 'AURETH',
+      title: 'AURETH',
+      icon: 'aureth',
+      value: 'aureth',
+      fullTitle: 'aurora eth',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.xdai) ? [{
+      name: 'XDAI',
+      title: 'XDAI',
+      icon: 'xdai',
+      value: 'xdai',
+      fullTitle: 'xdai',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.ftm) ? [{
+      name: 'FTM',
+      title: 'FTM',
+      icon: 'ftm',
+      value: 'ftm',
+      fullTitle: 'fantom',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.avax) ? [{
+      name: 'AVAX',
+      title: 'AVAX',
+      icon: 'avax',
+      value: 'avax',
+      fullTitle: 'avalanche',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.movr) ? [{
+      name: 'MOVR',
+      title: 'MOVR',
+      icon: 'movr',
+      value: 'movr',
+      fullTitle: 'moonriver',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.one) ? [{
+      name: 'ONE',
+      title: 'ONE',
+      icon: 'one',
+      value: 'one',
+      fullTitle: 'harmony one',
+    }] : [],
+    //@ts-ignore
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.btc) ? [{
       name: 'BTC',
       title: 'BTC',
       icon: 'btc',
       value: 'btc',
       fullTitle: 'bitcoin',
     }] : [],
-    ...(Object.keys(config.erc20)
-      .map(key => ({
-        name: key.toUpperCase(),
-        title: key.toUpperCase(),
-        icon: key,
-        value: key,
-        fullTitle: key,
-      }))),
-  ],
-  addSelectedItems: [],
-  addPartialItems: [],
-}
-
-
-if (config.isWidget) {
-  //@ts-ignore
-  initialState.items = [
     //@ts-ignore
-    {
-      name: 'BTC',
-      title: 'BTC',
-      icon: 'btc',
-      value: 'btc',
-      fullTitle: 'bitcoin',
-    },
-    //@ts-ignore
-    {
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.ghost) ? [{
       name: 'GHOST',
       title: 'GHOST',
       icon: 'ghost',
       value: 'ghost',
       fullTitle: 'ghost',
-    },
+    }] : [],
     //@ts-ignore
-    {
+    ...(!buildOpts.blockchainSwapEnabled || buildOpts.blockchainSwapEnabled.next) ? [{
       name: 'NEXT',
       title: 'NEXT',
       icon: 'next',
       value: 'next',
       fullTitle: 'next',
-    },
-  ]
-
-  initialState.partialItems = [
-    {
-      name: 'ETH',
-      title: 'ETH',
-      icon: 'eth',
-      value: 'eth',
-      fullTitle: 'ethereum',
-    },
-    {
-      name: 'BTC',
-      title: 'BTC',
-      icon: 'btc',
-      value: 'btc',
-      fullTitle: 'bitcoin',
-    },
-    {
-      name: 'GHOST',
-      title: 'GHOST',
-      icon: 'ghost',
-      value: 'ghost',
-      fullTitle: 'ghost',
-    },
-    {
-      name: 'NEXT',
-      title: 'NEXT',
-      icon: 'next',
-      value: 'next',
-      fullTitle: 'next',
-    },
+    }] : [],
   ]
 
   // Мульти валюта с обратной совместимостью одиночного билда
-  const multiTokenNames = (window.widgetERC20Tokens) ? Object.keys(window.widgetERC20Tokens) : []
+  const widgetCustomTokens = window?.widgetEvmLikeTokens?.length ? window.widgetEvmLikeTokens : []
 
-  if (multiTokenNames.length > 0) {
+  if (widgetCustomTokens.length) {
     // First token in list - is main - fill single-token erc20 config
-    config.erc20token = multiTokenNames[0]
-    config.erc20[config.erc20token] = window.widgetERC20Tokens[config.erc20token]
-    multiTokenNames.forEach((key) => {
-      //@ts-ignore
+    const firstToken = widgetCustomTokens[0]
+
+    config.erc20token = firstToken.name
+    config[firstToken.standard][firstToken.name] = firstToken
+
+    widgetCustomTokens.forEach((token) => {
+      const { name, standard, fullName } = token
+      const baseCurrency = TOKEN_STANDARDS[standard]?.currency
+
       initialState.items.push({
-        name: key.toUpperCase(),
-        title: key.toUpperCase(),
-        icon: key,
-        value: key,
-        fullTitle: window.widgetERC20Tokens[key].fullName,
+        name: name.toUpperCase(),
+        title: name.toUpperCase(),
+        icon: name,
+        value: `{${baseCurrency.toUpperCase()}}${name}`,
+        fullTitle: fullName || name,
+        addAssets: true,
+        blockchain: BLOCKCHAIN_TYPE[baseCurrency.toUpperCase()],
+        standard,
       })
       initialState.partialItems.push({
-        name: key.toUpperCase(),
-        title: key.toUpperCase(),
-        icon: key,
-        value: key,
-        fullTitle: window.widgetERC20Tokens[key].fullName,
+        name: name.toUpperCase(),
+        title: name.toUpperCase(),
+        icon: name,
+        value: `{${baseCurrency.toUpperCase()}}${name}`,
+        fullTitle: fullName || name,
+        blockchain: BLOCKCHAIN_TYPE[baseCurrency.toUpperCase()],
+        standard,
       })
-    })
-
-  } else {
-    //@ts-ignore
-    initialState.items.push({
-      name: config.erc20token.toUpperCase(),
-      title: config.erc20token.toUpperCase(),
-      icon: config.erc20token,
-      value: config.erc20token,
-      fullTitle: config.erc20[config.erc20token].fullName,
-    })
-    initialState.partialItems.push({
-      name: config.erc20token.toUpperCase(),
-      title: config.erc20token.toUpperCase(),
-      icon: config.erc20token,
-      value: config.erc20token,
-      fullTitle: config.erc20[config.erc20token].fullName,
-    })
-  }
-  //@ts-ignore
-  initialState.items.push({
-    name: 'ETH',
-    title: 'ETH',
-    icon: 'eth',
-    value: 'eth',
-    fullTitle: 'ethereum',
-  })
-  //@ts-ignore
-  initialState.items.push({
-    name: 'GHOST',
-    title: 'GHOST',
-    icon: 'ghost',
-    value: 'ghost',
-    fullTitle: 'ghost',
-  })
-  //@ts-ignore
-  initialState.items.push({
-    name: 'NEXT',
-    title: 'NEXT',
-    icon: 'next',
-    value: 'next',
-    fullTitle: 'next',
-  })
-
-  initialState.addSelectedItems = [
-    {
-      name: config.erc20token.toUpperCase(),
-      title: config.erc20token.toUpperCase(),
-      icon: config.erc20token,
-      value: config.erc20token,
-      fullTitle: config.erc20[config.erc20token].fullName,
-    },
-  ]
-} else {
-  if (!config.isWidget && buildOpts.addCustomERC20) {
-    const customERC = GetCustromERC20()
-    Object.keys(customERC).forEach((tokenContract) => {
-      const symbol = customERC[tokenContract].symbol
-      //@ts-ignore
-      initialState.items.push({
-        name: symbol.toUpperCase(),
-        title: symbol.toUpperCase(),
-        icon: symbol.toLowerCase(),
-        value: symbol.toLowerCase(),
-        fullTitle: symbol,
-      })
-      initialState.partialItems.push({
-        name: symbol.toUpperCase(),
-        title: symbol.toUpperCase(),
-        icon: symbol.toLowerCase(),
-        value: symbol.toLowerCase(),
-        fullTitle: symbol,
+      initialState.addSelectedItems.push({
+        //@ts-ignore
+        name: name.toUpperCase(),
+        //@ts-ignore
+        title: name.toUpperCase(),
+        //@ts-ignore
+        icon: name,
+        //@ts-ignore
+        value: name,
+        //@ts-ignore
+        fullTitle: fullName || name,
       })
     })
   }
 }
-// eslint-disable-next-line
-// process.env.MAINNET && initialState.items.unshift({
-//   name: 'USDT',
-//   title: 'USDT',
-//   icon: 'usdt',
-//   value: 'usdt',
-//   fullTitle: 'USD Tether',
-// })
-// eslint-disable-next-line
 
+if (buildOpts.addCustomTokens) {
+  const customTokenConfig = getCustomTokenConfig()
+
+  Object.keys(customTokenConfig).forEach((standard) => {
+    Object.keys(customTokenConfig[standard]).forEach((tokenContractAddr) => {
+      const tokenObj = customTokenConfig[standard][tokenContractAddr]
+      const { symbol } = tokenObj
+      const baseCurrency = TOKEN_STANDARDS[standard]?.currency
+
+      //@ts-ignore
+      initialState.items.push({
+          name: symbol.toUpperCase(),
+          title: symbol.toUpperCase(),
+          icon: symbol,
+          value: `{${baseCurrency.toUpperCase()}}${symbol}`,
+          fullTitle: config[standard][symbol]?.fullName || symbol,
+          addAssets: true,
+          blockchain: BLOCKCHAIN_TYPE[baseCurrency.toUpperCase()],
+          standard,
+        })
+      initialState.partialItems.push({
+        name: symbol.toUpperCase(),
+        title: symbol.toUpperCase(),
+        icon: symbol,
+        value: `{${baseCurrency.toUpperCase()}}${symbol}`,
+        fullTitle: config[standard][symbol]?.fullName || symbol,
+        blockchain: BLOCKCHAIN_TYPE[baseCurrency.toUpperCase()],
+        standard,
+      })
+    })
+  })
+}
 
 const addSelectedItems = (state, payload) => ({
   ...state,
@@ -359,7 +683,6 @@ const deletedPartialCurrency = (state, payload) => ({
   ...state,
   partialItems: state.partialItems.filter(item => item.name !== payload),
 })
-
 
 export {
   initialState,

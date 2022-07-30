@@ -1,4 +1,5 @@
 class Swap extends React.Component {
+
   componentWillMount() {
     this.calculateProfit()
   }
@@ -6,11 +7,7 @@ class Swap extends React.Component {
   getLockTime(swap) {
     const { flow } = swap
 
-    const scriptValues = flow.btcScriptValues
-                      || flow.ltcScriptValues
-                      || flow.usdtScriptValues
-                      || flow.scriptValues
-
+    const scriptValues = flow.utxoScriptValues
     if (!scriptValues) return
 
     return scriptValues.lockTime
@@ -48,11 +45,12 @@ class Swap extends React.Component {
 
   render() {
     const { id, pair, swap, timestamp, prices } = this.props
-    const { price, amount, ticker, main, base, type } = pair
     const { btc_profit, usd_profit, isProfit } = this.state
+
+    const { price, amount, ticker, main, base, type } = pair
+
     const time = this.getLockTime(swap)
     const createdAt = moment.unix(time - 3 * 3600).format('HH:mm:ss DD/MM/YYYY')
-    // const refundAt  = moment.unix(time).format('HH:mm:ss DD/MM/YYYY')
 
     return (
       <tr>
@@ -103,17 +101,17 @@ class Swap extends React.Component {
         </td>
 
         <td>
-          <a href={`/swaps/${id}`}>Go to swap</a>
+          <a href={`/swaps/${id}/formated`}>Go to swap</a>
           &nbsp;
           &middot;
           &nbsp;
           <a href={`/swaps/${id}/refund`}>Refund</a>
         </td>
-
       </tr>
     )
   }
 }
+
 
 class History extends React.Component {
 
@@ -172,12 +170,11 @@ class History extends React.Component {
 
   onTypeChanged(event) {
     this.setState({
-      type:event.target.value
+      type: event.target.value
     });
   }
 
   render() {
-
     const { error, isLoaded, swaps, prices } = this.state;
 
     if (error) {
@@ -186,65 +183,65 @@ class History extends React.Component {
       return <div>Loading...</div>;
     } else if (!swaps.length) {
       return <div>Empty</div>;
-    } else {
-      return (
-        <div>
-          <h2>History</h2>
-          <table>
-          <thead>
-            <tr>
-              <td>
-                Market
-              </td>
-
-              <td>
-                Created
-              </td>
-
-              <td>
-                Step
-              </td>
-
-              <td>
-                Type
-              </td>
-
-              <td>
-                Amount
-              </td>
-
-              <td>
-              </td>
-
-              <td>
-                Price
-              </td>
-
-              <td>
-              </td>
-
-              <td>
-                Total
-              </td>
-
-              <td>
-                ~Profit
-              </td>
-
-              <td>
-                + / -
-              </td>
-
-            </tr>
-          </thead>
-          <tbody>
-            {swaps.map(({ id, pair, swap }) => (
-              <Swap key={id} id={id} pair={pair} swap={swap} prices={prices} />
-            ))}
-          </tbody>
-          </table>
-        </div>
-      );
     }
+
+    return (
+      <div>
+        <h2>History</h2>
+        <table>
+        <thead>
+          <tr>
+            <td>
+              Market
+            </td>
+
+            <td>
+              Created
+            </td>
+
+            <td>
+              Step
+            </td>
+
+            <td>
+              Type
+            </td>
+
+            <td>
+              Amount
+            </td>
+
+            <td>
+            </td>
+
+            <td>
+              Price
+            </td>
+
+            <td>
+            </td>
+
+            <td>
+              Total
+            </td>
+
+            <td>
+              ~Profit
+            </td>
+
+            <td>
+              + / -
+            </td>
+
+          </tr>
+        </thead>
+        <tbody>
+          {swaps.map(({ id, pair, swap }) => (
+            <Swap key={id} id={id} pair={pair} swap={swap} prices={prices} />
+          ))}
+        </tbody>
+        </table>
+      </div>
+    );
   }
 }

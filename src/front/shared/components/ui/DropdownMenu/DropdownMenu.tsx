@@ -1,35 +1,30 @@
-//@ts-ignore
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import shortid from 'shortid';
-import { constants } from 'helpers'
-
 import cssModules from 'react-css-modules'
-import dots from './images/dots.svg'
-import greyDots from './images/greyDots.svg'
-
 import styles from './DropdownMenu.scss'
 
 type Props = {
-	items: any;
-	className: any;
-	size: any;
-	props: any;
+	className: string
+	items: {
+		action: () => void
+		title: JSX.Element
+		disabled?: boolean
+		hidden?: boolean
+		id: number
+	}[]
 }
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 @cssModules(styles, { allowMultiple: true })
 export default class DropdownMenu extends Component<Props, any> {
 
 	dropdownMenu: any
 
-	state = {
-		open: false
-	};
-
 	constructor(props) {
 		super(props);
+
+		this.state = {
+			open: false,
+		}
 
 		this.dropdownMenu = React.createRef();
 	}
@@ -67,20 +62,29 @@ export default class DropdownMenu extends Component<Props, any> {
 	}
 
 	render() {
-		const { items, className, size } = this.props;
-
-		const { open } = this.state;
+		const { items, className } = this.props
+		const { open } = this.state
 
 		return (
-			<div styleName={classNames('dropdownMenu', size)} ref={this.dropdownMenu}>
-				<button type="button" onClick={this.handleClick} className="data-tut-row-menu">
-					<img src={isDark ? greyDots : dots} />
+			<div styleName={classNames('dropdownMenu')} ref={this.dropdownMenu}>
+				<button styleName="dotsButton" type="button" onClick={this.handleClick} className="data-tut-row-menu">
+					<i className="fas fa-circle" styleName="icon"></i>
+					<i className="fas fa-circle" styleName="icon"></i>
+					<i className="fas fa-circle" styleName="icon"></i>
 				</button>
-				<div styleName={`${classNames('menu', className, { open })} ${isDark ? '--dark' : ''}`}>
+
+				<div styleName={`${classNames('menu', className, { open })}`}>
 					{
 						items.map((item, index) => item.hidden ? null : (
 							<div key={index} styleName="dropdownMenuItem">
-								<button disabled={item.disabled} key={shortid.generate()} type="button" onClick={() => this.handleItemClick(item.action)}>{item.title}</button>
+								<button 
+									disabled={item.disabled}
+									key={index}
+									type="button"
+									onClick={() => this.handleItemClick(item.action)}
+								>
+									{item.title}
+								</button>
 							</div>
 						))
 					}
@@ -89,20 +93,4 @@ export default class DropdownMenu extends Component<Props, any> {
 		);
 	}
 }
-
-// DropdownMenu.propTypes = {
-// 	items: PropTypes.array.isRequired,
-// 	position: PropTypes.oneOf(['top-left', 'top-right', 'bottom-left', 'bottom-right']).isRequired,
-// 	size: PropTypes.oneOf(['small', 'regular']),
-// 	customIcon: PropTypes.string,
-// 	customIconStyle: PropTypes.string,
-// 	customType: PropTypes.oneOf(['main', 'light', 'tertiary'])
-// };
-
-// DropdownMenu.defaultProps = {
-// 	size: 'small',
-// 	customIcon: null,
-// 	customIconStyle: null,
-// 	customType: 'tertiary'
-// };
 

@@ -1,15 +1,30 @@
 import BtcSwap from './BtcSwap'
 import EthSwap from './EthSwap'
-import EthTokenSwap from './EthTokenSwap'
+import BnbSwap from './BnbSwap'
+import MaticSwap from './MaticSwap'
+import ArbitrumSwap from './ArbitrumSwap'
 import GhostSwap from './GhostSwap'
 import NextSwap from './NextSwap'
-// import UsdtSwap from './UsdtSwap'
+
+import EthLikeSwap from './EthLikeSwap'
+import EthLikeTokenSwap from './EthLikeTokenSwap'
+import EthTokenSwap from './EthTokenSwap'
+import BscTokenSwap from './BscTokenSwap'
+import MaticTokenSwap from './MaticTokenSwap'
 
 export {
   BtcSwap,
   EthSwap,
-  EthTokenSwap,
+  BnbSwap,
+  MaticSwap,
+  ArbitrumSwap,
   GhostSwap,
   NextSwap,
-  // UsdtSwap,
+
+  EthTokenSwap,
+  BscTokenSwap,
+  MaticTokenSwap,
+
+  EthLikeSwap,
+  EthLikeTokenSwap,
 }

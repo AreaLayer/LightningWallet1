@@ -1,35 +1,33 @@
 import React from 'react'
-import { IntlProvider, addLocaleData } from 'react-intl'
+import { IntlProvider } from 'react-intl'
 import { Switch, Route, HashRouter } from 'react-router-dom'
-import localeEn from 'react-intl/locale-data/en'
-import localeRu from 'react-intl/locale-data/ru'
-import localeNl from 'react-intl/locale-data/nl'
-import localeEs from 'react-intl/locale-data/es'
 
 import { getCookie } from 'helpers/utils'
 
-
-addLocaleData([
-  ...localeEn,
-  ...localeRu,
-  ...localeNl,
-  ...localeEs
-])
-
 import myNl from 'localisation/nl.json'
+import myDe from 'localisation/de.json'
 import myEn from 'localisation/en.json'
 import myRu from 'localisation/ru.json'
 import myEs from 'localisation/es.json'
+import myPl from 'localisation/pl.json'
+import myPt from 'localisation/pt.json'
+import myKo from 'localisation/ko.json'
+import myAr from 'localisation/ar.json'
 
 
-import { reduceMessages, defaultLocale, localisePrefix } from 'helpers/locale'
+import { reduceMessages, defaultLocale } from 'helpers/locale'
 
 
 const translations = {
   nl: reduceMessages(myNl),
+  de: reduceMessages(myDe),
   en: reduceMessages(myEn),
   ru: reduceMessages(myRu),
   es: reduceMessages(myEs),
+  pl: reduceMessages(myPl),
+  pt: reduceMessages(myPt),
+  ko: reduceMessages(myKo),
+  ar: reduceMessages(myAr),
 }
 
 export default class IntlProviderContainer extends React.Component<any, any> {
@@ -41,7 +39,6 @@ export default class IntlProviderContainer extends React.Component<any, any> {
       <HashRouter>
         <Switch>
           <Route
-            path={localisePrefix}
             render={props => {
               let currentLocale = defaultLocale()
 

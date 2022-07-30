@@ -3,7 +3,13 @@ import * as bip32 from 'bip32'
 import { hdkey } from 'ethereumjs-wallet'
 import * as bip39 from 'bip39'
 
+const getRandomMnemonicWords = () => {
+  return bip39.generateMnemonic()
+}
 
+const validateMnemonicWords = (mnemonic) => {
+  return bip39.validateMnemonic(convertMnemonicToValid(mnemonic))
+}
 
 const convertMnemonicToValid = (mnemonic) => {
   return mnemonic
@@ -29,28 +35,27 @@ const getBtcWallet = (network, mnemonic, walletNumber = 0, path) => {
   return {
     mnemonic,
     address: account.address,
-    //@ts-ignore
-    publicKey: node.publicKey.toString('Hex'),
+    publicKey: node.publicKey.toString('hex'),
     WIF: node.toWIF(),
     node,
     account,
   }
 }
 
-const getEthWallet = (network, mnemonic, walletNumber = 0, path) => {
-  mnemonic = convertMnemonicToValid(mnemonic)
-  const seed = bip39.mnemonicToSeedSync(mnemonic)
+const getEthLikeWallet = (params) => {
+  const { mnemonic, walletNumber = 0, path } = params
+  const validMnemonic = convertMnemonicToValid(mnemonic)
+  const seed = bip39.mnemonicToSeedSync(validMnemonic)
   const hdwallet = hdkey.fromMasterSeed(seed)
   const wallet = hdwallet.derivePath((path) || `m/44'/60'/0'/0/${walletNumber}`).getWallet()
+  const publicKey = wallet.getPublicKey()
+  const privateKey = wallet.getPrivateKey()
 
   return {
-    mnemonic,
-    //@ts-ignore
-    address: `0x${wallet.getAddress().toString('Hex')}`,
-    //@ts-ignore
-    publicKey: `0x${wallet.pubKey.toString('Hex')}`,
-    //@ts-ignore
-    privateKey: `0x${wallet.privKey.toString('Hex')}`,
+    mnemonic: validMnemonic,
+    address: `0x${wallet.getAddress().toString('hex')}`,
+    publicKey: `0x${publicKey.toString('hex')}`,
+    privateKey: `0x${privateKey.toString('hex')}`,
     wallet,
   }
 }
@@ -68,8 +73,7 @@ const getGhostWallet = (network, mnemonic, walletNumber = 0, path) => {
   return {
     mnemonic,
     address: account.address,
-    //@ts-ignore
-    publicKey: node.publicKey.toString('Hex'),
+    publicKey: node.publicKey.toString('hex'),
     WIF: node.toWIF(),
     node,
     account,
@@ -89,8 +93,7 @@ const getNextWallet = (network, mnemonic, walletNumber = 0, path) => {
   return {
     mnemonic,
     address: account.address,
-    //@ts-ignore
-    publicKey: node.publicKey.toString('Hex'),
+    publicKey: node.publicKey.toString('hex'),
     WIF: node.toWIF(),
     node,
     account,
@@ -98,24 +101,14 @@ const getNextWallet = (network, mnemonic, walletNumber = 0, path) => {
 }
 
 const mnemonicIsValid = (mnemonic:string):boolean => bip39.validateMnemonic(convertMnemonicToValid(mnemonic))
-const getBchWallet = (network, mnemonic, walletNumber = 0, path) => { /* not implements */ }
-
-
-const forCoin = {
-  BTC:    getBtcWallet,
-  ETH:    getEthWallet,
-  GHOST:  getGhostWallet,
-  NEXT:   getNextWallet,
-  BCH:    getBchWallet, /* not implements */
-}
 
 export {
+  getRandomMnemonicWords,
+  validateMnemonicWords,
   mnemonicIsValid,
   convertMnemonicToValid,
   getBtcWallet,
-  getEthWallet,
+  getEthLikeWallet,
   getGhostWallet,
   getNextWallet,
-  getBchWallet, /* not implements */
-  forCoin,
 }

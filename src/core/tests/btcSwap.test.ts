@@ -74,8 +74,8 @@ test('btcSwap can estimate tx fee', async () => {
   expect(estimatedSat.toNumber() > 0).toBeTruthy()
   expect(estimatedSat.toNumber()).toBeGreaterThanOrEqual(expectedSat)
 
-
-  const estimatedBTC = await btcSwap.getTxFee()
+  // @ts-ignore - missing the following properties from type 'getTxFeeOptions': inSatoshis, address
+  const estimatedBTC = await btcSwap.getTxFee({})
   const expectedBTC = 546 / 1e8
 
   expect(estimatedBTC.toNumber() > 0).toBeTruthy()
@@ -91,7 +91,6 @@ test('btcSwap can estimate confidence factor', async () => {
 })
 
 test('btcSwap can estimate confident balance on script by fee ', async () => {
-  //@ts-ignore
   const result = await btcSwap.filterConfidentUnspents([
     {
       txid: '1e6d673ace76b3da288653683980dec137b05299ba90894f4c2744d9783872b4',
@@ -114,7 +113,6 @@ test('btcSwap can estimate confident balance on script by fee ', async () => {
 })
 
 test('btcSwap can estimate confident balance on script', async () => {
-  //@ts-ignore
   const result = await btcSwap.filterConfidentUnspents([
     {
       txid: '1e6d673ace76b3da288653683980dec137b05299ba90894f4c2744d9783872b4',

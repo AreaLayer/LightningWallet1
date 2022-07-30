@@ -1,28 +1,22 @@
 import { withRouter } from 'react-router-dom'
-//@ts-ignore
-import React, { Component, Fragment } from 'react'
+import { Component } from 'react'
+import { FormattedMessage } from 'react-intl'
 import actions from 'redux/actions'
-import helpers, { constants, links } from 'helpers'
-
-import getCurrencyKey from 'helpers/getCurrencyKey'
-import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
-import getWalletLink from 'helpers/getWalletLink'
+import erc20Like from 'common/erc20Like'
+import {
+  links,
+  localStorage,
+  getCurrencyKey,
+  lsDataCache,
+} from 'helpers'
 
 import TxInfo from './TxInfo'
 import { ModalBox } from 'components/modal'
 import cssModules from 'react-css-modules'
 import styles from './styles.scss'
-import lsDataCache from 'helpers/lsDataCache'
 
+import { COIN_DATA } from 'swap.app/constants/COINS'
 
-const labels = defineMessages({
-  Title: {
-    id: 'InfoPay_1',
-    defaultMessage: 'Transaction is completed',
-  },
-})
-
-@injectIntl
 @cssModules({
   ...styles,
 }, { allowMultiple: true })
@@ -33,17 +27,16 @@ class Transaction extends Component<any, any> {
     super(props)
 
     const {
-      history,
       match: {
         params: {
           ticker = null,
-          tx: txId = null,
+          tx: txHash = null,
         },
       } = null,
     } = props
 
     const currency = getCurrencyKey(ticker, true)
-    const infoTx = lsDataCache.get(`TxInfo_${currency.toLowerCase()}_${txId}`)
+    const infoTx = lsDataCache.get(`TxInfo_${currency.toLowerCase()}_${txHash}`)
 
     let rest = {}
     if (infoTx) {
@@ -72,10 +65,20 @@ class Transaction extends Component<any, any> {
       }
     }
 
+    const hiddenCoinsList = localStorage.getItem('hiddenCoinsList')
+
+    const userWallet = actions.core
+      .getWallets({})
+      .filter(({ currency: walletCurrency, tokenKey }) =>
+        !hiddenCoinsList?.includes(walletCurrency) &&
+        (tokenKey?.toLowerCase() || walletCurrency.toLowerCase()) === currency.toLowerCase()
+      )[0]
+
     this.state = {
       currency,
+      userAddress: userWallet?.address,
       ticker,
-      txId,
+      txHash,
       isFetching: !(infoTx),
       infoTx,
       amount: 0,
@@ -87,23 +90,24 @@ class Transaction extends Component<any, any> {
       confirmations: 0,
       minerFee: 0,
       error: null,
-      finalBalances: false,
       ...rest,
     }
   }
 
-  async fetchTxInfo(currencyKey, txId, ticker) {
+  fetchTxInfo = async (currency, txHash, ticker) => {
     const {
       infoTx: cachedTxInfo,
     } = this.state
 
-    let infoTx = null
+    let infoTx
     let error = null
+
     try {
-      if (currencyKey === `token`) {
-        infoTx = await actions.token.fetchTokenTxInfo(ticker, txId, 5 * 60 * 1000)
+      if (erc20Like.isToken({ name: currency })) {
+        const tokenStandard = COIN_DATA[currency.toUpperCase()].standard.toLowerCase()
+        infoTx = await actions[tokenStandard].fetchTokenTxInfo(ticker, txHash)
       } else {
-        infoTx = await actions[currencyKey].fetchTxInfo(txId, 5 * 60 * 1000)
+        infoTx = await actions[currency].fetchTxInfo(txHash, 5 * 60 * 1000)
       }
     } catch (err) {
       console.error(err)
@@ -112,7 +116,6 @@ class Transaction extends Component<any, any> {
 
     if (!infoTx || error) {
       // Fail parse
-      //@ts-ignore
       this.setState({
         isFetching: false,
         error: !(cachedTxInfo),
@@ -122,7 +125,7 @@ class Transaction extends Component<any, any> {
 
     if (!this.unmounted) {
       lsDataCache.push({
-        key: `TxInfo_${currencyKey.toLowerCase()}_${txId}`,
+        key: `TxInfo_${currency.toLowerCase()}_${txHash}`,
         time: 3600,
         data: infoTx,
       })
@@ -138,7 +141,7 @@ class Transaction extends Component<any, any> {
         minerFeeCurrency,
         adminFee,
       } = infoTx
-      //@ts-ignore
+
       this.setState({
         isFetching: false,
         infoTx,
@@ -157,65 +160,31 @@ class Transaction extends Component<any, any> {
   }
 
   componentDidMount() {
-    console.log('Transaction mounted')
     const {
       ticker,
-      txId,
+      txHash,
     } = this.state
 
-    if (!txId) {
+    if (!txHash) {
       //@ts-ignore
       history.push(links.notFound)
       return
     }
 
-    const currency = getCurrencyKey(ticker, false)
-    this.fetchTxInfo(currency, txId, ticker)
-    this.fetchTxFinalBalances(getCurrencyKey(ticker, true), txId)
+    const currency = getCurrencyKey(ticker, true)
+
+    this.fetchTxInfo(currency, txHash, ticker)
 
     if (typeof document !== 'undefined') {
       document.body.classList.add('overflowY-hidden-force')
     }
   }
 
-  fetchTxFinalBalances = (currency, txId) => {
-    setTimeout(async () => {
-      const finalBalances = await helpers.transactions.fetchTxBalances(currency, txId)
-      if (finalBalances && !this.unmounted) {
-        //@ts-ignore
-        this.setState({
-          finalBalances,
-        })
-      }
-    })
-  }
-
   handleClose = () => {
-    const { history } = this.props
-
-    let {
-      infoTx: {
-        senderAddress: walletOne,
-        receiverAddress: walletTwo,
-      },
-      ticker,
-    } = this.state
-
-    const wallets = []
-    if (walletOne instanceof Array) {
-      walletOne.forEach((wallet) => wallets.push(wallet))
-    } else wallets.push(walletOne)
-
-    if (walletTwo instanceof Array) {
-      walletTwo.forEach((wallet) => wallets.push(wallet))
-    } else wallets.push(walletTwo)
-
-    const walletLink = getWalletLink(ticker, wallets)
-    history.push((walletLink) || '/')
+    window.history.back()
   }
 
   componentWillUnmount() {
-    console.log('Transaction unmounted')
     this.unmounted = true
 
     if (typeof document !== 'undefined') {
@@ -224,12 +193,11 @@ class Transaction extends Component<any, any> {
   }
 
   render() {
-    const {
-      intl,
-    } = this.props
-
     return (
-      <ModalBox title={intl.formatMessage(labels.Title)} onClose={this.handleClose} >
+      <ModalBox
+        title={<FormattedMessage id="transacton" defaultMessage="Transaction" />}
+        onClose={this.handleClose}
+      >
         <div styleName="holder">
           <TxInfo {...this.state} />
         </div>
