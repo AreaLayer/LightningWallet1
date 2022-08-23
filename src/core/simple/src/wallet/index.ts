@@ -24,6 +24,7 @@ class Wallet {
     this.network = app.network
     this.ethereum = ethereum
     this.bitcoin = bitcoin
+    this.liquidbitcoin=liquidbitcoin
     this.swapApp = app
     this.constants = constants
     this.auth = app.services.auth
