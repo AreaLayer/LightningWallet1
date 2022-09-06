@@ -6,13 +6,12 @@ import * as ethereum from './../instances/ethereum'
 
 const debug = debugCreate('swap.core:simple:wallet')
 
-const BLOCKCHAININFO = isMain => isMain ? `https://blockchain.info` : `https://testnet.blockchain.info`
-const ETHERSCANIO = isMain => isMain ? `https://etherscan.io` : `https://rinkeby.etherscan.io`
+const BLOCKCHAININFO = isMain => isMain ? `https://mempool.space/` : `https://mempool.space/testnet`
+
 
 class Wallet {
   id: any
   network: any
-  ethereum: any
   bitcoin: any
   swapApp: any
   constants: any
@@ -22,7 +21,6 @@ class Wallet {
   constructor(app, constants, config) {
     this.id = config.id
     this.network = app.network
-    this.ethereum = ethereum
     this.bitcoin = bitcoin
     this.liquidbitcoin=liquidbitcoin
     this.swapApp = app
@@ -115,7 +113,6 @@ class Wallet {
 
   getCore() {
     return {
-      eth: this.ethereum.core,
       btc: this.bitcoin.core,
     }
   }
@@ -134,15 +131,9 @@ class Wallet {
 
   async detailedView() {
     const gasPrice = await this.ethereum.core.eth.getGasPrice()
-    const gasLimit = 3e6 // TODO sync with EthSwap.js
     const btcFee = 15000 // TODO sync with BtcSwap.js and bitcoin instance
 
     return {
-      eth: {
-        gasPrice,
-        gasLimit,
-        // ...ethereum.core,
-      },
       btc: {
         fee: btcFee,
         // ...bitcoin.core,
