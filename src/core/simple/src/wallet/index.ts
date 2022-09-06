@@ -1,7 +1,6 @@
 import debugCreate from 'debug'
 
 import * as bitcoin from './../instances/ethereum' // todo: obviously this is wrong
-import * as ethereum from './../instances/ethereum'
 
 
 const debug = debugCreate('swap.core:simple:wallet')
