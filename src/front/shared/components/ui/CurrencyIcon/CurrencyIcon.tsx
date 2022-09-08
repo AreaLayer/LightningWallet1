@@ -7,6 +7,11 @@ import getCoinInfo from 'common/coins/getCoinInfo'
 import { FormattedMessage } from 'react-intl'
 import config from 'app-config'
 
+ revert-4029-no-ts-ignore-before-CurrencyIcon-in-Coin
+export const iconNames = Object.keys(icons)
+
+const CurrencyIcon = ({ className, style, name, currency }) => {
+
 export const currencyIcons = Object.keys(icons)
 
 function returnTokenIcon(name) {
@@ -37,7 +42,7 @@ const CurrencyIcon = (props: CurrencyIconProps) => {
     coin: name,
     blockchain,
   } = getCoinInfo(coinName)
-
+ master
   if (typeof name === 'undefined') {
     return <p><FormattedMessage id="currencyIcon15" defaultMessage="Error" /></p>
   }

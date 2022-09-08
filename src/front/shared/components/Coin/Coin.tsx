@@ -130,12 +130,18 @@ const Coin = function (props: CoinProps) {
   }
 
   return (
+ revert-4029-no-ts-ignore-before-CurrencyIcon-in-Coin
+    <div styleName={`coin ${isDark ? 'dark' : ''}`} className={className} style={style}>
+      {/*
+      //@ts-ignore */}
+      <CurrencyIcon {...iconProps} />
     <div
       styleName={`coin ${iconSource ? 'noColors' : ''}`}
       className={className}
       style={style}
     >
       <CurrencyIcon {...currencyIconProps} />
+master
     </div>
   )
 }
