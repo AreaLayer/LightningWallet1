@@ -7,7 +7,6 @@ import Row from '../Row/Row'
 import Value from '../Value/Value'
 import { FormattedMessage } from 'react-intl'
 
-
 const title = (
   <FormattedMessage id="amount" defaultMessage="Exchange" />
 )

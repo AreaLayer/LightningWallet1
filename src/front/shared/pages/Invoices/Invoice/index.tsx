@@ -11,7 +11,6 @@ type InvoceProps = {
   history: IUniversalObj
   intl: IUniversalObj
   match: IUniversalObj
-  isSigned: boolean
 }
 
 type InvoceState = {
@@ -22,30 +21,8 @@ type InvoceState = {
   infoModal?: React.ClassicComponent
 }
 
-@connect(({ signUp: { isSigned } }) => ({
-  isSigned,
-}))
-
-@connect(({
-  user: {
-    btcData,
-    ethData,
-    ghostData,
-    nextData,
-  },
-}) => {
-  return {
-    data: {
-      btc: btcData,
-      eth: ethData,
-      ghost: ghostData,
-      next: nextData,
-    }
-  }
-})
-@injectIntl
 @withRouter
-export default class Invoice extends PureComponent<InvoceProps, InvoceState> {
+class Invoice extends PureComponent<InvoceProps, InvoceState> {
   constructor(props) {
     super(props)
 
@@ -66,17 +43,12 @@ export default class Invoice extends PureComponent<InvoceProps, InvoceState> {
     }
   }
 
-  handleGoWalletHome = () => {
-    const { history, intl: { locale } } = this.props
-
-    history.push(localisedUrl(locale, links.wallet))
-  }
-
   fetchInvoice = () => {
     const { uniqhash, infoModal } = this.state
     const { history, intl: { locale } } = this.props
 
     if(uniqhash) {
+      //@ts-ignore: strictNullChecks
       infoModal.setState({
         isFetching: true,
         uniqhash,
@@ -85,6 +57,7 @@ export default class Invoice extends PureComponent<InvoceProps, InvoceState> {
           uniqhash
         ).then((invoice) => {
           if (invoice) {
+            //@ts-ignore: strictNullChecks
             infoModal.setState({
               isFetching: false,
               invoice,
@@ -152,6 +125,7 @@ export default class Invoice extends PureComponent<InvoceProps, InvoceState> {
         uniqhash,
         doshare,
       }, () => {
+        //@ts-ignore: strictNullChecks
         infoModal.setState((prevUniqhash !== uniqhash) ? {
           invoice: false,
           uniqhash,
@@ -172,3 +146,5 @@ export default class Invoice extends PureComponent<InvoceProps, InvoceState> {
     return null
   }
 }
+
+export default injectIntl(Invoice)

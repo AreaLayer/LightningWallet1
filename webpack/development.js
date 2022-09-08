@@ -3,6 +3,7 @@ import CopyWebpackPlugin from 'copy-webpack-plugin'
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer'
 //import SpeedMeasurePlugin from "speed-measure-webpack-plugin"
 import externalConfig from './externalConfig'
+import ownBuffer from './ownBuffer'
 
 /* 
 * verbose output in console about build time
@@ -23,11 +24,10 @@ export default (webpackConfig) => {
     publicPath: config.publicPath,
   }
 
-  webpackConfig.node = {
-    fs: 'empty',
-    net: 'empty',
-    tls: 'empty',
-  }
+  webpackConfig.resolve.fallback.fs = false
+  webpackConfig.resolve.fallback.net = false
+  webpackConfig.resolve.fallback.tls = false
+
   /* 
   * build speed: slow
   * rebuild: faster
@@ -43,8 +43,11 @@ export default (webpackConfig) => {
   webpackConfig.optimization = {
     minimize: false,
   }
-  
-  webpackConfig.plugins.push(externalConfig())
+
+  webpackConfig.plugins.push(
+    ...externalConfig(),
+    ownBuffer(),
+  )
 
   if (config.firebug) {
     webpackConfig.plugins.push(

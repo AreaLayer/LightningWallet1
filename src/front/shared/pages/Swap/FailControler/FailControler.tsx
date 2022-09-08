@@ -6,14 +6,13 @@ import cssModules from 'react-css-modules'
 import CopyToClipboard from 'react-copy-to-clipboard'
 import { FormattedMessage } from 'react-intl'
 
-
-@cssModules(styles)
+@cssModules(styles, { allowMultiple: true })
 export default class FailControler extends Component<any, any> {
   render() {
     const { ethAddress, message } = this.props
 
     return (
-      <div styleName="main">
+      <div styleName="FailControler" >
         <CopyToClipboard text={ethAddress}>
           <div>
             <div styleName="warning">

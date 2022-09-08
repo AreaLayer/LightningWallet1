@@ -3,14 +3,11 @@ import React, { PureComponent } from 'react'
 import Table from 'components/tables/Table/Table'
 import styles from 'components/tables/Table/Table.scss'
 import RowHistory from './RowHistory/RowHistory'
+
 import { FormattedMessage } from 'react-intl'
-import { constants } from 'helpers'
 
 import CSSModules from 'react-css-modules'
 import stylesSwaps from './SwapsHistory.scss'
-
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
 @CSSModules({ ...styles, ...stylesSwaps }, { allowMultiple: true })
 export default class SwapsHistory extends PureComponent<any, any> {
@@ -23,14 +20,14 @@ export default class SwapsHistory extends PureComponent<any, any> {
     }
 
     return (
-      <div styleName={`swapsHistory ${isDark ? 'swapsHistoryDark' : ''}`}>
+      <div styleName="swapsHistory">
         <h3>
           <FormattedMessage id="SwapHisrory21" defaultMessage="Swaps history" />
         </h3>
         <Table
           id="table-history"
           className={styles.historySwap}
-          rows={orders}
+          rows={orders.reverse()}
           rowRender={(row, index) => (
             <RowHistory
               key={index}

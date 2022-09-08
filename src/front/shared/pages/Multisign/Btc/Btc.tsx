@@ -24,9 +24,8 @@ import config from 'app-config'
     data: btcData,
   }
 })
-@injectIntl
 @CSSModules(styles, { allowMultiple: true })
-export default class Btc extends PureComponent<any, any> {
+class Btc extends PureComponent<any, any> {
   timerWaitOnlineJoin: any
 
   static propTypes = {
@@ -35,9 +34,8 @@ export default class Btc extends PureComponent<any, any> {
     intl: PropTypes.object.isRequired,
   }
 
-  constructor() {
-    //@ts-ignore
-    super()
+  constructor(props) {
+    super(props)
     console.log('Btc mulsign connected')
 
     const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
@@ -122,6 +120,7 @@ export default class Btc extends PureComponent<any, any> {
         }
         if (txRaw.length === 64) {
           setTimeout(() => {
+            //@ts-ignore: strictNullChecks
             actions.modals.open(constants.modals.BtcMultisignConfirmTx, {
               txId: txRaw,
               showCloseButton: true,
@@ -141,6 +140,7 @@ export default class Btc extends PureComponent<any, any> {
               },
               () => {
                 setTimeout(() => {
+                  //@ts-ignore: strictNullChecks
                   actions.modals.open(constants.modals.BtcMultisignConfirmTx, {
                     txData: txRaw,
                     showCloseButton: false,
@@ -160,6 +160,7 @@ export default class Btc extends PureComponent<any, any> {
   }
 
   async componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.unsubscribe(
       'btc multisig join ready',
       this.handleOnlineWalletConnect
@@ -177,6 +178,7 @@ export default class Btc extends PureComponent<any, any> {
       action: action === 'join' ? 'linkready' : 'ready',
     })
     if (action === 'join') {
+      //@ts-ignore: strictNullChecks
       actions.modals.open(constants.modals.MultisignJoinLink, {
         action: `connect`,
         callback: () => {
@@ -192,6 +194,7 @@ export default class Btc extends PureComponent<any, any> {
     const { fromPeer, data } = _data
     const { peer } = this.state
     if (fromPeer === peer) {
+      //@ts-ignore: strictNullChecks
       SwapApp.shared().services.room.unsubscribe(
         'btc multisig join ready',
         this.handleOnlineWalletConnect
@@ -216,10 +219,12 @@ export default class Btc extends PureComponent<any, any> {
         this.setState({
           action: 'onlinejoin',
         })
+        //@ts-ignore: strictNullChecks
         SwapApp.shared().services.room.subscribe(
           'btc multisig join ready',
           this.handleOnlineWalletConnect
         )
+        //@ts-ignore: strictNullChecks
         SwapApp.shared().services.room.sendMessagePeer(peer, {
           event: 'btc multisig join',
           data: {
@@ -228,6 +233,7 @@ export default class Btc extends PureComponent<any, any> {
           },
         })
         this.timerWaitOnlineJoin = setTimeout(() => {
+          //@ts-ignore: strictNullChecks
           SwapApp.shared().services.room.unsubscribe(
             'btc multisig join ready',
             this.handleOnlineWalletConnect
@@ -243,6 +249,7 @@ export default class Btc extends PureComponent<any, any> {
   }
 
   handleSaveMnemonic = async () => {
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.SaveMnemonicModal, {
       onClose: () => {
         const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
@@ -386,7 +393,7 @@ export default class Btc extends PureComponent<any, any> {
                 <Button brand onClick={this.handleSaveMnemonic}>
                   <FormattedMessage
                     id="BTCMS_SaveMnemonicButton"
-                    defaultMessage="Сохранить секретную фразу"
+                    defaultMessage="Save secret phrase"
                   />
                 </Button>
               </>
@@ -511,3 +518,5 @@ export default class Btc extends PureComponent<any, any> {
     )
   }
 }
+
+export default injectIntl(Btc)

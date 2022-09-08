@@ -2,10 +2,6 @@ import React from 'react'
 import PropTypes from 'prop-types'
 
 import actions from 'redux/actions'
-import { constants } from 'helpers'
-
-import Link from 'local_modules/sw-valuelink'
-
 import cssModules from 'react-css-modules'
 import styles from './Confirm.scss'
 
@@ -34,14 +30,9 @@ const defaultLanguage = defineMessages({
     defaultMessage: 'No',
   },
 })
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-export default class Confirm extends React.Component<any, any> {
-
-  props: any
-
+class Confirm extends React.Component<any, any> {
   static propTypes = {
     onAccept: PropTypes.func,
   }
@@ -102,7 +93,7 @@ export default class Confirm extends React.Component<any, any> {
     }
 
     return (
-      <div styleName={`modal-overlay ${isDark ? 'dark' : ''}`} onClick={this.handleClose}>
+      <div styleName="modal-overlay" onClick={this.handleClose}>
         <div styleName="modal">
           <div styleName="header">
             {/*
@@ -125,3 +116,5 @@ export default class Confirm extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(Confirm)

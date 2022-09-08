@@ -2,6 +2,15 @@ import btc from './btc'
 import ghost from './ghost'
 import next from './next'
 import eth from './eth'
+import bnb from './bnb'
+import matic from './matic'
+import arbeth from './arbeth'
+import aureth from './aureth'
+import xdai from './xdai'
+import ftm from './ftm'
+import avax from './avax'
+import movr from './movr'
+import one from './one'
 import ethToken from './ethToken'
 import * as user from './user'
 import web3 from './web3'
@@ -11,55 +20,75 @@ import constants from './constants'
 import localStorage from './localStorage'
 import api from './api'
 import * as utils from './utils'
+import seo from './seo'
 // Methods
 import ignoreProps from './ignoreProps'
 import handleGoTrade from './handleGoTrade'
-// import firebase from './firebase'
 // Getters
 import externalConfig from './externalConfig'
 import feedback from './feedback'
 import getPageOffset from './getPageOffset'
-import getScrollBarWidth from './getScrollBarWidth'
-import estimateFeeValue from './estimateFeeValue'
 import transactions from './transactions'
 
-import { migrate } from './migrations/'
+import { migrate } from './migrations'
 
-import getUnixTimeStamp from './getUnixTimeStamp'
-import { cacheStorageGet, cacheStorageSet } from './cache'
+import {
+  cacheStorageGet,
+  cacheStorageSet,
+  cacheStorageClear,
+  cacheStorageClearPart,
+} from './cache'
+import lsDataCache from './lsDataCache'
 
 import apiLooper from './apiLooper'
 import wpLogoutModal from './wpLogoutModal'
 
-
 import metamask from './metamask'
 
-import getWalletLink from './getWalletLink'
-
-import redirectTo from './redirectTo'
+import * as routing from './routing'
 
 import adminFee from './adminFee'
+
+import swaps from './swaps'
 
 import stats from './stats.swaponline'
 
 import { getPairFees } from './getPairFees'
 
-
 export default {
   btc,
   eth,
+  bnb,
+  matic,
+  arbeth,
+  aureth,
+  xdai,
+  ftm,
+  avax,
+  movr,
+  one,
   ghost,
   next,
   ethToken,
   getCurrencyKey,
   handleGoTrade,
   transactions,
-  estimateFeeValue,
+  localStorage,
 }
 
 export {
+  seo,
   btc,
   eth,
+  bnb,
+  matic,
+  arbeth,
+  aureth,
+  xdai,
+  ftm,
+  avax,
+  movr,
+  one,
   ghost,
   next,
   ethToken,
@@ -67,6 +96,9 @@ export {
   web3,
   utils,
   links,
+  getCurrencyKey,
+  lsDataCache,
+  transactions,
   constants,
   localStorage,
   api,
@@ -74,27 +106,26 @@ export {
   // Methods
   ignoreProps,
   handleGoTrade,
-  // firebase,
 
   // Getters
   getPageOffset,
-  getScrollBarWidth,
   externalConfig,
 
   feedback,
-  getUnixTimeStamp,
   cacheStorageGet,
   cacheStorageSet,
+  cacheStorageClear,
+  cacheStorageClearPart,
 
   apiLooper,
 
   metamask,
 
-  getWalletLink,
-
-  redirectTo,
+  routing,
 
   adminFee,
+
+  swaps,
 
   stats,
 

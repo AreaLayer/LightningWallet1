@@ -75,7 +75,7 @@ class ETH2GHOST extends AtomicAB2UTXO {
       isGhostWithdrawn: false,
 
       ethSwapWithdrawTransactionHash: null,
-      ghostSwapWithdrawTransactionHash: null,
+      utxoSwapWithdrawTransactionHash: null,
 
       refundTransactionHash: null,
       isRefunded: false,
@@ -121,6 +121,7 @@ class ETH2GHOST extends AtomicAB2UTXO {
     super._persistState()
   }
 
+  //@ts-ignore: strictNullChecks
   _getSteps() {
     const flow = this
 
@@ -142,7 +143,7 @@ class ETH2GHOST extends AtomicAB2UTXO {
 
       () => {
         debug('swap.core:flow')(`waiting verify ghost script`)
-        // this.verifyGhostScript()
+        this.verifyScript()
       },
 
       // 4. Check balance
@@ -170,9 +171,9 @@ class ETH2GHOST extends AtomicAB2UTXO {
 
       async () => {
         await util.helpers.repeatAsyncUntilResult((stopRepeat) => {
-          const { secret, utxoScriptValues, ghostSwapWithdrawTransactionHash } = flow.state
+          const { secret, utxoScriptValues, utxoSwapWithdrawTransactionHash } = flow.state
 
-          if (ghostSwapWithdrawTransactionHash) {
+          if (utxoSwapWithdrawTransactionHash) {
             return true
           }
 
@@ -189,7 +190,7 @@ class ETH2GHOST extends AtomicAB2UTXO {
             .then((hash) => {
               console.log('withdraw hash', hash)
               flow.setState({
-                ghostSwapWithdrawTransactionHash: hash,
+                utxoSwapWithdrawTransactionHash: hash,
               }, true)
               return true
             })
@@ -205,12 +206,12 @@ class ETH2GHOST extends AtomicAB2UTXO {
 
       () => {
         flow.swap.room.once('request swap finished', () => {
-          const { ghostSwapWithdrawTransactionHash } = flow.state
+          const { utxoSwapWithdrawTransactionHash } = flow.state
 
           flow.swap.room.sendMessage({
             event: 'swap finished',
             data: {
-              ghostSwapWithdrawTransactionHash,
+              utxoSwapWithdrawTransactionHash,
             },
           })
         })
@@ -227,8 +228,6 @@ class ETH2GHOST extends AtomicAB2UTXO {
   }
 
   _checkSwapAlreadyExists() {
-    const { participant } = this.swap
-
     const swapData = {
       ownerAddress: this.app.getMyEthAddress(),
       participantAddress: this.app.getParticipantEthAddress(this.swap)
@@ -238,7 +237,6 @@ class ETH2GHOST extends AtomicAB2UTXO {
   }
 
   async tryRefund() {
-    const { participant } = this.swap
     const { secretHash } = this.state
 
     const refundHandler = (hash = null) => {
@@ -328,10 +326,10 @@ class ETH2GHOST extends AtomicAB2UTXO {
     }, (hash) => {
       debug('swap.core:flow')(`TX hash=${hash}`)
       this.setState({
-        btcSwapWithdrawTransactionHash: hash,
+        utxoSwapWithdrawTransactionHash: hash,
       })
     })
-    debug('swap.core:flow')(`TX withdraw sent: ${this.state.btcSwapWithdrawTransactionHash}`)
+    debug('swap.core:flow')(`TX withdraw sent: ${this.state.utxoSwapWithdrawTransactionHash}`)
 
     this.finishStep({
       isGhostWithdrawn: true,

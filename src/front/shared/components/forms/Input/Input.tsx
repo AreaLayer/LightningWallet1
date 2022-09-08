@@ -1,7 +1,6 @@
 import React, { Component } from "react"
 import PropTypes from "prop-types"
 import { Input as ValueLinkInput } from "local_modules/sw-valuelink"
-import { constants } from 'helpers'
 import cx from "classnames";
 import { ignoreProps } from "helpers"
 import reducers from "redux/core/reducers"
@@ -13,7 +12,6 @@ import "./style.css"
 import TextArea from "components/forms/TextArea/TextArea"
 
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 @cssModules(styles, { allowMultiple: true })
 export default class Input extends Component<any, any> {
   static propTypes = {
@@ -48,6 +46,7 @@ export default class Input extends Component<any, any> {
       onFocus();
     }
 
+    // Hide the Header if Input is blured
     if (isMobile) {
       const header = document.getElementById('header-mobile')
       if (header) {
@@ -64,6 +63,7 @@ export default class Input extends Component<any, any> {
       onBlur(event)
     }
 
+    // Show the Header if Input is blured
     if (isMobile) {
       const header = document.getElementById('header-mobile')
       if (header) {
@@ -75,6 +75,7 @@ export default class Input extends Component<any, any> {
 
   render() {
     const {
+      styleName,
       className,
       inputContainerClassName,
       inputClassName,
@@ -95,6 +96,7 @@ export default class Input extends Component<any, any> {
       fiat,
       srollingForm,
       activeFiat,
+      id,
       ...rest
     } = this.props;
 
@@ -112,13 +114,12 @@ export default class Input extends Component<any, any> {
         onBlur: this.handleBlur
       };
 
-    let style = errorStyle ? "input inputError" : "input ";
-    if (srollingForm) {
-      style = style + "srollingForm";
-    }
+    const style = `input ${errorStyle ? 'inputError' : ''} ${srollingForm ? 'srollingForm' : ''} ${
+      styleName ? styleName : ''
+    }`
 
     return (
-      <div styleName={`root ${isDark ? '--dark' : ''}`} className={className}>
+      <div styleName="root" className={className}>
         <div styleName={inputContainerStyleName} className={inputContainerClassName}>
           {React.createElement(multiline ? TextArea : ValueLinkInput, {
             ...ignoreProps(rest, "styles"),
@@ -127,6 +128,7 @@ export default class Input extends Component<any, any> {
             style: inputCustomStyle,
             valueLink,
             type,
+            id,
             disabled: disabled || readOnly,
             autoFocus: !!focusOnInit,
             dir: "auto",

@@ -7,6 +7,7 @@ import SwapInterface from './SwapInterface'
 import ServiceInterface from './ServiceInterface'
 import SwapRoom from 'swap.room'
 import SwapOrders from 'swap.orders'
+import EventEmitter from 'events'
 
 
 interface SwapAppServices {
@@ -24,7 +25,7 @@ interface SwapAppOptions {
   whitelistBtc?: Array<string>,
 }
 
-class SwapApp {
+class SwapApp extends EventEmitter {
   // White list BTC. Dont wait confirm
   private whitelistBtc: Array<string> = [
     'mzgKwRsfYLgApStDLwcN9Y6ce9qYPnTJNx', // @eneeseene testnet
@@ -54,6 +55,7 @@ class SwapApp {
    * @param {array}   options.flows
    */
   constructor(options: SwapAppOptions) {
+    super()
     this.options = options
     this.network = options.network || constants.NETWORKS.TESTNET
     this.env = {}
@@ -75,6 +77,7 @@ class SwapApp {
 
   static onInit(cb) {
     const waitInit = () => {
+      //@ts-ignore: strictNullChecks
       if (SwapApp._swapAppInstance && SwapApp._swapAppInstance.isInited()) {
         cb()
       } else {
@@ -90,6 +93,7 @@ class SwapApp {
 
   static init(options: SwapAppOptions, makeShared: boolean = false) {
     if (makeShared) {
+      //@ts-ignore: strictNullChecks
       SwapApp._swapAppInstance = new SwapApp(options)
       return SwapApp._swapAppInstance
     }
@@ -100,7 +104,9 @@ class SwapApp {
     if (!SwapApp._swapAppInstance) {
       throw new Error(`Shared instance not initialized. Use SwapApp.setup() first.`)
     }
+    //@ts-ignore: strictNullChecks
     SwapApp._swapAppInstance.env.web3 = web3provider
+    //@ts-ignore: strictNullChecks
     SwapApp._swapAppInstance.initFlows()
   }
 
@@ -113,6 +119,7 @@ class SwapApp {
     if (SwapApp._swapAppInstance && !forceFreshSetup) {
       throw new Error(`Shared instance already initialized. Use SwapApp.shared() to access it.`)
     }
+    //@ts-ignore: strictNullChecks
     SwapApp._swapAppInstance = new SwapApp(options)
   }
 
@@ -124,9 +131,13 @@ class SwapApp {
     return SwapApp._swapAppInstance
   }
 
-  attachSwap(swap: Swap) {
+  attachSwap(swap: Swap): Swap {
     if (!this.attachedSwaps.isExistByKey(swap.id)) {
       this.attachedSwaps.append(swap, swap.id)
+      //@ts-ignore: strictNullChecks
+      return null
+    } else {
+      return this.attachedSwaps.getByKey(swap.id)
     }
   }
 
@@ -209,7 +220,9 @@ class SwapApp {
       throw new Error('SwapApp swap should contain "_swapName" property')
     }
 
-    if (!Object.values(constants.COINS).includes(swap._swapName.toUpperCase())) {
+    const swapKey = (swap.blockchainName) ? `{${swap.blockchainName}}${swap._swapName}` : swap._swapName
+
+    if (!Object.values(constants.COINS).includes(swapKey.toUpperCase())) {
       throw new Error(
         `SwapApp swap should contain "_swapName" property should be one of ${Object.values(
           constants.COINS
@@ -217,7 +230,7 @@ class SwapApp {
       )
     }
 
-    this.swaps[swap._swapName] = swap
+    this.swaps[swapKey] = swap
 
     if (typeof swap._initSwap === 'function') {
       swap._initSwap(this)
@@ -233,15 +246,17 @@ class SwapApp {
   _addFlow(Flow) {
     const flowName = Flow.getName()
 
-    if (
-      !Object.values(constants.COINS).includes(Flow.getFromName()) ||
-      !Object.values(constants.COINS).includes(Flow.getToName())
-    ) {
-      throw new Error(
-        `SwapApp flow "_flowName" property should contain only: ${Object.values(
-          constants.COINS
-        )}. Got: "${flowName.toUpperCase()}"`
-      )
+    if (flowName !== 'TurboMaker' && flowName !== 'TurboTaker') {
+      if (
+        !Object.values(constants.COINS).includes(Flow.getFromName()) ||
+        !Object.values(constants.COINS).includes(Flow.getToName())
+      ) {
+        throw new Error(
+          `SwapApp flow "_flowName" property should contain only: ${Object.values(
+            constants.COINS
+          )}. Got: "${flowName.toUpperCase()}"`
+        )
+      }
     }
 
     this.flows[flowName] = Flow
@@ -267,16 +282,73 @@ class SwapApp {
     return true
   }
 
-  getMyEthAddress() {
+  getEvmLikeAddress(coinType) {
     return this.env.metamask && this.env.metamask.isEnabled() && this.env.metamask.isConnected()
       ? this.env.metamask.getAddress()
-      : this.services.auth.accounts.eth.address
+      //@ts-ignore: strictNullChecks
+      : this.services.auth.accounts[coinType].address
   }
 
-  getParticipantEthAddress(swap) {
-    const { participant, participantMetamaskAddress } = swap
-    return participantMetamaskAddress ? participantMetamaskAddress : participant.eth.address
+  // @to-do use directy getEvmLikeAddress in EthLikeSwaps
+  getMyEthAddress() { return this.getEvmLikeAddress(`eth`) }
+  getMyBnbAddress() { return this.getEvmLikeAddress(`bnb`) }
+  getMyMaticAddress() { return this.getEvmLikeAddress(`matic`) }
+  getMyArbitrumAddress() { return this.getEvmLikeAddress(`arbeth`) }
+
+  getEthWeb3Adapter() {
+    return this.env.getWeb3().eth
   }
+
+  getEthWeb3Utils() {
+    return this.env.getWeb3().utils
+  }
+
+  getBnbWeb3Adapter() {
+    // Если подключен метамаск - безем конектор эфира - он автоматически переключается на метамаск при активации
+    if (this.env.metamask && this.env.metamask.isEnabled() && this.env.metamask.isConnected()) {
+      return this.env.getWeb3().eth
+    }
+    return this.env.getWeb3Bnb().eth
+  }
+
+  getBnbWeb3Utils() {
+    return this.env.getWeb3Bnb().utils
+  }
+
+  getMaticWeb3Adapter() {
+    // Если подключен метамаск - безем конектор эфира - он автоматически переключается на метамаск при активации
+    if (this.env.metamask && this.env.metamask.isEnabled() && this.env.metamask.isConnected()) {
+      return this.env.getWeb3().eth
+    }
+    return this.env.getWeb3Matic().eth
+  }
+
+  getMaticWeb3Utils() {
+    return this.env.getWeb3Matic().utils
+  }
+
+  getArbitrumWeb3Adapter() {
+    if (this.env.metamask && this.env.metamask.isEnabled() && this.env.metamask.isConnected()) {
+      return this.env.getWeb3().eth
+    }
+    return this.env.getWeb3Arbitrum().eth
+  }
+
+  getArbitrumWeb3Utils() {
+    return this.env.getWeb3Arbitrum().utils
+  }
+
+  getParticipantEvmLikeAddress(coinType, swap) {
+    const { participant, participantMetamaskAddress } = swap
+    return participantMetamaskAddress ? participantMetamaskAddress : participant[coinType].address
+  }
+
+  // @to-do use directy getParticipantEvmLikeAddress in EthLikeSwaps
+  getParticipantEthAddress(swap) { return this.getParticipantEvmLikeAddress(`eth`, swap) }
+  getParticipantBnbAddress(swap) { return this.getParticipantEvmLikeAddress(`bnb`, swap) }
+  getParticipantMaticAddress(swap) { return this.getParticipantEvmLikeAddress(`matic`, swap) }
+  getParticipantArbitrumAddress(swap) { return this.getParticipantEvmLikeAddress(`arbeth`, swap) }
+
 
   static is(app) {
     return app && app.isSwapApp && app.isSwapApp() && app instanceof SwapApp

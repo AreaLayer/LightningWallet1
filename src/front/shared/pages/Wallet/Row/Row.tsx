@@ -1,13 +1,13 @@
-import React, { Component, Fragment } from 'react'
+import { Component, Fragment } from 'react'
 import actions from 'redux/actions'
 import { connect } from 'redaction'
-import helpers, { constants } from 'helpers'
+import erc20Like from 'common/erc20Like'
+import { constants, metamask, utils, externalConfig } from 'helpers'
 import config from 'helpers/externalConfig'
 import { isMobile } from 'react-device-detect'
 
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
-import metamask from 'helpers/metamask'
 import Coin from 'components/Coin/Coin'
 import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import DropdownMenu from 'components/ui/DropdownMenu/DropdownMenu'
@@ -16,20 +16,17 @@ import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
 import { localisedUrl } from 'helpers/locale'
 import { BigNumber } from 'bignumber.js'
 import { Button } from 'components/controls'
-import web3Icons from '../../../images'
-import PartOfAddress from '../components/PartOfAddress'
+import PartOfAddress from '../PartOfAddress'
 import Tooltip from 'components/ui/Tooltip/Tooltip'
-import { ApiEndpoint } from '../components/Endpoints'
-import Copy from '../../../components/ui/Copy/Copy'
+import { ApiEndpoint } from '../Endpoints'
+import Copy from 'components/ui/Copy/Copy'
 
 type RowProps = {
   // from component
-  isDark: boolean
   currency: IUniversalObj
   itemData: IUniversalObj
   // from store
   activeFiat?: string
-  decline?: any[]
   ethDataHelper?: {
     address: string
     privateKey: string
@@ -41,9 +38,10 @@ type RowProps = {
 
 type RowState = {
   isBalanceFetching: boolean
-  isAddressCopied: boolean
   isBalanceEmpty: boolean
   isDropdownOpen: boolean
+  isToken: boolean
+  reduxActionName: string
 }
 
 const langLabels = defineMessages({
@@ -57,12 +55,10 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @withRouter
 @connect(
   (
     {
-      rememberedOrders,
       user: {
         activeFiat,
         ethData: {
@@ -71,11 +67,9 @@ const langLabels = defineMessages({
         },
         multisigStatus,
       }
-    },
-    { currency }
+    }
   ) => ({
     activeFiat,
-    decline: rememberedOrders.savedOrders,
     multisigStatus,
     ethDataHelper: {
       address,
@@ -84,49 +78,22 @@ const langLabels = defineMessages({
   })
 )
 @cssModules(styles, { allowMultiple: true })
-export default class Row extends Component {
-  /**
-   * @method handleReloadBalance
-   * @method handleSliceAddress
-   * @method handleDisconnectWallet
-   * @method handleConnectMetamask
-   * @method handleWithdrawPopup
-   * @method handleWithdraw
-   * @method handleReceive
-   * @method handleActivateProtected
-   * @method handleActivatePinProtected
-   * @method handleGenerateMultisignLink
-   * @method handleHowToWithdraw
-   * @method handleOpenDropdown
-   * @method handleCreateInvoiceLink
-   * @method handleSwitchMultisign
-   * @method handleCreateInvoice
-   *
-   * @method goToExchange
-   * @method goToCurrencyHistory
-   * @method hideCurrency
-   *
-   * @method copy
-   * @method copyPrivateKey
-   * @method handleShowMnemonic
-   */
-
-  props: RowProps
-  state: RowState
-
+class Row extends Component<RowProps, RowState> {
   constructor(props) {
     super(props)
+    
+    const { currency, itemData } = props
+    const currencyName = currency.currency
+    const isToken = erc20Like.isToken({ name: currencyName })
+    const reduxActionName = itemData.standard || currencyName.toLowerCase()
 
     this.state = {
       isBalanceFetching: false,
-      isAddressCopied: false,
       isBalanceEmpty: true,
       isDropdownOpen: false,
+      isToken,
+      reduxActionName,
     }
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('resize', this.handleSliceAddress)
   }
 
   async componentDidMount() {
@@ -135,8 +102,6 @@ export default class Row extends Component {
     this.setState({
       isBalanceEmpty: balance === 0,
     })
-
-    window.addEventListener('resize', this.handleSliceAddress)
   }
 
   componentDidUpdate(prevProps) {
@@ -165,12 +130,15 @@ export default class Row extends Component {
   }
 
   handleReloadBalance = () => {
-    const { isBalanceFetching } = this.state
+    const {
+      isBalanceFetching,
+      isToken,
+      reduxActionName,
+    } = this.state
     const {
       itemData: {
         isMetamask,
         isConnected,
-        isERC20,
       }
     } = this.props
 
@@ -192,11 +160,11 @@ export default class Row extends Component {
     this.setState({
       isBalanceFetching: true,
     }, () => {
+      // here is timeout for the impression of the balance request
       setTimeout(async () => {
         const {
           itemData: { currency, address },
         } = this.props
-
         switch (currency) {
           case 'BTC (SMS-Protected)':
             await actions.btcmultisig.getBalance()
@@ -208,13 +176,10 @@ export default class Row extends Component {
             await actions.btcmultisig.getBalancePin()
             break
           default:
-            if (isMetamask && !isERC20) {
+            if (isMetamask && !isToken && metamask.isAvailableNetwork()) {
               await metamask.getBalance()
             } else {
-              await actions[currency.toLowerCase()].getBalance(
-                currency.toLowerCase(),
-                address
-              )
+              await actions[reduxActionName].getBalance(currency)
             }
         }
 
@@ -244,40 +209,8 @@ export default class Row extends Component {
     )
   }
 
-  handleSliceAddress = () => {
-    const {
-      itemData: { address },
-    } = this.props
-
-    const firstPart = address.substr(0, 6)
-    const secondPart = address.substr(address.length - 4)
-
-    return window.innerWidth < 700 || isMobile || address.length > 42
-      ? `${firstPart}...${secondPart}`
-      : address
-  }
-
-  handleDisconnectWallet() {
-    if (metamask.isEnabled()) {
-      metamask.disconnect().then(async () => {
-        await actions.user.sign()
-        await actions.user.getBalances()
-      })
-    }
-  }
-
-  handleConnectMetamask = () => {
-    metamask.connect({}).then(async (connected) => {
-      if (connected) {
-        await actions.user.sign()
-        await actions.user.getBalances()
-      }
-    })
-  }
-
   handleWithdrawPopup = () => {
     const {
-      itemData: { currency },
       itemData
     } = this.props
 
@@ -286,23 +219,23 @@ export default class Row extends Component {
 
   handleWithdraw = () => {
     const {
-      itemData: { currency, address },
+      itemData,
       history,
-      intl: { locale },
+      intl
     } = this.props
 
-    if (currency.toLowerCase() === 'ghost') {
+    if (itemData.currency.toLowerCase() === 'ghost') {
       this.handleWithdrawPopup()
       return
     }
 
-    if (currency.toLowerCase() === 'next') {
+    if (itemData.currency.toLowerCase() === 'next') {
       this.handleWithdrawPopup()
       return
     }
 
-    let targetCurrency = currency
-    switch (currency.toLowerCase()) {
+    let targetCurrency = itemData.currency
+    switch (itemData.currency.toLowerCase()) {
       case 'btc (multisig)':
       case 'btc (sms-protected)':
       case 'btc (pin-protected)':
@@ -310,13 +243,10 @@ export default class Row extends Component {
         break
     }
 
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
+    const firstUrlPart = itemData.tokenKey ? `/token/${itemData.tokenKey}` : `/${targetCurrency}`
 
-    history.push(
-      localisedUrl(
-        locale,
-        (isToken ? '/token' : '') + `/${targetCurrency}/${address}/send`
-      )
+    history?.push(
+      localisedUrl(intl?.locale, `${firstUrlPart}/${itemData.address}/send`)
     )
   }
 
@@ -329,10 +259,6 @@ export default class Row extends Component {
       currency,
       address,
     })
-  }
-
-  handleActivateProtected = async () => {
-    actions.modals.open(constants.modals.RegisterSMSProtected, {})
   }
 
   handleActivatePinProtected = async () => {
@@ -362,12 +288,13 @@ export default class Row extends Component {
 
   handleCreateInvoiceLink = () => {
     const {
-      itemData: { currency, address },
+      itemData: { currency, address, tokenKey },
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceLinkModal, {
       currency,
       address,
+      tokenKey,
     })
   }
 
@@ -383,13 +310,15 @@ export default class Row extends Component {
         contractAddress,
         unconfirmedBalance,
         currency,
+        tokenKey,
         address,
         balance,
       },
+      itemData
     } = this.props
 
     actions.modals.open(constants.modals.InvoiceModal, {
-      currency,
+      currency: ((tokenKey) ? tokenKey : currency).toUpperCase(),
       address,
       contractAddress,
       decimals,
@@ -402,20 +331,21 @@ export default class Row extends Component {
   goToExchange = () => {
     const {
       history,
-      intl: { locale },
+      intl,
     } = this.props
-    history.push(localisedUrl(locale, '/exchange'))
+    history?.push(localisedUrl(intl?.locale, '/exchange'))
   }
 
   goToCurrencyHistory = () => {
     const {
       history,
-      intl: { locale },
-      itemData: { currency, balance, address },
+      intl,
+      itemData,
     } = this.props
 
-    let targetCurrency = currency
-    switch (currency.toLowerCase()) {
+
+    let targetCurrency = itemData.currency
+    switch (itemData.currency.toLowerCase()) {
       case 'btc (multisig)':
       case 'btc (sms-protected)':
       case 'btc (pin-protected)':
@@ -423,19 +353,17 @@ export default class Row extends Component {
         break
     }
 
-    const isToken = helpers.ethToken.isEthToken({ name: currency })
 
-    history.push(
-      localisedUrl(
-        locale,
-        (isToken ? '/token' : '') + `/${targetCurrency}/${address}`
-      )
+    const firstUrlPart = itemData.tokenKey ? `/token/${itemData.tokenKey}` : `/${targetCurrency}`
+
+    history?.push(
+      localisedUrl(intl?.locale, `${firstUrlPart}/${itemData.address}`)
     )
   }
 
   hideCurrency = () => {
     const {
-      itemData: { currency, address, balance },
+      itemData: { currency, address, balance, isToken, tokenKey },
     } = this.props
 
     if (balance > 0) {
@@ -448,7 +376,7 @@ export default class Row extends Component {
         ),
       })
     } else {
-      actions.core.markCoinAsHidden(`${currency}:${address}`)
+      actions.core.markCoinAsHidden(`${isToken ? tokenKey.toUpperCase() : currency}:${address}`)
       actions.notifications.show(constants.notifications.Message, {
         message: (
           <FormattedMessage
@@ -478,13 +406,17 @@ export default class Row extends Component {
     } = this.props
 
     actions.modals.open(constants.modals.PrivateKeysModal, {
-      key: address === ethDataHelper.address ? ethDataHelper.privateKey : privateKey,
+      key: address === ethDataHelper?.address ? ethDataHelper?.privateKey : privateKey,
       fullName,
     })
   }
 
   handleShowMnemonic = () => {
     actions.modals.open(constants.modals.SaveMnemonicModal)
+  }
+
+  connectMetamask = () => {
+    metamask.handleConnectMetamask()
   }
 
   render() {
@@ -497,22 +429,22 @@ export default class Row extends Component {
       itemData,
       intl,
       activeFiat,
-      isDark,
       multisigStatus,
     } = this.props
 
     const {
       currency,
+      baseCurrency,
       balance,
       isBalanceFetched,
       fullName,
-      title,
       unconfirmedBalance,
       balanceError,
+      standard,
     } = itemData
 
     let nodeDownErrorShow = true
-    let currencyFiatBalance = 0
+    let currencyFiatBalance
     let currencyView = currency
 
     switch (currencyView) {
@@ -523,16 +455,16 @@ export default class Row extends Component {
         break
     }
 
-    if (itemData.infoAboutCurrency && itemData.infoAboutCurrency.price_fiat) {
-      currencyFiatBalance = new BigNumber(balance).multipliedBy(itemData.infoAboutCurrency.price_fiat).dp(2, BigNumber.ROUND_FLOOR).toNumber()
+    if (itemData?.infoAboutCurrency?.price_fiat) {
+      currencyFiatBalance = utils.toMeaningfulFloatValue({
+        value: balance,
+        rate: itemData.infoAboutCurrency.price_fiat,
+      })
     }
 
     let hasHowToWithdraw = false
     if (
-      config &&
-      config.erc20 &&
-      config.erc20[this.props.currency.currency.toLowerCase()] &&
-      config.erc20[this.props.currency.currency.toLowerCase()].howToWithdraw
+      config?.erc20?.[this.props.currency.currency.toLowerCase()]?.howToWithdraw
     ) {
       hasHowToWithdraw = true
     }
@@ -549,6 +481,7 @@ export default class Row extends Component {
       id: number
     }
 
+    //@ts-ignore: strictNullChecks
     let dropDownMenuItems: DropDownItem[] = [
       {
         id: 1001,
@@ -567,7 +500,7 @@ export default class Row extends Component {
             id: 10021,
             title: (
               <FormattedMessage
-                id="WalletRow_Menu_HowToWithdraw"
+                id="HowToWithdrawModal_Title"
                 defaultMessage="How to withdraw"
               />
             ),
@@ -587,7 +520,7 @@ export default class Row extends Component {
         id: 1004,
         title: (
           <FormattedMessage
-            id="WalletRow_Menu_Exchange"
+            id="menu.exchange"
             defaultMessage="Exchange"
           />
         ),
@@ -675,7 +608,7 @@ export default class Row extends Component {
             defaultMessage="Подключить"
           />
         ),
-        action: this.handleConnectMetamask,
+        action: metamask.handleConnectMetamask,
         disabled: false,
       }]
     }
@@ -688,11 +621,11 @@ export default class Row extends Component {
           id: 1123,
           title: (
             <FormattedMessage
-              id="WalletRow_MetamaskDisconnect"
-              defaultMessage="Отключить кошелек"
+              id="MetamaskDisconnect"
+              defaultMessage="Disconnect wallet"
             />
           ),
-          action: this.handleDisconnectWallet,
+          action: metamask.handleDisconnectWallet,
           disabled: false
         },
         ...dropDownMenuItems
@@ -701,6 +634,9 @@ export default class Row extends Component {
 
     let showBalance = true
     let statusInfo = ''
+
+    // Prevent render SMS wallet
+    if (itemData.isSmsProtected) return null
 
     if (
       itemData.isPinProtected &&
@@ -738,36 +674,6 @@ export default class Row extends Component {
       && multisigStatus[itemData.address]
       && multisigStatus[itemData.address].count
     ) ? multisigStatus[itemData.address].count : false
-
-    if (
-      itemData.isSmsProtected &&
-      !itemData.isRegistered
-    ) {
-      statusInfo = 'Not activated'
-      showBalance = false
-      nodeDownErrorShow = false
-      dropDownMenuItems = [
-        {
-          id: 1,
-          title: (
-            <FormattedMessage
-              id="WalletRow_Menu_ActivateSMSProtected"
-              defaultMessage="Activate"
-            />
-          ),
-          action: this.handleActivateProtected,
-          disabled: false,
-        },
-        {
-          id: 1011,
-          title: (
-            <FormattedMessage id="WalletRow_Menu_Hide" defaultMessage="Hide" />
-          ),
-          action: this.hideCurrency,
-          disabled: false,
-        },
-      ]
-    }
 
     if (itemData.isUserProtected) {
       if (!itemData.active) {
@@ -813,41 +719,62 @@ export default class Row extends Component {
 
     const ethRowWithoutExternalProvider = itemData.address.toLowerCase() === 'not connected' && !metamask.web3connect.isInjectedEnabled()
     const web3Type = metamask.web3connect.getInjectedType()
-    const web3Icon = (web3Icons[web3Type] && web3Type !== `UNKNOWN` && web3Type !== `NONE`) ? web3Icons[web3Type] : false
-    
+
     const isMetamask = itemData.isMetamask
     const metamaskIsConnected = isMetamask && itemData.isConnected
-    const metamaskDisconnected = isMetamask && !metamaskIsConnected
+    const metamaskDisconnected = isMetamask && !itemData.isConnected
+    const isAvailableMetamaskNetwork = isMetamask && metamask.isAvailableNetwork()
+    const isNotAvailableMetamaskNetwork = isMetamask && !metamask.isAvailableNetwork()
+    const currencyTitleId = `${standard ? standard.toLowerCase() : ''}${currency.toLowerCase()}`
+    const showFiatBalance =
+      currencyFiatBalance !== undefined &&
+      !Number.isNaN(currencyFiatBalance) &&
+      showBalance &&
+      !balanceError
 
     return (
       !ethRowWithoutExternalProvider
       && <tr>
-        <td styleName={`assetsTableRow ${isDark ? 'dark' : ''}`}>
+        <td styleName={`assetsTableRow`}>
           <div styleName="assetsTableCurrency">
-            {/* Currency icon */}
-            <Coin className={styles.assetsTableIcon} name={currency} />
-            <div styleName="assetsTableInfo">
+            <Coin
+              className={styles.assetsTableIcon}
+              name={metamaskDisconnected || isNotAvailableMetamaskNetwork ? web3Type : currency }
+            />
+
+            {/* Title-Link */}
+            <div id={currencyTitleId + 'WalletTitle'} styleName="assetsTableInfo">
               <div styleName="nameRow">
-                <a onClick={metamaskDisconnected
-                    ? this.handleConnectMetamask
-                    : mnemonicSaved || metamaskIsConnected
-                      ? this.goToCurrencyHistory
-                      : () => null
+                <a onClick={
+                  metamaskDisconnected
+                    ? this.connectMetamask
+                    : isNotAvailableMetamaskNetwork
+                      ? () => null
+                      : mnemonicSaved || (metamaskIsConnected && isAvailableMetamaskNetwork)
+                        ? this.goToCurrencyHistory
+                        : () => null
                   }
                   styleName={`${
                     mnemonicSaved && isMobile
                       ? 'linkToHistory mobile'
-                      : mnemonicSaved || (isMetamask && metamaskIsConnected)
-                        ? 'linkToHistory desktop'
-                        : ''
+                        : mnemonicSaved || (metamaskIsConnected && isAvailableMetamaskNetwork)
+                          ? 'linkToHistory desktop'
+                          : ''
                   }`}
                   title={`Online ${fullName} wallet`}
                 >
                   {fullName}
+                  {/* label for tokens */}
+                  {standard ? (
+                    <span styleName="tokenStandard">
+                      {` ${standard.toUpperCase()}`}
+                    </span>
+                  ) : ''}
                 </a>
               </div>
-              {title ? <strong>{title}</strong> : ''}
             </div>
+
+            {/* Tip - if something wrong with endpoint */}
             {balanceError && nodeDownErrorShow && (
               <div className={styles.errorMessage}>
                 <ApiEndpoint
@@ -873,6 +800,8 @@ export default class Row extends Component {
                 </Tooltip>
               </div>
             )}
+
+            {/* Currency amount */}
             <span styleName="assetsTableCurrencyWrapper">
               {showBalance && (
                 <Fragment>
@@ -882,33 +811,44 @@ export default class Row extends Component {
                   else showing fetch-button and currency balance
                   */}
                   {metamaskDisconnected ? (
-                      <Button small empty onClick={this.handleConnectMetamask}>
-                        {web3Icon && <img styleName="web3ProviderIcon" src={web3Icon} />}
+                      <Button small empty onClick={metamask.handleConnectMetamask}>
                         <FormattedMessage id="CommonTextConnect" defaultMessage="Connect" />
                       </Button>
-                    ) : !isBalanceFetched || isBalanceFetching ? (
-                        itemData.isUserProtected &&
-                          !itemData.active ? (
-                            <span>
-                              <FormattedMessage
-                                id="walletMultisignNotJoined"
-                                defaultMessage="Not joined"
-                              />
-                            </span>
-                          ) : (
-                            <div styleName="loader">
-                              {!(balanceError && nodeDownErrorShow) && <InlineLoader />}
-                            </div>
-                          )
-                      ) : (
-                          <div styleName="no-select-inline" onClick={this.handleReloadBalance}>
+                    ) :
+                      isNotAvailableMetamaskNetwork
+                        ? (
+                          <Button small empty onClick={metamask.handleDisconnectWallet}>
+                            <FormattedMessage id="MetamaskDisconnect" defaultMessage="Disconnect wallet" />
+                          </Button>
+                        )
+                        : !isBalanceFetched || isBalanceFetching ? (
+                          itemData.isUserProtected &&
+                            !itemData.active ? (
+                              <span>
+                                <FormattedMessage
+                                  id="walletMultisignNotJoined"
+                                  defaultMessage="Not joined"
+                                />
+                              </span>
+                            ) : (
+                              <div styleName="loader">
+                                {!(balanceError && nodeDownErrorShow) && <InlineLoader />}
+                              </div>
+                            )
+                        ) : (
+                          <button
+                            id="walletRowUpdateBalanceBtn"
+                            styleName="cryptoBalanceBtn"
+                            onClick={this.handleReloadBalance}
+                          >
                             <i className="fas fa-sync-alt" styleName="icon" />
-                            <span>
+                            <span id="walletRowCryptoBalance">
                               {balanceError
                                 ? '?'
-                                : new BigNumber(balance)
-                                  .dp(5, BigNumber.ROUND_FLOOR)
-                                  .toString()}{' '}
+                                : utils.toMeaningfulFloatValue({
+                                    value: balance,
+                                    meaningfulDecimals: 5,
+                                  })}{' '}
                             </span>
                             <span styleName="assetsTableCurrencyBalance">
                               {currencyView}
@@ -918,7 +858,7 @@ export default class Row extends Component {
                                 <br />
                                 <span
                                   styleName="unconfirmedBalance"
-                                  title={intl.formatMessage(
+                                  title={intl?.formatMessage(
                                     langLabels.unconfirmedBalance
                                   )}
                                 >
@@ -927,13 +867,14 @@ export default class Row extends Component {
                                 </span>
                               </Fragment>
                             )}
-                          </div>
+                          </button>
                         )
                   }
                 </Fragment>
               )}
             </span>
 
+            {/* Address */}
             <Fragment>
               {statusInfo ?
                 <p styleName="statusStyle">{statusInfo}</p>
@@ -953,57 +894,68 @@ export default class Row extends Component {
                         defaultMessage="Not connected"
                       />
                     </p>
-                    : // Address shows 
-                    <div styleName="addressStyle">
-                      <Copy text={itemData.address}>
-                        {isMobile ? (
-                            <PartOfAddress
-                              withoutLink
-                              currency={itemData.currency}
-                              contractAddress={itemData.contractAddress}
-                              address={itemData.address}
-                              isERC20={itemData.isERC20}
-                              isBTC={itemData.isBTC}
-                              style={{
-                                position: 'relative',
-                                bottom: '13px',
-                              }} 
-                            />
-                          ) : <p>{itemData.address}</p>
-                        }
-                      </Copy>
-                    </div>
+                    : isNotAvailableMetamaskNetwork
+                      ?
+                        <p styleName="addressStyle">
+                          <FormattedMessage
+                            id="WalletRow_MetamaskNotAvailableNetwork"
+                            defaultMessage="Please choose another"
+                          />
+                        </p>
+                      : // Address shows
+                      <div styleName="addressStyle">
+                        <Copy text={itemData.address}>
+                          {isMobile ? (
+                              <PartOfAddress
+                                withoutLink
+                                currency={itemData.currency}
+                                contractAddress={itemData.contractAddress}
+                                address={itemData.address}
+                                style={{
+                                  position: 'relative',
+                                  bottom: '16px',
+                                }}
+                              />
+                            ) : (
+                              <p id={`${
+                                baseCurrency ? baseCurrency + currency.toLowerCase() : currency.toLowerCase()
+                              }Address`}>
+                                {itemData.address}
+                              </p>
+                            )
+                          }
+                        </Copy>
+                      </div>
               }
             </Fragment>
 
-            {(currencyFiatBalance && showBalance && !balanceError) || msConfirmCount ? (
+            {/* Fiat amount */}
+            {showFiatBalance || msConfirmCount ? (
               <div styleName="assetsTableValue">
                 {msConfirmCount && !isMobile && (
                   <p styleName="txWaitConfirm" onClick={this.goToCurrencyHistory}>
-                    {intl.formatMessage(
+                    {intl?.formatMessage(
                       langLabels.msConfirmCount,
                       {
                         count: msConfirmCount,
                       }
                     )}
                   </p>
-                )}  
-                {currencyFiatBalance && showBalance && !balanceError && (
+                )}
+                {showFiatBalance && (
                   <>
                     <p>{currencyFiatBalance}</p>
                     <strong>{activeFiat}</strong>
                   </>
                 )}
               </div>
-            ) : (
-                ''
-              )}
+            ) : null}
           </div>
 
-          { !metamaskDisconnected &&
+          {/* Additional option. Ethereum row with external wallet */}
+          {!metamaskDisconnected && !isNotAvailableMetamaskNetwork &&
             <div onClick={this.handleOpenDropdown} styleName="assetsTableDots">
               <DropdownMenu
-                size="regular"
                 className="walletControls"
                 items={dropDownMenuItems}
               />
@@ -1014,3 +966,5 @@ export default class Row extends Component {
     )
   }
 }
+
+export default injectIntl(Row)

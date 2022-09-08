@@ -7,6 +7,7 @@ import { BigNumber } from 'bignumber.js'
 export default (tokenName) => {
 
   class GHOST2ETHTOKEN extends AtomicAB2UTXO {
+    static blockchainName = `ETH`
 
     _flowName: string
     ethTokenSwap: any
@@ -20,7 +21,7 @@ export default (tokenName) => {
       return constants.COINS.ghost
     }
     static getToName() {
-      return tokenName.toUpperCase()
+      return `{${this.blockchainName}}${tokenName.toUpperCase()}`
     }
     constructor(swap) {
       super(swap)
@@ -72,7 +73,7 @@ export default (tokenName) => {
 
         isEthContractFunded: false,
 
-        ghostSwapWithdrawTransactionHash: null,
+        utxoSwapWithdrawTransactionHash: null,
         ethSwapWithdrawTransactionHash: null,
 
         secret: null,
@@ -97,6 +98,7 @@ export default (tokenName) => {
       super._persistState()
     }
 
+    //@ts-ignore: strictNullChecks
     _getSteps() {
       const flow = this
 
@@ -111,7 +113,7 @@ export default (tokenName) => {
         // 2. Create secret, secret hash and GHOST script
 
         () => {
-          // this.submitSecret()
+          this.submitSecret()
         },
 
         // 3. Check system wallet balance
@@ -225,9 +227,9 @@ export default (tokenName) => {
         // 7. Finish
 
         () => {
-          flow.swap.room.once('swap finished', ({ghostSwapWithdrawTransactionHash}) => {
+          flow.swap.room.once('swap finished', ({utxoSwapWithdrawTransactionHash}) => {
             flow.setState({
-              ghostSwapWithdrawTransactionHash,
+              utxoSwapWithdrawTransactionHash,
             })
           })
 
@@ -338,8 +340,6 @@ export default (tokenName) => {
 
       if (secretHash != _secretHash)
         console.warn(`Hash does not match! state: ${secretHash}, given: ${_secretHash}`)
-
-      const { participant } = this.swap
 
       const data = {
         ownerAddress: this.app.getParticipantEthAddress(this.swap),

@@ -1,6 +1,4 @@
 import React, { Component, RefObject } from 'react'
-import { constants } from 'helpers'
-
 import cssModules from 'react-css-modules'
 import styles from './MnemonicInput.css'
 
@@ -9,6 +7,7 @@ import { isMobile } from 'react-device-detect'
 
 import * as bip39 from 'bip39'
 import ReactTags from 'react-tag-autocomplete'
+
 
 const langPrefix = `MnemonicInputComponent`
 const langLabels = defineMessages({
@@ -21,8 +20,6 @@ const langLabels = defineMessages({
     defaultMessage: `Нажмите, чтобы удалить слово`,
   },
 })
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
 type MnemonicInputProps = {
   onChange: (string) => void
@@ -43,9 +40,8 @@ type MnemonicInputState = {
   busy?: boolean
 }
 
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-export default class MnemonicInput extends Component {
+class MnemonicInput extends Component<MnemonicInputProps, MnemonicInputState> {
   /* 
   * This phrase just for test
   * If config entry point equals testnet
@@ -55,8 +51,6 @@ export default class MnemonicInput extends Component {
   private TESTNET_TAGS: Tags
   private isAutofill = false
 
-  props: MnemonicInputProps
-  state: MnemonicInputState
   reactTags: RefObject<any>
 
   constructor (props) {
@@ -67,6 +61,7 @@ export default class MnemonicInput extends Component {
 
     if (autoFill) {
       this.isAutofill = true
+      //@ts-ignore: strictNullChecks
       this.TESTNET_TAGS = this.TESTNET_TEST_PHRASE.split(' ').map(word => {
         return suggestions.find(obj => obj.name === word)
       })
@@ -174,7 +169,7 @@ export default class MnemonicInput extends Component {
     } = this
 
     return (
-      <div translate="no" className={`notranslate mnemonicInput ${(isDark) ? '--is-dark' : ''} ${(isMobile) ? '--is-mobile' : ''} ${(fullWidth) ? '--full-width' : ''}`}>
+      <div translate="no" className={`notranslate mnemonicInput ${(isMobile) ? '--is-mobile' : ''} ${(fullWidth) ? '--full-width' : ''}`}>
         <ReactTags
           ref={reactTags}
           tags={tags}
@@ -183,7 +178,9 @@ export default class MnemonicInput extends Component {
           onDelete={this.onDelete}
           onAddition={this.onAddition}
           onInput={this.onInput}
+          //@ts-ignore: strictNullChecks
           placeholderText={isPlaceholderVisible ? intl.formatMessage(langLabels.placeholder) : ''}
+          //@ts-ignore: strictNullChecks
           removeButtonText={intl.formatMessage(langLabels.deleteText)}
           delimiters={[`Enter`, `Tab`, ` `, `,`]}
         />
@@ -191,3 +188,5 @@ export default class MnemonicInput extends Component {
     )
   }
 }
+
+export default injectIntl(MnemonicInput)

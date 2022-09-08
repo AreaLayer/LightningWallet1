@@ -1,12 +1,13 @@
-import swap from './../src'
+import * as swap from './../src'
 
 const {
   room: { ready },
   orders: { request, subscribe },
   swap: { onStep, start, get },
 } = swap.helpers
-//@ts-ignore
-const { room } = swap.setup()
+
+const app = swap.setup({})
+const { room } = app
 
 const swapID = process.argv[2]
 const method = process.argv[3]
@@ -45,8 +46,8 @@ const _ = (async () => {
   console.clear()
   console.log('Swap id =', swapID)
   console.log()
-  //@ts-ignore
-  const swap = get(swapID)
+
+  const swap = get(app, swapID)
 
   if (!method) {
     process.exit(0)

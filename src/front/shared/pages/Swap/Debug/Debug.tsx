@@ -1,18 +1,15 @@
 import React, { Component } from 'react'
-import PropTypes from 'prop-types'
-
 import CSSModules from 'react-css-modules'
 import styles from './Debug.scss'
 import { FormattedMessage } from 'react-intl'
-
 import ShowBtcScript from './ShowBtcScript'
 
-@CSSModules(styles)
-export default class Debug extends Component<any, any> {
-  static propTypes = {
-    flow: PropTypes.object,
-  }
+type ComponentProps = {
+  flow: IUniversalObj
+}
 
+@CSSModules(styles, { allowMultiple: true })
+export default class Debug extends Component<ComponentProps, any> {
   render() {
     const {
       flow: {

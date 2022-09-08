@@ -1,6 +1,5 @@
 import config from 'app-config'
 import autoprefixer from 'autoprefixer'
-import { AUTOPREFIXER } from '../util'
 
 
 const compile         = config.env === 'development' ? 'sourceMap' : 'minimize'
@@ -11,12 +10,12 @@ const _sccsDefaultConfig = '@import "./scss/config/index.scss";'
 const _sccsWidgetConfig = '@import "./scss/config/widget.scss";'
 const _sccsConfig = (isWidgetBuild) ? _sccsWidgetConfig : _sccsDefaultConfig
 
+
 export default [
   {
     test: /\.scss$/,
     use: [
       'style-loader',
-      'cache-loader',
       {
         loader: 'css-loader',
         options: {
@@ -29,8 +28,18 @@ export default [
         options: {
           sourceMap: true,
           postcssOptions: {
+            hideNothingWarning: true,
             plugins: () => [
-              autoprefixer(AUTOPREFIXER),
+              autoprefixer([
+                'Android >= 4',
+                'iOS >= 8',
+                'Chrome >= 30',
+                'Firefox >= 30',
+                'Explorer >= 10',
+                'Safari >= 8',
+                'Opera >= 20',
+              ]),
+              require('postcss-import')
             ],
           }
         },

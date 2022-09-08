@@ -2,11 +2,13 @@ import BigNumber from 'bignumber.js'
 
 import fetchPrice from '../../../app/actions/fetchPrice'
 
+
 describe('Fetch Price', () => {
   it('should fetch price as a bignumber', async () => {
     const price = await fetchPrice('ETH-BTC')
 
     expect(BigNumber.isBigNumber(price)).toBeTruthy()
+    //@ts-ignore: strictNullChecks
     expect(price.isGreaterThan(0.01)).toBeTruthy()
   })
 
@@ -14,6 +16,7 @@ describe('Fetch Price', () => {
     const swapPrice = await fetchPrice('SWAP-BTC')
     const ethPrice = await fetchPrice('ETH-BTC')
 
+    //@ts-ignore: strictNullChecks
     expect(ethPrice.isGreaterThan(swapPrice)).toBeTruthy()
   })
 
@@ -22,6 +25,7 @@ describe('Fetch Price', () => {
     const noxonPrice = await fetchPrice(pair)
 
     expect(BigNumber.isBigNumber(noxonPrice)).toBeTruthy()
+    //@ts-ignore: strictNullChecks
     expect(noxonPrice.isGreaterThan(0)).toBeTruthy()
   })
 })

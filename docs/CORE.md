@@ -16,20 +16,28 @@ Swap Core is a decentralized exchange protocol (DEP) for crosschain atomic swaps
 | ticker    | title |
 |-----------|---------|
 | ETH       | Ethereum |
-| * (ERC20) | ERC20 tokens (USDT, ...) |
+| * (ERC20) | Ethereum ERC20 tokens (USDT, ...) |
+| BNB       | Binance coin |
+| * (BEP20) | Binance smart chain BEP20 tokens (USDT, ...) |
+| MATIC     | Matic token |
+| * (ERC20MATIC) | Polygon ERC20 tokens (USDT, ...) |
 | BTC       | Bitcoin |
 | GHOST     | Ghost |
 | NEXT      | NEXT.coin |
 
 ## Supported swap directions
 
-| tx\rx | ETH  | ERC20 | BTC | GHOST | NEXT |
-|-------|------|-------|-----|-------|------|
-| ETH   |      |       | +   | +     | +    |
-| ERC20 |      |       | +   | +     |      |
-| BTC   | +    | +     |     |       |      |
-| GHOST | +    | +     |     |       |      |
-| NEXT  | +    |       | +   |       | +    |
+| tx\rx        | ETH  | ERC20 | BNB | BEP20 | MATIC | ERC20MATIC | BTC | GHOST | NEXT |
+|--------------|------|-------|-----|-------|-------|------------|-----|-------|------|
+| ETH          |      |       |     |       |       |            |  +  |   +   |  +   |
+| ERC20        |      |       |     |       |       |            |  +  |   +   |      |
+| BNB          |      |       |     |       |       |            |  +  |       |      |
+| BEP20        |      |       |     |       |       |            |  +  |       |      |
+| MATIC        |      |       |     |       |       |            |     |       |      |
+| ERC20MATIC   |      |       |     |       |       |            |  +  |       |      |
+| BTC          |  +   |   +   |  +  |   +   |       |     +      |     |       |      |
+| GHOST        |  +   |   +   |     |       |       |            |     |       |      |
+| NEXT         |  +   |       |     |       |       |            |  +  |       |  +   |
 
 ## How it works step by step
 
@@ -124,7 +132,7 @@ import { EthSwap, EthTokenSwap, BtcSwap } from 'swap.swaps'
 import { ETH2BTC, BTC2ETH, ETHTOKEN2BTC, BTC2ETHTOKEN } from 'swap.flows'
 
 
-const web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/<YOUR_KEY>'))
+const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/<YOUR_KEY>'))
 
 SwapApp.setup({
   network: 'testnet',

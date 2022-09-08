@@ -16,6 +16,15 @@ type CreateInvoiceProps = {
   user: {
     btcData,
     ethData,
+    bnbData,
+    maticData,
+    arbethData,
+    aurethData,
+    xdaiData,
+    ftmData,
+    avaxData,
+    movrData,
+    oneData,
     ghostData,
     nextData,
   },
@@ -24,13 +33,21 @@ type CreateInvoiceProps = {
     data: {
       btc: btcData,
       eth: ethData,
+      bnb: bnbData,
+      matic: maticData,
+      arbeth: arbethData,
+      aureth: aurethData,
+      xdai: xdaiData,
+      ftm: ftmData,
+      avax: avaxData,
+      movr: movrData,
+      one: oneData,
       ghost: ghostData,
       next: nextData,
     }
   }
 })
-@injectIntl
-export default class CreateInvoice extends PureComponent<CreateInvoiceProps> {
+class CreateInvoice extends PureComponent<CreateInvoiceProps> {
   constructor(props) {
     super(props)
   }
@@ -55,6 +72,7 @@ export default class CreateInvoice extends PureComponent<CreateInvoiceProps> {
     if (type && wallet && data[type]) {
       const address = data[type].address
 
+      //@ts-ignore: strictNullChecks
       actions.modals.open(constants.modals.InvoiceModal, {
         currency: type.toUpperCase(),
         toAddress: wallet,
@@ -74,3 +92,5 @@ export default class CreateInvoice extends PureComponent<CreateInvoiceProps> {
     return null
   }
 }
+
+export default injectIntl(CreateInvoice)

@@ -4,8 +4,8 @@ import SwapAuth from 'swap.auth'
 import SwapRoom from 'swap.room'
 import SwapOrders from 'swap.orders'
 
-import { default as nextUtils } from '../../../../common/utils/coin/next'
-import { default as btcUtils } from '../../../../common/utils/coin/btc'
+import { default as nextUtils } from 'common/utils/coin/next'
+import { default as btcUtils } from 'common/utils/coin/btc'
 
 import {
   EthSwap,
@@ -15,6 +15,7 @@ import {
 } from 'swap.swaps'
 
 import {
+  TurboMaker, TurboTaker,
   ETH2BTC, BTC2ETH,
   ETHTOKEN2BTC, BTC2ETHTOKEN,
   ETH2NEXT, NEXT2ETH,
@@ -109,8 +110,8 @@ const getConfig = (config) => ({ account, mnemonic, contracts: { ETH, TOKEN }, .
           txRaw,
           NETWORK,
         }),
-        fetchTxInfo: (txid) => btcUtils.fetchTxInfo({
-          txid,
+        fetchTxInfo: (hash) => btcUtils.fetchTxInfo({
+          hash,
           NETWORK,
         }),
         estimateFeeValue: (options) => btcUtils.estimateFeeValue({
@@ -119,6 +120,10 @@ const getConfig = (config) => ({ account, mnemonic, contracts: { ETH, TOKEN }, .
         }),
         checkWithdraw: (scriptAddress) => btcUtils.checkWithdraw({
           scriptAddress,
+          NETWORK,
+        }),
+        fetchTxInputScript: (options) => btcUtils.fetchTxInputScript({
+          ...options,
           NETWORK,
         }),
       }),
@@ -147,32 +152,29 @@ const getConfig = (config) => ({ account, mnemonic, contracts: { ETH, TOKEN }, .
           scriptAddress,
           NETWORK,
         }),
+        fetchTxInputScript: (options) => nextUtils.fetchTxInputScript({
+          ...options,
+          NETWORK,
+        }),
       }),
-      
-      // flows for swap
-      /*
-      nextSwap: () => ({
-        
-      })*/
       new EthTokenSwap(config.swapTokenSwap(TOKEN)),
       ...(
         (config.swaps || [])
       ),
       ...(
-        //@ts-ignore
         tokens.map(_token => new EthTokenSwap(tokenSwap(_token)))
       )
     ]
       .filter(a => !!a),
 
     flows: [
+      TurboMaker, TurboTaker,
+
       ETH2BTC,
       BTC2ETH,
 
       ETH2NEXT, NEXT2ETH,
 
-      ETHTOKEN2BTC(constants.COINS.swap),
-      BTC2ETHTOKEN(constants.COINS.swap),
       ...(config.flows || []),
       ...((
         [].concat.apply([],

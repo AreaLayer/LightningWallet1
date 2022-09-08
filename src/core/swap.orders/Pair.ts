@@ -23,7 +23,6 @@ export const parseTicker = (order) => {
   const SB = `${sell}-${buy}`.toUpperCase() // sells ETH = ASK
 
   if (TRADE_TICKERS.includes(BS)) {
-
     return {
       ticker: BS,
       type: PAIR_BID,
@@ -31,7 +30,6 @@ export const parseTicker = (order) => {
   }
 
   if (TRADE_TICKERS.includes(SB)) {
-
     return {
       ticker: SB,
       type: PAIR_ASK,
@@ -177,6 +175,7 @@ export default class Pair {
       const pair = Pair.fromOrder(order)
       const { MAIN, BASE } = parsePair(ticker.toUpperCase())
 
+      //@ts-ignore: strictNullChecks
       return pair.ticker === `${MAIN}-${BASE}`
     } catch (err) {
       return false
@@ -187,6 +186,7 @@ export default class Pair {
     const pair1 = Pair.fromOrder(order1)
     const pair2 = Pair.fromOrder(order2)
 
+    //@ts-ignore: strictNullChecks
     return pair1.price.comparedTo(pair2.price)
   }
 

@@ -3,15 +3,12 @@ import React, { Component, Fragment } from 'react'
 import { connect } from 'redaction'
 import actions from 'redux/actions'
 import { withRouter } from 'react-router-dom'
-import { isMobile } from 'react-device-detect'
 
 import constants from 'helpers/constants'
-import { localisedUrl } from 'helpers/locale'
 
 import cssModules from 'react-css-modules'
 import styles from './OrderBook.scss'
 
-import { Button } from 'components/controls'
 import Panel from 'components/ui/Panel/Panel'
 import Table from 'components/tables/Table/Table'
 import tableStyles from 'components/tables/Table/Table.scss'
@@ -20,7 +17,6 @@ import InlineLoader from 'components/loaders/InlineLoader/InlineLoader'
 import PageSeo from 'components/Seo/PageSeo'
 import { getSeoPage } from 'helpers/seo'
 
-import CloseIcon from 'components/ui/CloseIcon/CloseIcon'
 import Pair from './../Pair'
 import Row from './Row/Row'
 import MyOrders from './../MyOrders/MyOrders'
@@ -28,7 +24,7 @@ import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
 
 import config from 'app-config'
 import feedback from 'shared/helpers/feedback'
-import { links, getPairFees } from 'helpers'
+import getCoinInfo from 'common/coins/getCoinInfo'
 
 
 type OrderBookProps = {
@@ -50,10 +46,11 @@ type OrderBookProps = {
   pairFees: { [key: string]: any } | boolean
   balances: { [key: string]: number } | boolean
   
-  linkedOrderId: number
+  linkedOrderId: string
   orderId: string
 
   checkSwapAllow: ({}) => boolean
+  checkSwapExists: ({}) => boolean
 }
 
 type OrderBookState = {
@@ -65,11 +62,15 @@ type OrderBookState = {
 const filterMyOrders = (orders, peer) => orders
   .filter(order => order.owner.peer === peer)
 
-const filterOrders = (orders, filter) => orders
-  .filter(order => order.isProcessing !== true)
-  .filter(order => order.isHidden !== true)
-  .filter(order => Pair.check(order, filter))
-  .sort((a, b) => Pair.compareOrders(b, a))
+const filterOrders = (orders, filter) => {
+  return orders
+    .filter(order => order.isProcessing !== true)
+    .filter(order => order.isHidden !== true)
+    .filter(order => Pair.check(order, filter))
+    .sort((a, b) => {
+      return Pair.compareOrders(b, a)
+    })
+}
 
 @connect(({
   rememberedOrders,
@@ -84,30 +85,24 @@ const filterOrders = (orders, filter) => orders
   currencies,
   decline: rememberedOrders.savedOrders,
 }))
-//@ts-ignore
 @withRouter
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-export default class OrderBook extends Component {
-
-  props: OrderBookProps
-  state: OrderBookState
-
+class OrderBook extends Component<OrderBookProps, OrderBookState> {
   static getDerivedStateFromProps({ orders, sellCurrency, buyCurrency }) {
     if (orders.length === 0) {
       return null
     }
 
     const sellOrders = orders.filter(order =>
-      order.buyCurrency.toLowerCase() === buyCurrency &&
-      order.sellCurrency.toLowerCase() === sellCurrency
+      order.buyCurrency.toLowerCase() === buyCurrency.toLowerCase() &&
+      order.sellCurrency.toLowerCase() === sellCurrency.toLowerCase()
     ).sort((a, b) => Pair.compareOrders(b, a))
 
     const buyOrders = orders.filter(order =>
-      order.buyCurrency.toLowerCase() === sellCurrency &&
-      order.sellCurrency.toLowerCase() === buyCurrency
+      order.buyCurrency.toLowerCase() === sellCurrency.toLowerCase() &&
+      order.sellCurrency.toLowerCase() === buyCurrency.toLowerCase()
     ).sort((a, b) => Pair.compareOrders(a, b))
-      
+
     return {
       buyOrders,
       sellOrders,
@@ -129,8 +124,17 @@ export default class OrderBook extends Component {
     const { buyOrders, sellOrders } = this.state
 
     if (orders.length === 0) {
-      buyOrders.length && this.setState({ buyOrders: [] })
-      sellOrders.length && this.setState({ sellOrders: [] })
+      if (buyOrders.length) {
+        this.setState(() => ({
+          buyOrders: [],
+        }))
+      }
+
+      if (sellOrders.length) {
+        this.setState({
+          sellOrders: [],
+        })
+      }
     }
   }
 
@@ -162,6 +166,11 @@ export default class OrderBook extends Component {
     actions.core.updateCore()
   }
 
+  
+  renderCoinName(coin) {
+    return coin.toUpperCase()
+  }
+
   render() {
     const {
       buyOrders,
@@ -183,6 +192,7 @@ export default class OrderBook extends Component {
       location, 
       currencies,
       checkSwapAllow,
+      checkSwapExists,
       buyCurrency: propsBuyCurrency,
       sellCurrency: propsSellCurrency,
       invalidPair,
@@ -252,11 +262,21 @@ export default class OrderBook extends Component {
     )
 
     return (
-      <Fragment>
+      <div styleName="orderbookWrapper">
         <PageSeo
           location={location}
-          defaultTitle={intl.formatMessage(title.metaTitle, { buyCurrency, sellCurrency, buyCurrencyFullName, sellCurrencyFullName })}
-          defaultDescription={intl.formatMessage(description.metaDescription, { buyCurrency, sellCurrency, buyCurrencyFullName, sellCurrencyFullName })}
+          defaultTitle={intl.formatMessage(title.metaTitle, {
+            buyCurrency: this.renderCoinName(buyCurrency),
+            sellCurrency: this.renderCoinName(sellCurrency),
+            buyCurrencyFullName,
+            sellCurrencyFullName,
+          })}
+          defaultDescription={intl.formatMessage(description.metaDescription, {
+            buyCurrency: this.renderCoinName(buyCurrency),
+            sellCurrency: this.renderCoinName(sellCurrency),
+            buyCurrencyFullName,
+            sellCurrencyFullName,
+          })}
         />
 
         {!!myOrders.length &&
@@ -272,7 +292,10 @@ export default class OrderBook extends Component {
                   <FormattedMessage
                     id="orders1381"
                     defaultMessage="{buyCurrency} 🔁 {sellCurrency}"
-                    values={{ buyCurrency, sellCurrency }}
+                    values={{
+                      buyCurrency: this.renderCoinName(buyCurrency),
+                      sellCurrency: this.renderCoinName(sellCurrency),
+                    }}
                   />
                   {/*
                   //@ts-ignore */}
@@ -296,13 +319,13 @@ export default class OrderBook extends Component {
               <FormattedMessage
                 id="orders159"
                 defaultMessage="{currency} offers"
-                values={{ currency: `${buyCurrency}` }} />
+                values={{ currency: this.renderCoinName(buyCurrency) }} />
             </h3>
             <div styleName="subtitle">
               <FormattedMessage
                 id="orders156"
                 defaultMessage="Buy {currency} here"
-                values={{ currency: `${buyCurrency}` }}
+                values={{ currency: this.renderCoinName(buyCurrency) }}
               />
             </div>
           </Fragment>
@@ -329,6 +352,9 @@ export default class OrderBook extends Component {
                         pairFees={pairFees}
                         balances={balances}
                         checkSwapAllow={checkSwapAllow}
+                        checkSwapExists={checkSwapExists}
+                        buy={buyCurrency}
+                        sell={sellCurrency}
                       />
                     )}
                   />
@@ -345,13 +371,13 @@ export default class OrderBook extends Component {
               <FormattedMessage
                 id="orders159"
                 defaultMessage="{currency} offers"
-                values={{ currency: `${sellCurrency}` }} />
+                values={{ currency: this.renderCoinName(sellCurrency) }} />
             </h3>
             <div styleName="subtitle">
               <FormattedMessage
                 id="orders156"
                 defaultMessage="Buy {currency} here"
-                values={{ currency: `${sellCurrency}` }}
+                values={{ currency: this.renderCoinName(sellCurrency) }}
               />
             </div>
           </Fragment>
@@ -379,6 +405,9 @@ export default class OrderBook extends Component {
                         pairFees={pairFees}
                         balances={balances}
                         checkSwapAllow={checkSwapAllow}
+                        checkSwapExists={checkSwapExists}
+                        buy={sellCurrency}
+                        sell={buyCurrency}
                       />
                     )}
                   />
@@ -389,7 +418,9 @@ export default class OrderBook extends Component {
           }
         </Panel>
         {seoPage && seoPage.footer && <div>{seoPage.footer}</div>}
-      </Fragment>
+      </div>
     )
   }
 }
+
+export default injectIntl(OrderBook)

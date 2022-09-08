@@ -1,16 +1,15 @@
-import React, { Fragment } from "react";
-
+import './wdyr'
+import React from "react";
 import { RouteComponentProps, withRouter, HashRouter } from "react-router-dom";
-import PropTypes from "prop-types";
+import DocumentMeta from 'react-document-meta'
 import actions from "redux/actions";
 import { connect } from "redaction";
 import moment from "moment-with-locales-es6";
 import {
   constants,
   localStorage,
-  // firebase
+  seo,
 } from "helpers";
-import { isMobile } from "react-device-detect";
 
 import CSSModules from "react-css-modules";
 import styles from "./App.scss";
@@ -18,7 +17,8 @@ import "scss/app.scss";
 
 import { createSwapApp } from "instances/newSwap";
 import Core from "containers/Core/Core";
-
+import Transactions from 'containers/Transactions'
+import ErrorBoundary from 'components/ErrorBoundary'
 import Header from "components/Header/Header";
 import Footer from "components/Footer/Footer";
 import Loader from "components/loaders/Loader/Loader";
@@ -26,44 +26,22 @@ import PreventMultiTabs from "components/PreventMultiTabs/PreventMultiTabs";
 import RequestLoader from "components/loaders/RequestLoader/RequestLoader";
 import ModalConductor from "components/modal/ModalConductor/ModalConductor";
 import WidthContainer from "components/layout/WidthContainer/WidthContainer";
-import Wrapper from "components/layout/Wrapper/Wrapper";
 import NotificationConductor from "components/notification/NotificationConductor/NotificationConductor";
 import Seo from "components/Seo/Seo";
 
 import config from "helpers/externalConfig"
-
+import { routing, links, utils } from 'helpers'
 import backupUserData from 'plugins/backupUserData'
-import redirectTo from 'helpers/redirectTo'
-import links from 'helpers/links'
-
-import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-
+import { FormattedMessage, injectIntl } from 'react-intl'
 import metamask from 'helpers/metamask'
 
 
-//@ts-ignore
-const userLanguage = (navigator.userLanguage || navigator.language || "en-gb").split("-")[0];
+const userLanguage = utils.getCookie('mylang') || "en"
 moment.locale(userLanguage)
 
-
-const metamaskNetworks = defineMessages({
-  mainnet: {
-    id: `MetamaskNetworkAlert_NetworkMainnet`,
-    defaultMessage: `Основная сеть (Mainnet)`,
-  },
-  testnet: {
-    id: `MetamaskNetworkAlert_NetworkTestnet`,
-    defaultMessage: `Тестовая сеть (Ropsten)`,
-  },
-})
-
-
-
-@injectIntl
 @withRouter
 @connect(({ currencies: { items: currencies }, modals, ui: { dashboardModalsAllowed } }) => ({
   currencies,
-  isVisible: "loader.isVisible",
   ethAddress: "user.ethData.address",
   btcAddress: "user.btcData.address",
   ghostAddress: "user.ghostData.address",
@@ -76,16 +54,9 @@ const metamaskNetworks = defineMessages({
 class App extends React.Component<RouteComponentProps<any>, any> {
 
   prvMultiTab: any
-  localStorageListener: any
-
-  /*static propTypes = {
-    children: PropTypes.element.isRequired
-  };*/
 
   constructor(props) {
     super(props);
-
-    this.localStorageListener = null;
 
     this.prvMultiTab = {
       reject: null,
@@ -94,7 +65,8 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     };
 
     this.state = {
-      fetching: false,
+      initialFetching: true,
+      completeCreation: false,
       multiTabs: false,
       error: "",
     }
@@ -103,7 +75,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
 
   generadeId(callback) {
     const newId = Date.now().toString();
-    //@ts-ignore
+
     this.setState(
       {
         appID: newId
@@ -126,11 +98,9 @@ class App extends React.Component<RouteComponentProps<any>, any> {
 
         if (id && id !== appID) {
           this.setState({ multiTabs: true });
-          //@ts-ignore
+
           localStorage.unsubscribe(this.prvMultiTab.reject);
-          //@ts-ignore
           localStorage.unsubscribe(this.prvMultiTab.enter);
-          //@ts-ignore
           localStorage.unsubscribe(this.prvMultiTab.switch);
           localStorage.removeItem(constants.localStorage.reject);
         }
@@ -151,22 +121,26 @@ class App extends React.Component<RouteComponentProps<any>, any> {
         const { appID } = this.state;
 
         if (appID !== switchId) {
+          if (window?.chrome?.extension) {
+            const extViews = window.chrome.extension.getViews()
+            const extBgWindow = window.chrome.extension.getBackgroundPage()
+            if (extBgWindow !== window && extViews.length > 2) {
+              window.close()
+              return
+            }
+          }
           this.setState({
             multiTabs: true
           });
-          //@ts-ignore
+
           localStorage.unsubscribe(this.prvMultiTab.reject);
-          //@ts-ignore
           localStorage.unsubscribe(this.prvMultiTab.enter);
-          //@ts-ignore
           localStorage.unsubscribe(this.prvMultiTab.switch);
         }
       };
-      //@ts-ignore
+
       this.prvMultiTab.reject = localStorage.subscribe(constants.localStorage.reject, onRejectHandle);
-      //@ts-ignore
       this.prvMultiTab.enter = localStorage.subscribe(constants.localStorage.enter, onEnterHandle);
-      //@ts-ignore
       this.prvMultiTab.switch = localStorage.subscribe(constants.localStorage.switch, onSwitchHangle);
 
       localStorage.setItem(constants.localStorage.enter, newId);
@@ -174,22 +148,18 @@ class App extends React.Component<RouteComponentProps<any>, any> {
   }
 
   popupIncorrectNetwork() {
-    //@ts-ignore
-    const { intl } = this.props
-
     actions.modals.open(constants.modals.AlertModal, {
       title: (
         <FormattedMessage 
           id="MetamaskNetworkAlert_Title"
-          defaultMessage="Внимание"
+          defaultMessage="Warning"
         />
       ),
       message: (
         <FormattedMessage
           id="MetamaskNetworkAlert_Message"
-          defaultMessage="Для продолжения выберите в кошельке {walletTitle} &quot;{network}&quot; или отключите кошелек"
+          defaultMessage='Wrong network, please switch to another network in {walletTitle} (or disconnect wallet).'
           values={{
-            network: intl.formatMessage(metamaskNetworks[config.entry]),
             walletTitle: metamask.web3connect.getProviderTitle(),
           }}
         />
@@ -197,7 +167,7 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       labelOk: (
         <FormattedMessage
           id="MetamaskNetworkAlert_OkDisconnectWallet"
-          defaultMessage="Отключить внешний кошелек"
+          defaultMessage="Disconnect external wallet"
         />
       ),
       dontClose: true,
@@ -209,22 +179,22 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     })
   }
 
-  processMetamask () {
-    metamask.web3connect.onInit(() => {
+  async processMetamask () {
+    await metamask.web3connect.onInit(() => {
       const _checkChain = () => {
-        if (metamask.isCorrectNetwork()) {
-          actions.modals.close(constants.modals.AlertModal)
-        } else {
+        const wrongNetwork = metamask.isConnected() && !metamask.isCorrectNetwork()
+
+        if (wrongNetwork) {
           this.popupIncorrectNetwork()
+        } else {
+          actions.modals.close(constants.modals.AlertModal)
         }
       }
 
       metamask.web3connect.on('chainChanged', _checkChain)
       metamask.web3connect.on('connected', _checkChain)
 
-      if (metamask.isConnected()
-        && !metamask.isCorrectNetwork()
-      ) {
+      if (metamask.isConnected() && !metamask.isCorrectNetwork()) {
         this.popupIncorrectNetwork()
       }
     })
@@ -245,10 +215,10 @@ class App extends React.Component<RouteComponentProps<any>, any> {
           console.log('is restored', isRestored, constants.localStorage.isWalletCreate)
           if (isRestored) {
             if (localStorage.getItem(constants.localStorage.isWalletCreate)) {
-              redirectTo(links.home)
+              routing.redirectTo(links.home)
               window.location.reload()
             } else {
-              redirectTo(links.createWallet)
+              routing.redirectTo(window.location.host === 'bsc.swap.io' ? links.exchange : links.createWallet)
               if (wpLoader) wpLoader.style.display = 'none'
             }
           }
@@ -260,11 +230,12 @@ class App extends React.Component<RouteComponentProps<any>, any> {
         ) {
           console.log('Do backup user')
           backupUserData.backupUser().then(() => {
-            if (!localStorage.getItem(constants.localStorage.isWalletCreate)) {
-              redirectTo(links.createWallet)
-            }
             if (wpLoader) wpLoader.style.display = 'none'
           })
+
+          if (window.location.host === 'bsc.swap.io') {
+            routing.redirectTo('#/exchange/btc-to-btcb')
+          }
         } else {
           if (wpLoader) wpLoader.style.display = 'none'
         }
@@ -274,70 +245,48 @@ class App extends React.Component<RouteComponentProps<any>, any> {
   }
 
   async componentDidMount() {
+
+    const shouldUpdatePageAfterMigration = localStorage.getItem('shouldUpdatePageAfterMigration')
+
+    if (shouldUpdatePageAfterMigration) {
+      localStorage.setItem('shouldUpdatePageAfterMigration', false)
+      window.location.reload()
+    }
+
     //@ts-ignore
     const { currencies } = this.props
 
     this.preventMultiTabs(false)
 
-    // @ToDo - may be can be deleted. Temp fix for our client, when he update token list
-    if (window.origin === `https://wallet.b` + `itpli` + `cit` + `y.com`) {
-      const tokenListUpdated = localStorage.getItem('widget_tokenupdated')
-      if (!tokenListUpdated) {
-        localStorage.setItem('widget_tokenupdated', true)
-        Object.keys(config.erc20).forEach((tokenCode) => {
-          if ((tokenCode !== `bitpl`)
-            && (tokenCode !== `usdt`)
-          ) {
-            console.log('Hide', tokenCode)
-            actions.core.markCoinAsHidden(tokenCode.toUpperCase())
-          }
-        })
-      }
-    }
-
     const isWalletCreate = localStorage.getItem(constants.localStorage.isWalletCreate)
 
     if (!isWalletCreate) {
-      if (config && config.isWidget && false) {
-        currencies.forEach(({ name }) => {
-          if (name !== "BTC" && !config.erc20[name.toLowerCase()]) {
-            actions.core.markCoinAsHidden(name)
-          }
-        })
-      } else {
-        currencies.forEach(({ name }) => {
-          if (name !== "BTC") {
-            actions.core.markCoinAsHidden(name)
-          }
-        })
-      }
+      currencies.forEach(({ name, standard, value }) => {
+        if (name !== "BTC") {
+          actions.core.markCoinAsHidden(standard ? value.toUpperCase() : name)
+        }
+      })
     }
 
-    // firebase.initialize();
-
     this.processUserBackup()
-    this.processMetamask()
+    await this.processMetamask()
 
     this.checkIfDashboardModalsAllowed()
     window.actions = actions;
 
-    window.onerror = error => {
-      // actions.analytics.errorEvent(error)
+    window.onerror = (error) => {
+      console.error('App error: ', error)
     };
 
     try {
       const db = indexedDB.open("test");
       db.onerror = (e) => {
-        console.log('db error', e)
+        console.error('db error', e)
       };
     } catch (e) {
-      console.log('db error', e)
+      console.error('db error', e)
     }
 
-    actions.user.sign();
-    await createSwapApp();
-
-    this.setState(() => ({ fetching: true }));
     window.prerenderReady = true;
 
     const appInstalled = (e) => {
@@ -350,13 +299,94 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     }
     window.addEventListener('appinstalled', appInstalled)
 
+    this.checkCompletionOfAppCreation()
   }
 
   componentDidUpdate() {
+    const { initialFetching, completeCreation } = this.state
+
     this.checkIfDashboardModalsAllowed()
-    if (process.env.MAINNET) {
-      // firebase.setUserLastOnline();
+
+    if (initialFetching && completeCreation) {
+      // without setTimeout splash screen freezes when creating wallets
+      setTimeout(() => {
+        this.completeAppCreation().then(() => {
+          this.setState(() => ({
+            completeCreation: false,
+            initialFetching: false,
+          }))
+        })
+      })
     }
+  }
+
+  completeAppCreation = async () => {
+    console.group('App >%c loading...', 'color: green;')
+
+    if(!window.SwapApp){
+      await actions.user.sign()
+      await createSwapApp()
+    }
+
+    /* 
+    Currently not in use. See Exchange/Quickswap/index.tsx comments
+    */
+    // if (config.entry === 'mainnet') { 
+    //   await actions.oneinch.fetchUserOrders()
+    // }
+
+    console.groupEnd()
+  }
+
+  checkCompletionOfAppCreation = () => {
+    const startPage = document.getElementById('starter-modal')
+    const isWalletCreated = localStorage.getItem('isWalletCreate')
+
+    if (
+      !startPage ||
+      config.isWidget ||
+      utils.getCookie('startedSplashScreenIsDisabled') ||
+      isWalletCreated ||
+      window.location.hash !== '#/'
+    ) {
+      this.setState(() => ({
+        initialFetching: true,
+        completeCreation: true,
+      }))
+    } else {
+      this.addStartPageListeners()
+    }
+  }
+
+  setCompleteCreation = () => {
+    this.removeStartPageListeners()
+    this.setState(() => ({
+      completeCreation: true,
+    }))
+  }
+
+  addStartPageListeners = () => {
+    // id from index.html start page
+    const createBtn = document.getElementById('preloaderCreateBtn')
+    const connectBtn = document.getElementById('preloaderConnectBtn')
+    const restoreBtn = document.getElementById('preloaderRestoreBtn')
+    const skipBtn = document.getElementById('preloaderSkipBtn')
+  
+    if (createBtn) createBtn.addEventListener('click', this.setCompleteCreation)
+    if (connectBtn) connectBtn.addEventListener('click', this.setCompleteCreation)
+    if (restoreBtn) restoreBtn.addEventListener('click', this.setCompleteCreation)
+    if (skipBtn) skipBtn.addEventListener('click', this.setCompleteCreation)
+  }
+
+  removeStartPageListeners = () => {
+    //@ts-ignore: strictNullChecks
+    document.getElementById('preloaderCreateBtn').removeEventListener('click', this.setCompleteCreation)
+    //@ts-ignore: strictNullChecks
+    document.getElementById('preloaderConnectBtn').removeEventListener('click', this.setCompleteCreation)
+    //@ts-ignore: strictNullChecks
+    document.getElementById('preloaderRestoreBtn').removeEventListener('click', this.setCompleteCreation)
+    //@ts-ignore: strictNullChecks
+    document.getElementById('preloaderSkipBtn').removeEventListener('click', this.setCompleteCreation)
   }
 
   checkIfDashboardModalsAllowed = () => {
@@ -372,7 +402,6 @@ class App extends React.Component<RouteComponentProps<any>, any> {
   }
 
   handleSwitchTab = () => {
-    //@ts-ignore
     this.setState({
       multiTabs: false
     });
@@ -384,8 +413,6 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     const { modals, dashboardModalsAllowed } = this.props;
     const isAnyModalCalled = Object.keys(modals).length > 0
 
-    const isDark = localStorage.getItem(constants.localStorage.isDark)
-
     if (typeof document !== 'undefined' && isAnyModalCalled && !dashboardModalsAllowed) {
       document.body.classList.remove('overflowY-default')
       document.body.classList.add('overflowY-hidden')
@@ -394,33 +421,28 @@ class App extends React.Component<RouteComponentProps<any>, any> {
       document.body.classList.add('overflowY-default')
     }
     if (typeof document !== 'undefined' && isAnyModalCalled && dashboardModalsAllowed) {
-      document.body.classList.remove('overflowY-dashboardView-default')
+      document.body.classList.remove('overflowY-default')
       document.body.classList.add('overflowY-dashboardView-hidden')
     } else {
       document.body.classList.remove('overflowY-dashboardView-hidden')
-      document.body.classList.add('overflowY-dashboardView-default')
-    }
-
-    if (isDark) {
-      document.body.classList.add('darkTheme')
+      document.body.classList.add('overflowY-default')
     }
   }
 
   render() {
-    const { fetching, multiTabs, error } = this.state;
+    const { initialFetching, multiTabs } = this.state;
     //@ts-ignore
     const { children, ethAddress, btcAddress, ghostAddress, nextAddress, tokenAddress, history, dashboardModalsAllowed } = this.props;
 
     this.overflowHandler()
 
-    const isFetching = !ethAddress || !btcAddress || !ghostAddress || !nextAddress || (!tokenAddress && config && !config.isWidget) || !fetching;
+    const isFetching = !ethAddress || !btcAddress || !ghostAddress || !nextAddress || (!tokenAddress && config && !config.isWidget) || initialFetching;
 
     const isWidget = history.location.pathname.includes("/exchange") && history.location.hash === "#widget";
     const isCalledFromIframe = window.location !== window.parent.location;
     const isWidgetBuild = config && config.isWidget;
 
     if (isWidgetBuild && localStorage.getItem(constants.localStorage.didWidgetsDataSend) !== "true") {
-      // firebase.submitUserDataWidget("usersData");
       localStorage.setItem(constants.localStorage.didWidgetsDataSend, true);
     }
 
@@ -429,35 +451,59 @@ class App extends React.Component<RouteComponentProps<any>, any> {
     }
 
     if (isFetching) {
-      //@ts-ignore
-      return <Loader />
+      return (
+        <Loader 
+          showMyOwnTip={
+            <FormattedMessage id="Table96" defaultMessage="Loading..." />
+          }
+        />
+      )
     }
 
     const isSeoDisabled = isWidget || isWidgetBuild || isCalledFromIframe
+    const widgetTitle = window.defaultWindowTitle || seo.defaultTitle
+    const widgetUrl = window.location.origin + window.location.pathname
 
     return <HashRouter>
       <div styleName="compressor">
         {!isSeoDisabled &&
           <Seo location={history.location} />
         }
-        <Wrapper>
-          {/*
-          //@ts-ignore */}
-          <WidthContainer id="swapComponentWrapper" styleName="headerAndMain">
-            <Header />
-            <main>{children}</main>
-          </WidthContainer>
-        </Wrapper>
-        <Core />
-        <Footer />
-        <RequestLoader />
-        {!dashboardModalsAllowed &&
-          <ModalConductor history={history}
-        />}
-        <NotificationConductor history={history} />
+        {isWidgetBuild && (
+          <DocumentMeta
+            title={widgetTitle}
+            description={seo.defaultDescription}
+            canonical={widgetUrl}
+            meta={{
+              property: {
+                'og:title': widgetTitle,
+                'og:description': seo.defaultDescription,
+                'og:url': widgetUrl,
+                'og:image': window.logoUrl,
+              },
+            }}
+          />
+        )}
+
+        <ErrorBoundary>
+          <Transactions>
+            {/* @ts-ignore */}
+            <WidthContainer id="swapComponentWrapper" styleName="headerAndMain">
+              <Header />
+              <main>{children}</main>
+            </WidthContainer>
+            <Core />
+            <Footer />
+            <RequestLoader />
+            {!dashboardModalsAllowed &&
+              <ModalConductor history={history}
+            />}
+            <NotificationConductor history={history} />
+          </Transactions>
+        </ErrorBoundary>
       </div>
     </HashRouter>;
   }
 }
 
-export default withRouter(App)
+export default withRouter(injectIntl(App))

@@ -1,7 +1,6 @@
 import React, { Component, Fragment } from 'react'
 
 import actions from 'redux/actions'
-import { constants } from 'helpers'
 
 import CSSModules from 'react-css-modules'
 import styles from '../Swap.scss'
@@ -10,7 +9,8 @@ import SwapProgress from './SwapProgress/SwapProgress'
 import SwapList from './SwapList/SwapList'
 import FeeControler from '../FeeControler/FeeControler'
 import FailControler from '../FailControler/FailControler'
-import DepositWindow from './DepositWindow/DepositWindow'
+import SwapController from '../SwapController'
+import SwapPairInfo from './SwapPairInfo'
 
 
 @CSSModules(styles)
@@ -23,10 +23,10 @@ export default class EthTokenToUTXO extends Component<any, any> {
 
   constructor(props) {
     super(props)
+
     const {
       swap,
       currencyData,
-      ethBalance,
       tokenItems,
       fields,
     } = props
@@ -40,6 +40,7 @@ export default class EthTokenToUTXO extends Component<any, any> {
       signed: false,
       enabledButton: false,
       isAddressCopied: false,
+      //@ts-ignore: strictNullChecks
       flow: this.swap.flow.state,
       currencyAddress: currencyData.address,
     }
@@ -48,106 +49,74 @@ export default class EthTokenToUTXO extends Component<any, any> {
   }
 
   componentWillMount() {
+    //@ts-ignore: strictNullChecks
     this.swap.on('state update', this.handleFlowStateUpdate)
   }
 
   componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     this.swap.off('state update', this.handleFlowStateUpdate)
   }
 
   componentDidMount() {
-    const {
-      flow: {
-        isSignFetching,
-        isMeSigned,
-        step,
-      },
-    } = this.state
-
-    this.signTimer = setInterval(() => {
-      if (!this.state.flow.isMeSigned) {
-        this.signSwap()
-      } else {
-        clearInterval(this.signTimer)
-      }
-    }, 3000)
-
-    this.confirmTimer = setInterval(() => {
-      if (this.state.flow.step === 3) {
-        this.confirmScriptChecked()
-      } else {
-        clearInterval(this.confirmTimer)
-      }
-    }, 3000)
+    const { flow: { isStoppedSwap } } = this.state
+    if (isStoppedSwap) return
 
     this.requestMaxAllowance()
   }
 
+  reportError = (error) => {
+    console.group('%c EthTokenToUTXO swap', 'color: red;')
+    console.error('error: ', error)
+    console.log('%c Stack trace', 'color: orange;')
+    console.trace()
+    console.groupEnd()
+
+    throw new Error(error)
+  }
+
   confirmScriptChecked = () => {
+    //@ts-ignore: strictNullChecks
     this.swap.flow[this._fields.verifyScriptFunc]()
   }
 
   handleFlowStateUpdate = (values) => {
-
-    const stepNumbers = {
-      'sign': 1,
-      'wait-lock-utxo': 2,
-      'verify-script': 3,
-      'sync-balance': 4,
-      'lock-eth': 5,
-      'wait-withdraw-eth': 6, // aka getSecret
-      'withdraw-utxo': 7,
-      'finish': 8,
-      'end': 9,
-    }
-
-    // actions.analytics.swapEvent(stepNumbers[values.step], 'ETHTOKEN2BTC')
-
     this.setState({
       flow: values,
     })
   }
 
-  signSwap = () => {
-    console.log('sign swap')
-    this.swap.flow.sign()
-    this.setState(() => ({
-      signed: true,
-    }))
-  }
-
-  
   requestMaxAllowance = () => {
-    const { sellCurrency, sellAmount } = this.swap
-    const { ethTokenSwap } = this.swap.flow
+    //@ts-ignore: strictNullChecks
+    const { sellCurrency, sellAmount, flow } = this.swap
+    const { ethTokenSwap } = flow
+    const { standard } = ethTokenSwap.options
 
-    actions.token.setAllowanceForToken({
-      name: sellCurrency,
-      to: ethTokenSwap.address, // swap contract address
-      targetAllowance: sellAmount,
-      speed: 'fast',
-    })
+    try {
+      actions[standard].setAllowance({
+        name: sellCurrency,
+        to: ethTokenSwap.address, // swap contract address
+        targetAllowance: String(sellAmount),
+      })
+    } catch (error) {
+      this.reportError(error)
+    }
   }
 
   render() {
     const {
       children,
-      disabledTimer,
       continueSwap,
       enoughBalance,
       history,
       ethAddress,
-      requestToFaucetSended,
       onClickCancelSwap,
       locale,
       wallets,
     }  = this.props
 
     const {
-      currencyAddress,
       flow,
-      enabledButton,
-      isAddressCopied,
       currencyData,
       tokenItems,
       signed,
@@ -160,64 +129,49 @@ export default class EthTokenToUTXO extends Component<any, any> {
       <div>
         <div styleName="swapContainer">
           <div>
-            <div styleName="swapInfo">
-              {this.swap.id &&
-                (
-                  <strong>
-                    {this.swap.sellAmount.toFixed(6)}
-                    {' '}
-                    {this.swap.sellCurrency} &#10230; {' '}
-                    {this.swap.buyAmount.toFixed(6)}
-                    {' '}
-                    {this.swap.buyCurrency}
-                  </strong>
-                )
-              }
-            </div>
-            {!enoughBalance && flow.step === 4
+            {swap.id && <SwapPairInfo swap={swap} />}
+            <SwapController swap={swap} />
+            <SwapList
+              enoughBalance={enoughBalance}
+              currencyData={currencyData}
+              tokenItems={tokenItems}
+              flow={flow}
+              swap={swap}
+              onClickCancelSwap={onClickCancelSwap}
+              fields={this._fields}
+              swapName="EthTokenToBtcLike"
+            />
+            {!continueSwap
               ? (
-                <div styleName="swapDepositWindow">
-                  <DepositWindow currencyData={currencyData} swap={swap} flow={flow} tokenItems={tokenItems} fields={this._fields} />
-                </div>
-              )
-              : (
                 <Fragment>
-                  {!continueSwap
-                    ? (
-                      <Fragment>
-                        {
-                          !canCreateEthTransaction && (
-                            <FeeControler ethAddress={ethAddress} gasAmountNeeded={gasAmountNeeded} fields={this._fields} />
-                          )
-                        }
-                        {
-                          isFailedTransaction && (
-                            <FailControler ethAddress={ethAddress} message={isFailedTransactionError} fields={this._fields} />
-                          )
-                        }
-                      </Fragment>
+                  {
+                    !canCreateEthTransaction && (
+                      <FeeControler ethAddress={ethAddress} gasAmountNeeded={gasAmountNeeded} fields={this._fields} />
                     )
-                    : (
-                      <SwapProgress
-                        flow={flow}
-                        name="EthTokenToBtcLike"
-                        swap={swap}
-                        tokenItems={tokenItems}
-                        history={history}
-                        locale={locale}
-                        wallets={wallets}
-                        signed={signed}
-                        fields={this._fields}
-                      />
+                  }
+                  {
+                    isFailedTransaction && (
+                      <FailControler ethAddress={ethAddress} message={isFailedTransactionError} fields={this._fields} />
                     )
                   }
                 </Fragment>
               )
+              : (
+                <SwapProgress
+                  flow={flow}
+                  swap={swap}
+                  tokenItems={tokenItems}
+                  history={history}
+                  locale={locale}
+                  wallets={wallets}
+                  signed={signed}
+                  fields={this._fields}
+                />
+              )
             }
           </div>
-          <SwapList enoughBalance={enoughBalance} flow={flow} swap={swap} onClickCancelSwap={onClickCancelSwap} fields={this._fields} />
         </div>
-        <div styleName="swapContainerInfo">{children}</div>
+        {children && <div styleName="swapContainerInfo">{children}</div>}
       </div>
     )
   }

@@ -13,7 +13,6 @@ import actions from 'redux/actions'
 import typeforce from 'swap.app/util/typeforce'
 import config from 'app-config'
 const bitcore = require('ghost-bitcore-lib');
-import { localisePrefix } from 'helpers/locale'
 
 import * as mnemonicUtils from '../../../../common/utils/mnemonic'
 
@@ -28,15 +27,6 @@ const hasAdminFee = (config
   && config.opts.fee.ghost.min
 ) ? config.opts.fee.ghost : false
 
-const getRandomMnemonicWords = () => bip39.generateMnemonic()
-const validateMnemonicWords = (mnemonic) => bip39.validateMnemonic(mnemonicUtils.convertMnemonicToValid(mnemonic))
-
-
-const sweepToMnemonic = (mnemonic, path) => {
-  const wallet = getWalletByWords(mnemonic, path)
-  localStorage.setItem(constants.privateKeyNames.ghostMnemonic, wallet.WIF)
-  return wallet.WIF
-}
 
 const getMainPublicKey = () => {
   const {
@@ -46,35 +36,6 @@ const getMainPublicKey = () => {
   } = getState()
 
   return ghostData.publicKey.toString('Hex')
-}
-
-const isSweeped = () => {
-  const {
-    user: {
-      ghostData,
-      ghostMnemonicData,
-    },
-  } = getState()
-
-  if (ghostMnemonicData
-    && ghostMnemonicData.address
-    && ghostData
-    && ghostData.address
-    && ghostData.address.toLowerCase() !== ghostMnemonicData.address.toLowerCase()
-  ) return false
-
-  return true
-}
-
-const getSweepAddress = () => {
-  const {
-    user: {
-      ghostMnemonicData,
-    },
-  } = getState()
-
-  if (ghostMnemonicData && ghostMnemonicData.address) return ghostMnemonicData.address
-  return false
 }
 
 const getWalletByWords = (mnemonic: string, walletNumber: number = 0, path: string = '') => {
@@ -107,35 +68,19 @@ const getPrivateKeyByAddress = (address) => {
   const {
     user: {
       ghostData: {
-        address: oldAddress,
+        address: dataAddress,
         privateKey,
       }
     },
   } = getState()
-  /*
-  const ghostMnemonicData
-      ghostMnemonicData: {
-        address: mnemonicAddress,
-        privateKey: mnemonicKey,
-      },
-    },
-  } = getState()
-  */
-  if (oldAddress === address) return privateKey
-    //@ts-ignore
-  if (mnemonicAddress === address) return mnemonicKey
+
+  if (dataAddress === address) return privateKey
 }
 
-const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
-  let sweepToMnemonicReady = false
-
-  if (privateKey
-    && mnemonic
-    && mnemonicKeys
-    && mnemonicKeys.ghost === privateKey
-  ) sweepToMnemonicReady = true
-
-  if (!privateKey && mnemonic) sweepToMnemonicReady = true
+const login = (
+  privateKey,
+  mnemonic: string | null = null,
+) => {
 
   if (privateKey) {
     const hash = bitcoin.crypto.sha256(privateKey)
@@ -148,20 +93,19 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
     // keyPair     = bitcoin.ECPair.makeRandom({ network: ghost.network })
     // privateKey  = keyPair.toWIF()
     // use random 12 words
+    //@ts-ignore: strictNullChecks
     if (!mnemonic) mnemonic = bip39.generateMnemonic()
 
+    //@ts-ignore: strictNullChecks
     const accData = getWalletByWords(mnemonic)
-    console.log('Ghost. Generated wallet from random 12 words')
-    console.log(accData)
+
     privateKey = accData.WIF
-    localStorage.setItem(constants.privateKeyNames.ghostMnemonic, privateKey)
   }
 
   localStorage.setItem(constants.privateKeyNames.ghost, privateKey)
 
   const data = {
     ...auth(privateKey),
-    isMnemonic: sweepToMnemonicReady,
     currency: 'GHOST',
     fullName: 'ghost',
   }
@@ -169,56 +113,7 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
   window.getGhostAddress = () => data.address
   window.getGhostData = () => data
 
-  console.info('Logged in with Ghost', data)
   reducers.user.setAuthData({ name: 'ghostData', data })
-  if (!sweepToMnemonicReady) {
-    // Auth with our mnemonic account
-    if (mnemonic === `-`) {
-      console.error('Sweep. Cant auth. Need new mnemonic or enter own for re-login')
-      return
-    }
-
-    if (!mnemonicKeys
-      || !mnemonicKeys.ghost
-    ) {
-      console.error('Sweep. Cant auth. Login key undefined')
-      return
-    }
-
-    const mnemonicData = {
-      ...auth(mnemonicKeys.ghost),
-      isMnemonic: true,
-    }
-    console.info('Logged in with Ghost Mnemonic', mnemonicData)
-    reducers.user.addWallet({
-      name: 'ghostMnemonicData',
-      data: {
-        currency: 'GHOST',
-        fullName: 'Ghost (New)',
-        balance: 0,
-        isBalanceFetched: false,
-        balanceError: null,
-        infoAboutCurrency: null,
-        ...mnemonicData,
-      },
-    })
-    new Promise(async (resolve) => {
-      const balanceData = await fetchBalanceStatus(mnemonicData.address)
-      if (balanceData) {
-        reducers.user.setAuthData({
-          name: 'ghostMnemonicData',
-          data: {
-            //@ts-ignore
-            ...balanceData,
-            isBalanceFetched: true,
-          },
-        })
-      } else {
-        reducers.user.setBalanceError({ name: 'ghostMnemonicData' })
-      }
-      resolve(true)
-    })
-  }
 
   return privateKey
 }
@@ -275,8 +170,6 @@ const getBalance = () => {
       return false
     },
   }).then(({ balance, unconfirmedBalance }) => {
-    console.log('GHOST Balance: ', balance)
-    console.log('GHOST unconfirmedBalance Balance: ', unconfirmedBalance)
     reducers.user.setBalance({ name: 'ghostData', amount: balance, unconfirmedBalance })
     return balance
   })
@@ -337,6 +230,7 @@ const fetchTxInfo = (hash, cacheResponse?) =>
         const adminOutput = vout.filter((out) => (
           out.scriptPubKey.addresses
           && out.scriptPubKey.addresses[0] === hasAdminFee.address
+          //@ts-ignore: strictNullChecks
           && !(new BigNumber(out.value).eq(amount))
         ))
 
@@ -389,38 +283,32 @@ const getAllMyAddresses = () => {
   const {
     user: {
       ghostData,
-      ghostMnemonicData,
       ghostMultisigSMSData,
       ghostMultisigUserData,
-      ghostMultisigG2FAData,
       ghostMultisigPinData,
     },
   } = getState()
 
   const retData = []
-  // Проверяем, был ли sweep
-  if (ghostMnemonicData
-    && ghostMnemonicData.address
-    && ghostData
-    && ghostData.address
-    && ghostMnemonicData.address !== ghostData.address
-  ) {
-    retData.push(ghostMnemonicData.address.toLowerCase())
-  }
 
+  //@ts-ignore: strictNullChecks
   retData.push(ghostData.address.toLowerCase())
 
-  if (ghostMultisigSMSData && ghostMultisigSMSData.address) retData.push(ghostMultisigSMSData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigSMSData?.address) retData.push(ghostMultisigSMSData.address.toLowerCase())
   // @ToDo - SMS MultiWallet
 
-  if (ghostMultisigUserData && ghostMultisigUserData.address) retData.push(ghostMultisigUserData.address.toLowerCase())
-  if (ghostMultisigUserData && ghostMultisigUserData.wallets && ghostMultisigUserData.wallets.length) {
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigUserData?.address) retData.push(ghostMultisigUserData.address.toLowerCase())
+  if (ghostMultisigUserData?.wallets?.length) {
     ghostMultisigUserData.wallets.map((wallet) => {
+      //@ts-ignore: strictNullChecks
       retData.push(wallet.address.toLowerCase())
     })
   }
 
-  if (ghostMultisigPinData && ghostMultisigPinData.address) retData.push(ghostMultisigPinData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (ghostMultisigPinData?.address) retData.push(ghostMultisigPinData.address.toLowerCase())
 
   return retData
 }
@@ -429,7 +317,6 @@ const getDataByAddress = (address) => {
   const {
     user: {
       ghostData,
-      ghostMnemonicData,
       ghostMultisigSMSData,
       ghostMultisigUserData,
       ghostMultisigG2FAData,
@@ -438,7 +325,6 @@ const getDataByAddress = (address) => {
 
   const founded = [
     ghostData,
-    ghostMnemonicData,
     ghostMultisigSMSData,
     ghostMultisigUserData,
     ...(
@@ -489,6 +375,7 @@ const getTransaction = (address: string = ``, ownType: string = ``) =>
         return ({
           type,
           hash: item.txid,
+          //@ts-ignore: strictNullChecks
           canEdit: (myAllWallets.indexOf(address) !== -1),
           confirmations: item.confirmations,
           value: isSelf
@@ -553,14 +440,13 @@ const broadcastTx = (txRaw) => {
 
 const signMessage = (message, encodedPrivateKey) => {
   const keyPair = bitcoin.ECPair.fromWIF(encodedPrivateKey, [ghost.networks.mainnet, ghost.networks.testnet])
+  //@ts-ignore: strictNullChecks
   const privateKeyBuff = Buffer.from(keyPair.privateKey)
 
   const signature = bitcoinMessage.sign(message, privateKeyBuff, keyPair.compressed)
 
   return signature.toString('base64')
 }
-
-const getReputation = () => Promise.resolve(0)
 
 window.getMainPublicKey = getMainPublicKey
 
@@ -612,16 +498,10 @@ export default {
   fetchTxInfo,
   fetchBalance,
   signMessage,
-  getReputation,
   getTx,
   getLinkToInfo,
   getInvoices,
   getWalletByWords,
-  getRandomMnemonicWords,
-  validateMnemonicWords,
-  sweepToMnemonic,
-  isSweeped,
-  getSweepAddress,
   getAllMyAddresses,
   getDataByAddress,
   getMainPublicKey,

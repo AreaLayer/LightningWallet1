@@ -15,14 +15,13 @@ const langLabels = defineMessages({
     defaultMessage: 'Copy Link',
   },
   linkCopied: {
-    id: 'ShareModal_LinkCopied',
+    id: 'InvoiceLinkCopied',
     defaultMessage: 'Link copied',
   },
 })
 
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-export default class Share extends Component<any, any> {
+class Share extends Component<any, any> {
 
   state = {
     isLinkCopied: false,
@@ -110,3 +109,5 @@ export default class Share extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(Share)

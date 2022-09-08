@@ -11,20 +11,30 @@ class Flow {
   app: SwapApp
   stepNumbers: any
   isTakerMakerModel: boolean = false
+
   state: {
     // Common swaps state
     step: number
-    isWaitingForOwner: boolean
+    isWaitingForOwner?: boolean
 
     isStoppedSwap?: boolean
     isRefunded?: boolean
-    isFinished?: boolean
+    isFinished: boolean
     isSwapTimeout?: boolean
 
-    isSignFetching: boolean
-    isMeSigned: boolean
-    // Torbo swaps state
-    // ...
+    isSignFetching?: boolean
+    isMeSigned?: boolean
+
+    isBalanceFetching: boolean,
+    isBalanceEnough: boolean,
+
+    // Turbo swaps state
+
+    takerTxHash?: null | string
+    isTakerTxPended?: boolean
+
+    makerTxHash?: null | string
+    isMakerTxPended?: boolean
 
     // Atomic swaps state
     // -- AB-UTXO
@@ -40,9 +50,10 @@ class Flow {
     utxoFundError?: string
 
     // --- UTXO-AB/AB-UTXO equals states
-    utxoScriptValues: any
-    utxoScriptVerified: boolean
-    utxoScriptCreatingTransactionHash: string
+    utxoScriptValues?: any
+    utxoScriptVerified?: boolean
+    utxoScriptCreatingTransactionHash?: string
+    ethSwapCreationTransactionHash?: string
 
     secret?: string
     isParticipantSigned?: boolean
@@ -54,10 +65,12 @@ class Flow {
   constructor(swap) {
     this.swap     = swap
     this.steps    = []
+    //@ts-ignore: strictNullChecks
     this.app      = null
 
     this.stepNumbers = {}
 
+    //@ts-ignore: strictNullChecks
     this.state = {
       step: 0,
       isWaitingForOwner: false,
@@ -68,8 +81,11 @@ class Flow {
 
       isSignFetching: false,
       isMeSigned: false,
+
       /** -------------- Turbo Swaps States ----------------- **/
-      // ....
+
+      isBalanceFetching: false,
+      isBalanceEnough: true,
 
       /** -------------- Atomic Swaps States ---------------- **/
       ...{
@@ -81,6 +97,7 @@ class Flow {
         utxoScriptValues: null,
         utxoScriptVerified: false,
         utxoScriptCreatingTransactionHash: null,
+        ethSwapCreationTransactionHash: null,
       },
       ...{
         /** UTXO-AB **/
@@ -132,6 +149,7 @@ class Flow {
       isStoppedSwap,
       isRefunded,
       isFinished,
+      isSwapTimeout,
     } = this.state
 
     if (this.swap.checkTimeout(3600)) {
@@ -172,8 +190,11 @@ class Flow {
     setTimeout(() => {
       if ((this.state.step >= this.steps.length)
         || this._isFinished()
-      ) return
-      else this.goStep(this.state.step)
+      ) {
+        return
+      } else {
+        this._goStep(this.state.step)
+      }
     }, 0)
   }
 
@@ -190,37 +211,37 @@ class Flow {
         // TODO how can we don't know who is participant???
         // TODO if there is no participant in `order` then no need to create Flow...
         // if there is no order it orderCollection that means owner is offline, so `swap.owner` will be undefined
-        if (!owner) {
-          flow.setState({
-            isWaitingForOwner: true,
-          })
-
-          this.app.services.room.on('new orders', function ({ orders }) {
-            const order = orders.find(({ id }) => id === orderId)
-
-            if (order) {
-              this.unsubscribe()
-
-              const order = orders.getByKey(orderId)
-
-              // TODO move this to Swap.js
-              //@ts-ignore
-              flow.swap.room = new Room({
-                participantPeer: order.owner.peer,
-              })
-              flow.swap.update({
-                ...order,
-                participant: order.owner,
-              })
-              flow.finishStep({
-                isWaitingForOwner: false,
-              })
-            }
-          })
-        }
-        else {
+        if (owner) {
           flow.finishStep()
         }
+
+        flow.setState({
+          isWaitingForOwner: true,
+        })
+
+        //@ts-ignore: strictNullChecks
+        this.app.services.room.on('new orders', function ({ orders }) {
+          const order = orders.find(({ id }) => id === orderId)
+
+          if (order) {
+            this.unsubscribe()
+
+            const order = orders.getByKey(orderId)
+
+            // TODO move this to Swap.js
+            //@ts-ignore
+            flow.swap.room = new Room({
+              participantPeer: order.owner.peer,
+            })
+            flow.swap.update({
+              ...order,
+              participant: order.owner,
+            })
+            flow.finishStep({
+              isWaitingForOwner: false,
+            })
+          }
+        })
       },
     ]
   }
@@ -234,12 +255,21 @@ class Flow {
   }
 
   finishStep(data?, constraints?) {
+    const {
+      isStoppedSwap,
+    } = this.state
+
+
     debug('swap.core:swap')(`on step ${this.state.step}, constraints =`, constraints)
 
     if (constraints) {
       const { step, silentError } = constraints
 
       const n_step = this.stepNumbers[step]
+      if (isStoppedSwap) {
+        console.error(`Cant finish step ${step} = ${n_step} when swap is stopped`)
+        return
+      }
       debug('swap.core:swap')(`trying to finish step ${step} = ${n_step} when on step ${this.state.step}`)
 
       if (step && this.state.step != n_step) {
@@ -255,11 +285,16 @@ class Flow {
 
     debug('swap.core:swap')(`proceed to step ${this.state.step+1}, data=`, data)
 
-    this.goNextStep(data)
+    this._goNextStep(data)
   }
 
-  goNextStep(data) {
-    const { step } = this.state
+  _goNextStep(data) {
+    const {
+      step,
+      isStoppedSwap,
+    } = this.state
+
+    if (isStoppedSwap) return
     const newStep = step + 1
     console.warn("this.state", this.state)
     this.swap.events.dispatch('leave step', step)
@@ -270,10 +305,16 @@ class Flow {
     }, true)
 
     if (this.steps.length > newStep)
-      this.goStep(newStep)
+      this._goStep(newStep)
   }
 
-  goStep(index) {
+  _goStep(index) {
+    const {
+      isStoppedSwap,
+    } = this.state
+
+    if (isStoppedSwap) return
+
     this.swap.events.dispatch('enter step', index)
     this.steps[index]()
   }

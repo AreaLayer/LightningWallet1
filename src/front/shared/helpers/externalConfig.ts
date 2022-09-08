@@ -1,28 +1,32 @@
 import config from 'app-config'
 import { util } from 'swap.app'
-import actions from 'redux/actions'
 import { constants } from 'swap.app'
 import BigNumber from 'bignumber.js'
-import { getState } from 'redux/core'
 import reducers from 'redux/core/reducers'
+import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 
+const NETWORK = process.env.MAINNET ? 'mainnet' : 'testnet'
 
-const GetCustromERC20 = () => {
-  const configStorage = (process.env.MAINNET) ? 'mainnet' : 'testnet'
+const getCustomTokenConfig = () => {
+  const tokensInfo = JSON.parse(localStorage.getItem('customToken') || '{}')
 
-  let tokensInfo = JSON.parse(localStorage.getItem('customERC'))
-  if (!tokensInfo || !tokensInfo[configStorage]) return {}
-  return tokensInfo[configStorage]
+  if (!Object.keys(tokensInfo).length || !tokensInfo[NETWORK]) {
+    return {}
+  }
+
+  return tokensInfo[NETWORK]
 }
 
 const initExternalConfig = () => {
   // Add to swap.core not exists tokens
-  Object.keys(config.erc20).forEach((tokenCode) => {
-    if (!constants.COIN_DATA[tokenCode]) {
-      console.info('Add token to swap.core', tokenCode, config.erc20[tokenCode].address, config.erc20[tokenCode].decimals, config.erc20[tokenCode].fullName)
-      util.erc20.register(tokenCode, config.erc20[tokenCode].decimals)
-      actions[tokenCode] = actions.token
-    }
+  Object.keys(TOKEN_STANDARDS).forEach((key) => {
+    const standard = TOKEN_STANDARDS[key].standard.toLowerCase()
+
+    Object.keys(config[standard]).forEach((tokenSymbol) => {
+      if (!constants.COIN_DATA[tokenSymbol]) {
+        util.tokenRegistrar[standard].register(tokenSymbol, config[standard][tokenSymbol].decimals)
+      }
+    })
   })
 }
 
@@ -36,13 +40,45 @@ const externalConfig = () => {
     inited: true,
     curEnabled: {
       eth: true,
+      bnb: true,
+      matic: true,
+      arbeth: true,
+      aureth: true,
+      xdai: true,
+      ftm: true,
+      avax: true,
+      movr: true,
+      one: true,
       btc: true,
       ghost: true,
-      next: true,
+      next: false,
     },
+    blockchainSwapEnabled: {
+      btc: true,
+      eth: true,
+      bnb: false,
+      matic: false,
+      arbeth: false,
+      aureth: false,
+      xdai: false,
+      ftm: false,
+      avax: false,
+      movr: false,
+      one: false,
+      ghost: true,
+      next: false,
+    },
+    L2_EVM_KEYS: ['aureth', 'arbeth'],
+    createWalletCoinsOrder: false,
+    buyFiatSupported: ['eth', 'matic'],
+    defaultExchangePair: {
+      buy: '{eth}wbtc',
+      sell: 'btc',
+    },
+    defaultQuickSell: false,
     ownTokens: false,
-    addCustomERC20: true,
-    invoiceEnabled: (config.isWidget) ? false : true,
+    addCustomTokens: true,
+    invoiceEnabled: !config.isWidget,
     showWalletBanners: false,
     showHowItsWork: false,
     fee: {},
@@ -60,8 +96,96 @@ const externalConfig = () => {
     activeFiat: 'USD',
     exchangeDisabled: false,
     ui: {
-      footerDisabled: false,
+      hideServiceLinks: false,
+      serviceLink: 'https://tools.onout.org/wallet',
+      farmLink: false, // use default link #/marketmaker
+      bannersSource: 'https://noxon.wpmix.net/swapBanners/banners.php',
+      disableInternalWallet: false,
+      faq: {
+        before: [/*
+          {
+            title: 'Faq title before 1',
+            content: 'Faq 1 content'
+          },
+          {
+            title: 'Faq title before 2',
+            content: 'Faq 2 content'
+          }
+        */],
+        after: [/*
+          {
+            title: 'Faq title after',
+            content: 'Faq content'
+          }
+        */]
+      },
+      menu: {
+        before: [/*
+          {
+            "title": "After",
+            "link": "https:\/\/google.com"
+          }
+        */],
+        after: []
+      },
     },
+  }
+
+  if (window
+    && window.SO_FaqBeforeTabs
+    && window.SO_FaqBeforeTabs.length
+  ) {
+    config.opts.ui.faq.before = window.SO_FaqBeforeTabs
+  }
+  if (window
+    && window.SO_FaqAfterTabs
+    && window.SO_FaqAfterTabs.length
+  ) {
+    config.opts.ui.faq.after = window.SO_FaqAfterTabs
+  }
+
+  if (window
+    && window.SO_MenuItemsBefore
+    && window.SO_MenuItemsBefore.length
+  ) {
+    config.opts.ui.menu.before = window.SO_MenuItemsBefore
+  }
+  if (window
+    && window.SO_MenuItemsAfter
+    && window.SO_MenuItemsAfter.length
+  ) {
+    config.opts.ui.menu.after = window.SO_MenuItemsAfter
+  }
+
+  if (window?.SO_disableInternalWallet) {
+    config.opts.ui.disableInternalWallet = window.SO_disableInternalWallet
+  }
+
+  if (window?.SO_addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase) {
+    config.opts.addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase = window.SO_addAllEnabledWalletsAfterRestoreOrCreateSeedPhrase
+  }
+
+  if (window
+    && window.SO_fiatBuySupperted
+    && window.SO_fiatBuySupperted.length
+  ) {
+    config.opts.buyFiatSupported = window.SO_fiatBuySupperted
+  }
+  if (window
+    && window.SO_defaultQuickSell
+  ) {
+    config.opts.defaultQuickSell = window.SO_defaultQuickSell
+  }
+  if (window
+    && window.SO_defaultQuickBuy
+  ) {
+    config.opts.defaultQuickBuy = window.SO_defaultQuickBuy
+  }
+  if (window
+    && window.SO_createWalletCoinsOrder
+    && window.SO_createWalletCoinsOrder.length
+  ) {
+    config.opts.createWalletCoinsOrder = window.SO_createWalletCoinsOrder
   }
 
   if (window
@@ -71,9 +195,9 @@ const externalConfig = () => {
   }
 
   if (window
-    && window._ui_footerDisabled
+    && window.hideServiceLinks
   ) {
-    config.opts.ui.footerDisabled = window._ui_footerDisabled
+    config.opts.ui.hideServiceLinks = window.hideServiceLinks
   }
 
   if (window
@@ -115,20 +239,80 @@ const externalConfig = () => {
 
   if (window && window.CUR_BTC_DISABLED === true) {
     config.opts.curEnabled.btc = false
+    config.opts.blockchainSwapEnabled.btc = false
   }
 
   if (window && window.CUR_GHOST_DISABLED === true) {
     config.opts.curEnabled.ghost = false
+    config.opts.blockchainSwapEnabled.ghost = false
   }
 
-  if (window && window.CUR_NEXT_DISABLED === true) {
-    config.opts.curEnabled.next = false
+  if (window && window.CUR_NEXT_DISABLED === false) {
+    config.opts.curEnabled.next = true
+    config.opts.blockchainSwapEnabled.next = true
   }
 
   if (window && window.CUR_ETH_DISABLED === true) {
     config.opts.curEnabled.eth = false
+    config.opts.blockchainSwapEnabled.next = false
   }
 
+  if (window && window.CUR_BNB_DISABLED === true) {
+    config.opts.curEnabled.bnb = false
+    config.opts.blockchainSwapEnabled.bnb = false
+  }
+
+  if (window && window.CUR_MATIC_DISABLED === true) {
+    config.opts.curEnabled.matic = false
+    config.opts.blockchainSwapEnabled.matic = false
+  }
+
+  if (window && window.CUR_ARBITRUM_DISABLED === true) {
+    config.opts.curEnabled.arbeth = false
+    config.opts.blockchainSwapEnabled.arbeth = false
+  }
+
+  if (window && window.CUR_XDAI_DISABLED === true) {
+    config.opts.curEnabled.xdai = false
+    config.opts.blockchainSwapEnabled.xdai = false
+  }
+
+  if (window && window.CUR_FTM_DISABLED === true) {
+    config.opts.curEnabled.ftm = false
+    config.opts.blockchainSwapEnabled.ftm = false
+  }
+
+  if (window && window.CUR_AVAX_DISABLED === true) {
+    config.opts.curEnabled.avax = false
+    config.opts.blockchainSwapEnabled.avax = false
+  }
+
+  if (window && window.CUR_MOVR_DISABLED === true) {
+    config.opts.curEnabled.movr = false
+    config.opts.blockchainSwapEnabled.movr = false
+  }
+
+  if (window && window.CUR_ONE_DISABLED === true) {
+    config.opts.curEnabled.one = false
+    config.opts.blockchainSwapEnabled.one = false
+  }
+
+  if (window && window.CUR_AURORA_DISABLED === true) {
+    config.opts.curEnabled.aureth = false
+    config.opts.blockchainSwapEnabled.aureth = false
+  }
+
+  config.enabledEvmNetworks = Object.keys(config.evmNetworks)
+    .filter((key) => config.opts.curEnabled[key.toLowerCase()])
+    .reduce((acc, key) => {
+      acc[key] = config.evmNetworks[key]
+
+      return acc
+    }, {})
+
+  config.enabledEvmNetworkVersions = Object.values(config.enabledEvmNetworks).map(
+    (info: { networkVersion: number }) => info.networkVersion
+  )
 
   // Plugins
   if (window
@@ -146,14 +330,10 @@ const externalConfig = () => {
   ) {
     config.opts.plugins.setItemPlugin = window.setItemPlugin
   }
-  if (window
-    && window.getItemPlugin
-  ) {
+  if (window && window.getItemPlugin) {
     config.opts.plugins.getItemPlugin = window.getItemPlugin
   }
-  if (window
-    && window.userDataPluginApi
-  ) {
+  if (window && window.userDataPluginApi) {
     config.opts.plugins.userDataPluginApi = window.userDataPluginApi
   }
 
@@ -170,54 +350,61 @@ const externalConfig = () => {
     config.opts.hideShowPrivateKey = window.SWAP_HIDE_EXPORT_PRIVATEKEY
   }
 
-  if (window
-    && window.widgetERC20Tokens
-    && Object.keys(window.widgetERC20Tokens)
-  ) {
-    config.opts.ownTokens = window.widgetERC20Tokens
+  if (window?.widgetEvmLikeTokens?.length) {
+    config.opts.ownTokens = window.widgetEvmLikeTokens
   }
 
-  if ((config && config.isWidget) || config.opts.ownTokens) {
-    // clean old erc20 config - leave only swap token (need for correct swap work)
-    if (!config.isWidget) {
-      const newERC20 = {}
-      // newERC20.swap = config.erc20.swap
-      config.erc20 = newERC20
-    }
+  if (config?.isWidget || config?.opts.ownTokens?.length) {
+    // THIS IS CODE FOR SHOW ALL WIDGET TOKENS IN WALLET BY DEFAULT
+    // if (config?.opts.ownTokens?.length) {
+    //   config.opts.ownTokens.forEach((token) => {
+    //     config[token.standard][token.name.toLowerCase()] = token
 
-    if (Object.keys(config.opts.ownTokens).length) {
-      // Multi token mode
-      Object.keys(config.opts.ownTokens).forEach((key) => {
-        const tokenData = config.opts.ownTokens[key]
-        config.erc20[key] = tokenData
-      })
-    }
+    //     const baseCurrency = TOKEN_STANDARDS[token.standard].currency.toUpperCase()
+    //     const tokenName = token.name.toUpperCase()
+    //     const tokenValue = `{${baseCurrency}}${tokenName}`
 
-    // Clean not inited single-token
-    // Обходим оптимизацию, нам нельзя, чтобы в этом месте было соптимизированно в целую строку {#WIDGETTOKENCODE#}
+    //     reducers.core.markCoinAsVisible(tokenValue)
+    //   })
+    // }
+
+    // Clean not uninitialized single-token
+    // ? we can't use here as whole string {#WIDGETTOKENCODE#} ?
     const wcPb = `{#`
-    const wcP = (`WIDGETTOKENCODE`).toUpperCase()
+    const wcP = `WIDGETTOKENCODE`
     const wcPe = `#}`
-    const cleanERC20 = {}
-    Object.keys(config.erc20).forEach((key) => {
-      if (key !== (`${wcPb}${wcP}${wcPe}`)) {
-        cleanERC20[key] = config.erc20[key]
-      }
-    })
-    config.erc20 = cleanERC20
-  }
-  if (!config.isWidget && config.opts.addCustomERC20) {
-    // Add custom tokens
-    const customERC = GetCustromERC20()
 
-    Object.keys(customERC).forEach((tokenContract) => {
-      if (!config.erc20[customERC[tokenContract].symbol.toLowerCase()]) {
-        config.erc20[customERC[tokenContract].symbol.toLowerCase()] = {
-          address: customERC[tokenContract].address,
-          decimals: customERC[tokenContract].decimals,
-          fullName: customERC[tokenContract].symbol,
+    Object.keys(TOKEN_STANDARDS).forEach((key) => {
+      const standard = TOKEN_STANDARDS[key].standard
+      const ownTokens = {}
+
+      Object.keys(config[standard]).forEach((tokenSymbol) => {
+        if (tokenSymbol !== `${wcPb}${wcP}${wcPe}`) {
+          ownTokens[tokenSymbol] = config[standard][tokenSymbol]
         }
-      }
+      })
+
+      config[standard] = ownTokens
+    })
+  }
+
+  if (config.opts.addCustomTokens) {
+    const customTokenConfig = getCustomTokenConfig()
+
+    Object.keys(customTokenConfig).forEach((standard) => {
+      Object.keys(customTokenConfig[standard]).forEach((tokenContractAddr) => {
+        const tokenObj = customTokenConfig[standard][tokenContractAddr]
+        const { symbol } = tokenObj
+
+        if (!config[standard][symbol.toLowerCase()]) {
+          config[standard][symbol.toLowerCase()] = {
+            address: tokenObj.address,
+            decimals: tokenObj.decimals,
+            fullName: tokenObj.symbol,
+            canSwap: true
+          }
+        }
+      })
     })
   }
 
@@ -226,7 +413,7 @@ const externalConfig = () => {
     && window.widgetERC20Comisions
     && Object.keys(window.widgetERC20Comisions)
   ) {
-    let setErc20FromEther = false
+    let hasTokenAdminFee = false
 
     Object.keys(window.widgetERC20Comisions).filter((key) => {
       const curKey = key.toLowerCase()
@@ -258,8 +445,8 @@ const externalConfig = () => {
             }
           }
         } else {
-          if (curKey.toLowerCase() === `erc20` && address) {
-            setErc20FromEther = true
+          if (TOKEN_STANDARDS[curKey.toLowerCase()] && address) {
+            hasTokenAdminFee = true
             config.opts.fee[curKey.toLowerCase()] = {
               address,
             }
@@ -267,17 +454,26 @@ const externalConfig = () => {
         }
       }
     })
-    if (setErc20FromEther
-      && config.opts.fee.eth
-      && config.opts.fee.eth.min
-      && config.opts.fee.eth.fee
-    ) {
-      config.opts.fee.erc20.min = config.opts.fee.eth.min
-      config.opts.fee.erc20.fee = config.opts.fee.eth.fee
+
+    // add currency commissions for tokens
+    if (hasTokenAdminFee) {
+      Object.keys(TOKEN_STANDARDS).forEach((key) => {
+        const standard = TOKEN_STANDARDS[key].standard.toLowerCase()
+        const baseCurrency = TOKEN_STANDARDS[key].currency.toLowerCase()
+        const baseCurrencyFee = config.opts.fee[baseCurrency]
+
+        if (!config.opts.fee[standard]) {
+          config.opts.fee[standard] = {}
+        }
+
+        if (baseCurrencyFee?.min && baseCurrencyFee?.fee && config.opts.fee[standard].address) {
+          config.opts.fee[standard].min = baseCurrencyFee.min
+          config.opts.fee[standard].fee = baseCurrencyFee.fee
+        }
+      })
     }
   }
 
-  console.log('externalConfig', config)
   return config
 }
 

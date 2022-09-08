@@ -5,6 +5,8 @@ import SwapRoom from 'swap.room'
 import aggregation from './aggregation'
 import events from './events'
 import Order from './Order'
+import visibleMakers from 'common/whitelists/visibleMakers'
+import getCoinInfo from 'common/coins/getCoinInfo'
 
 
 const checkIncomeOrderFormat = (order) => {
@@ -33,13 +35,16 @@ const checkIncomeOrderFormat = (order) => {
       })(),
     },
     sellCurrency: util.typeforce.isCoinName,
+    sellBlockchain: '?String',
     sellAmount: util.typeforce.isNumeric,
     buyCurrency: util.typeforce.isCoinName,
+    buyBlockchain: '?String',
     buyAmount: util.typeforce.isNumeric,
     exchangeRate: util.typeforce.t.maybe(util.typeforce.isNumeric),
     isProcessing: '?Boolean',
     isRequested: '?Boolean',
     isPartial: '?Boolean',
+    isTurbo: '?Boolean',
     isHidden: '?Boolean',
     destination: util.typeforce.t.maybe({
       ownerAddress: '?String',
@@ -59,11 +64,18 @@ const checkIncomeOrderFormat = (order) => {
 const checkIncomeOrderOwner = ({ owner: { peer } }, fromPeer) =>
   peer === fromPeer
 
+
+const checkIncomeOrderWhitelisted = ({ owner: { peer } }) => {
+  //@ts-ignore: strictNullChecks
+  return !visibleMakers.length || visibleMakers.includes(peer)
+}
+
 const checkIncomeOrder = (order, fromPeer) => {
   const isFormatValid = checkIncomeOrderFormat(order)
   const isOwnerValid = checkIncomeOrderOwner(order, fromPeer)
+  const isOwnerWhitelisted = checkIncomeOrderWhitelisted(order)
 
-  return isFormatValid && isOwnerValid
+  return isFormatValid && isOwnerValid && isOwnerWhitelisted
 }
 
 
@@ -137,25 +149,26 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
         'id',
         'owner',
         'buyCurrency',
+        'buyBlockchain',
         'sellCurrency',
+        'sellBlockchain',
         'buyAmount',
         'exchangeRate',
         'sellAmount',
         'isRequested',
         'isProcessing',
         'isPartial',
+        'isTurbo',
         'isHidden',
         'destination',
       ))
 
-      this.app.services.room.sendMessagePeer(peer,
-        {
-          event: 'new orders',
-          data: {
-            orders: myOrders,
-          },
-        }
-      )
+      this.app.services.room.sendMessagePeer(peer, {
+        event: 'new orders',
+        data: {
+          orders: myOrders,
+        },
+      })
     }
   }
   _handleUserOnline = (peer) => {
@@ -227,18 +240,32 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
   _create(data) {
     const { id, buyAmount, sellAmount, buyCurrency, sellCurrency, ...rest } = data
 
-    const buy = buyCurrency.toUpperCase()
-    const sell = sellCurrency.toUpperCase()
+    const {
+      blockchain: buyBlockchain,
+    } = getCoinInfo(buyCurrency)
+    const {
+      blockchain: sellBlockchain,
+    } = getCoinInfo(sellCurrency)
+
     // Error in the bottom line: Cannot read property 'precision' of undefined
-    const roundedBuyAmount = new BigNumber(buyAmount).dp(constants.COIN_DATA[buy].precision)
-    const roundedSellAmount = new BigNumber(sellAmount).dp(constants.COIN_DATA[sell].precision)
+    if (
+      !constants.COIN_DATA[buyCurrency.toUpperCase()]?.precision ||
+      !constants.COIN_DATA[sellCurrency.toUpperCase()]?.precision
+    ) {
+      return
+    }
+
+    const roundedBuyAmount = new BigNumber(buyAmount).dp(constants.COIN_DATA[buyCurrency.toUpperCase()].precision)
+    const roundedSellAmount = new BigNumber(sellAmount).dp(constants.COIN_DATA[sellCurrency.toUpperCase()].precision)
 
     const order = new Order(this.app, this, {
       id:           id || this.getUniqueId(),
       buyAmount:    roundedBuyAmount,
       sellAmount:   roundedSellAmount,
-      buyCurrency:  buy,
-      sellCurrency: sell,
+      buyCurrency:  buyCurrency,
+      buyBlockchain,
+      sellCurrency: sellCurrency,
+      sellBlockchain,
       ...rest,
     })
 
@@ -262,7 +289,8 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
       if (checkIncomeOrder(data, fromPeer)) {
         const order = this._create(data)
 
-        newOrders.push(order)
+        //@ts-ignore: strictNullChecks
+        order && newOrders.push(order)
       }
     })
 
@@ -302,7 +330,9 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
       'id',
       'owner',
       'buyCurrency',
+      'buyBlockchain',
       'sellCurrency',
+      'sellBlockchain',
       'buyAmount',
       'sellAmount',
       'exchangeRate',
@@ -311,6 +341,7 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
       'isRequested',
       'isProcessing',
       'isPartial',
+      'isTurbo',
       'isHidden',
       'destination',
     ))
@@ -339,6 +370,9 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
       ...data,
       owner: this.app.services.auth.getPublicData(),
     })
+
+    if (!order) return
+
     this._saveMyOrders()
 
     this.app.services.room.sendMessageRoom({
@@ -349,13 +383,16 @@ class SwapOrders extends aggregation(ServiceInterface, Collection) {
           'id',
           'owner',
           'buyCurrency',
+          'buyBlockchain',
           'exchangeRate',
           'sellCurrency',
+          'sellBlockchain',
           'buyAmount',
           'sellAmount',
           'isRequested',
           'isProcessing',
           'isPartial',
+          'isTurbo',
           'isHidden',
           'destination',
         ),

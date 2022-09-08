@@ -1,27 +1,35 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { EventEmitter } from 'events'
 import { ConnectorEvent } from '@web3-react/types'
+import { BigNumber } from 'bignumber.js'
 import Web3 from 'web3'
+import { isMobile } from 'react-device-detect'
+import config from 'app-config'
 import SUPPORTED_PROVIDERS from './providers/supported'
 import INJECTED_TYPE from './providers/InjectedType'
-import getProviderByName from './providers'
-import { isInjectedEnabled } from './providers'
-import { isMobile } from 'react-device-detect'
-
+import getProviderByName, { isInjectedEnabled } from './providers'
 
 export default class Web3Connect extends EventEmitter {
-  _cachedProvider = null
-  _cachedProviderName = null
-  _cachedChainId = null
+  _cachedProvider: EthereumProvider | null = null
+
+  _cachedWeb3: EthereumProvider | null = null
+
+  _cachedProviderName: string | null = null
+
+  _cachedChainId: number | null = null
+
   _cachedAddress = null
-  _cachedWeb3 = null
+
   _isConnected = false
 
   _isDAppBrowser = false
 
   _web3RPC = null
+
   _web3ChainId = null
 
   _inited = false
+
   _walletLocked = false
 
   constructor(options) {
@@ -38,9 +46,10 @@ export default class Web3Connect extends EventEmitter {
 
     // Предыдущий провайдер (после перезагрузки восстанавливаем его)
     const cachedProviderName = localStorage.getItem(`WEB3CONNECT:PROVIDER`)
+
     if (cachedProviderName) {
-      //@ts-ignore
       const lsProvider = getProviderByName(this, cachedProviderName)
+
       if (lsProvider) {
         lsProvider.isConnected().then(async (isConnected) => {
           if (isConnected) {
@@ -89,11 +98,12 @@ export default class Web3Connect extends EventEmitter {
       case INJECTED_TYPE.METAMASK: return 'MetaMask'
       case INJECTED_TYPE.TRUST: return 'Trust Wallet'
       case INJECTED_TYPE.LIQUALITY: return 'Liquality Wallet'
+      default: return 'Not installed'
     }
   }
 
   getProviderType() {
-     switch (this._cachedProviderName) {
+    switch (this._cachedProviderName) {
       case SUPPORTED_PROVIDERS.WALLETCONNECT:
         return SUPPORTED_PROVIDERS.WALLETCONNECT
       case SUPPORTED_PROVIDERS.INJECTED:
@@ -111,9 +121,9 @@ export default class Web3Connect extends EventEmitter {
       if ((!!window.opr && !!window.opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) return INJECTED_TYPE.OPERA
 
       return INJECTED_TYPE.UNKNOWN
-    } else {
-      return INJECTED_TYPE.NONE
     }
+    return INJECTED_TYPE.NONE
+
   }
 
   _checkIsDAppBrowser() {
@@ -131,24 +141,25 @@ export default class Web3Connect extends EventEmitter {
     return isInjectedEnabled()
   }
 
-  onInit(cb) {
-    const waitInit = () => {
+  async onInit(cb) {
+    const waitInit = async () => {
       if (this._inited) {
         cb()
       } else {
-        setTimeout( waitInit, 100 )
+        await setTimeout(waitInit, 100)
       }
     }
-    waitInit()
+    await waitInit()
   }
 
   hasCachedProvider() {
     const cachedProviderName = localStorage.getItem(`WEB3CONNECT:PROVIDER`)
+
     if (cachedProviderName) {
-      //@ts-ignore
       const lsProvider = getProviderByName(this, cachedProviderName)
       if (lsProvider) return true
     }
+
     return false
   }
 
@@ -166,7 +177,7 @@ export default class Web3Connect extends EventEmitter {
       this._cachedProvider.on(ConnectorEvent.Update, (data) => {
         if (data
           && data.account
-          && data.account != this._cachedAddress
+          && data.account !== this._cachedAddress
         ) {
           this._cachedAddress = data.account
           this.emit('accountChange')
@@ -181,6 +192,7 @@ export default class Web3Connect extends EventEmitter {
           this.emit('updated')
         }
       })
+
       this._cachedProvider.on(ConnectorEvent.Deactivate, () => {
         this.clearCache()
         this.emit('disconnect')
@@ -190,50 +202,52 @@ export default class Web3Connect extends EventEmitter {
   }
 
   async _cacheProviderData() {
-    this._cachedAddress = await this._cachedProvider.getAccount()
-    this._cachedChainId = await this._cachedProvider.getChainId()
-    const _web3provider = await this._cachedProvider.getProvider()
-    await _web3provider.enable()
+    if (this._cachedProvider) {
+      this._cachedAddress = await this._cachedProvider.getAccount()
+      this._cachedChainId = await this._cachedProvider.getChainId()
+      const _web3provider = await this._cachedProvider.getProvider()
+      await _web3provider.enable()
 
-    // @ToDo - Hard fix walletconnect
-    // https://github.com/WalletConnect/walletconnect-monorepo/issues/384
-    if (window) {
-      window.send = (e,t) => {
-        return _web3provider.send(e,t)
+      // @ToDo - Hard fix walletconnect
+      // https://github.com/WalletConnect/walletconnect-monorepo/issues/384
+      if (window) {
+        window.send = (e, t) => _web3provider.send(e, t)
       }
-    }
 
-    this._cachedWeb3 = new Web3(
-      _web3provider
-    )
-    this._cachedWeb3.isMetamask = true
+      this._cachedWeb3 = new Web3(_web3provider)
+      this._cachedWeb3.isMetamask = true
+    }
   }
 
   async connectTo(provider) {
     this._walletLocked = false
+
     if (SUPPORTED_PROVIDERS[provider]) {
       const _connector = getProviderByName(this, provider, true)
+
       if (_connector) {
         if (await _connector.Connect()) {
           localStorage.setItem(`WEB3CONNECT:PROVIDER`, provider)
           this._cachedProviderName = provider
           this._cachedProvider = _connector
           this._setupEvents()
+
           await this._cacheProviderData()
+
           this._isConnected = true
           this.emit('connected')
           this.emit('updated')
           return true
-        } else {
-          if (_connector.isLocked()) {
-            this._walletLocked = true
-          }
         }
+        if (_connector.isLocked()) {
+          this._walletLocked = true
+        }
+
       }
       return false
-    } else {
-      throw new Error(`Not supported provider ${provider}`)
     }
+    throw new Error(`Not supported provider ${provider}`)
+
   }
 
   getProviders = () => {
@@ -243,16 +257,36 @@ export default class Web3Connect extends EventEmitter {
       : providers.filter((name) => name !== SUPPORTED_PROVIDERS.INJECTED)
   }
 
+  getChainId = () => this._cachedChainId
+
   isConnected() {
-    return (this._cachedProvider) ? true : false
+    return !!(this._cachedProvider)
+  }
+
+  getNetworksId = () => {
+    const decimalCurrrentId = this._web3ChainId ? Number(new BigNumber(this._web3ChainId).toString(10)) : undefined
+    const dicimalCachedId = this._cachedChainId ? Number(new BigNumber(this._cachedChainId).toString(10)) : undefined
+
+    return {
+      decimalCurrrentId,
+      dicimalCachedId,
+    }
   }
 
   isCorrectNetwork() {
-    // @ToDo - test Metamask dAppBrowser
+    const { decimalCurrrentId, dicimalCachedId } = this.getNetworksId()
+
+    const supportedNetwork = config.evmNetworkVersions.includes(decimalCurrrentId)
+      || config.evmNetworkVersions.includes(dicimalCachedId)
+
     return (
       `${this._web3ChainId}` === `${this._cachedChainId}`
+      // @ts-ignore: strictNullChecks
+      || this._web3ChainId === Number.parseInt(this._cachedChainId, 10)
       || `0x0${this._web3ChainId}` === `${this._cachedChainId}`
       || `0x${this._web3ChainId}` === `${this._cachedChainId}` // Opera Mobile
+      || supportedNetwork
+      || false
     )
   }
 
@@ -271,6 +305,7 @@ export default class Web3Connect extends EventEmitter {
   async Disconnect() {
     if (this._cachedProvider) {
       this._isConnected = false
+
       await this._cachedProvider.Disconnect()
       this.clearCache()
       this.emit('disconnect')

@@ -1,8 +1,6 @@
 import BigInteger from 'bigi'
 
-import { BigNumber } from 'bignumber.js'
 import * as bitcoin from 'bitcoinjs-lib'
-import * as bip32 from 'bip32'
 import * as bip39 from 'bip39'
 
 import bitcoinMessage from 'bitcoinjs-message'
@@ -13,11 +11,9 @@ import actions from 'redux/actions'
 import typeforce from 'swap.app/util/typeforce'
 import config from 'app-config'
 
-import { localisePrefix } from 'helpers/locale'
+import * as mnemonicUtils from 'common/utils/mnemonic'
 
-import * as mnemonicUtils from '../../../../common/utils/mnemonic'
-
-import { default as bitcoinUtils } from '../../../../common/utils/coin/btc'
+import { default as bitcoinUtils } from 'common/utils/coin/btc'
 
 
 const NETWORK = (process.env.MAINNET) ? `MAINNET` : `TESTNET`
@@ -32,15 +28,6 @@ const hasAdminFee = (config
   && config.opts.fee.btc.min
 ) ? config.opts.fee.btc : false
 
-const getRandomMnemonicWords = () => bip39.generateMnemonic()
-const validateMnemonicWords = (mnemonic) => bip39.validateMnemonic(convertMnemonicToValid(mnemonic))
-
-
-const sweepToMnemonic = (mnemonic, path) => {
-  const wallet = getWalletByWords(mnemonic, path)
-  localStorage.setItem(constants.privateKeyNames.btcMnemonic, wallet.WIF)
-  return wallet.WIF
-}
 
 const getMainPublicKey = () => {
   const {
@@ -52,58 +39,26 @@ const getMainPublicKey = () => {
   return btcData.publicKey.toString('Hex')
 }
 
-const isSweeped = () => {
-  const {
-    user: {
-      btcData,
-      btcMnemonicData,
-    },
-  } = getState()
-
-  if (btcMnemonicData
-    && btcMnemonicData.address
-    && btcData
-    && btcData.address
-    && btcData.address.toLowerCase() !== btcMnemonicData.address.toLowerCase()
-  ) return false
-
-  return true
-}
-
-const getSweepAddress = () => {
-  const {
-    user: {
-      btcMnemonicData,
-    },
-  } = getState()
-
-  if (btcMnemonicData && btcMnemonicData.address) return btcMnemonicData.address
-  return false
-}
-
-const convertMnemonicToValid = (mnemonic) => mnemonicUtils.convertMnemonicToValid(mnemonic)
-
 const getWalletByWords = (mnemonic: string, walletNumber: number = 0, path: string = '') => {
   return mnemonicUtils.getBtcWallet(btc.network, mnemonic, walletNumber, path)
 }
 
 const auth = (privateKey) => {
   if (privateKey) {
-    const hash = bitcoin.crypto.sha256(privateKey)
-    const d = BigInteger.fromBuffer(hash)
+    try {
+      const account = bitcoin.ECPair.fromWIF(privateKey, btc.network)
+      const { address } = bitcoin.payments.p2pkh({ pubkey: account.publicKey, network: btc.network })
+      const { publicKey } = account
 
-    const keyPair = bitcoin.ECPair.fromWIF(privateKey, btc.network)
-
-    const account = bitcoin.ECPair.fromWIF(privateKey, btc.network) // eslint-disable-line
-    const { address } = bitcoin.payments.p2pkh({ pubkey: account.publicKey, network: btc.network })
-    const { publicKey } = account
-
-    return {
-      account,
-      keyPair,
-      address,
-      privateKey,
-      publicKey,
+      return {
+        account,
+        keyPair: account,
+        address,
+        privateKey,
+        publicKey,
+      }
+    } catch (error) {
+      console.log('btc auth', error, btc.network)
     }
   }
 }
@@ -112,33 +67,19 @@ const getPrivateKeyByAddress = (address) => {
   const {
     user: {
       btcData: {
-        address: oldAddress,
+        address: dataAddress,
         privateKey,
-      },
-      btcMnemonicData: {
-        address: mnemonicAddress,
-        privateKey: mnemonicKey,
-      } = {
-        address: undefined,
-        privateKey: undefined,
       },
     },
   } = getState()
 
-  if (oldAddress === address) return privateKey
-  if (mnemonicAddress === address) return mnemonicKey
+  if (dataAddress === address) return privateKey
 }
 
-const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
-  let sweepToMnemonicReady = false
-
-  if (privateKey
-    && mnemonic
-    && mnemonicKeys
-    && mnemonicKeys.btc === privateKey
-  ) sweepToMnemonicReady = true
-
-  if (!privateKey && mnemonic) sweepToMnemonicReady = true
+const login = (
+  privateKey,
+  mnemonic: string | null = null,
+) => {
 
   if (privateKey) {
     const hash = bitcoin.crypto.sha256(privateKey)
@@ -151,76 +92,26 @@ const login = (privateKey, mnemonic = null, mnemonicKeys = null) => {
     // keyPair     = bitcoin.ECPair.makeRandom({ network: btc.network })
     // privateKey  = keyPair.toWIF()
     // use random 12 words
+    //@ts-ignore: strictNullChecks
     if (!mnemonic) mnemonic = bip39.generateMnemonic()
 
+    //@ts-ignore: strictNullChecks
     const accData = getWalletByWords(mnemonic)
-    console.log('Btc. Generated wallet from random 12 words')
-    console.log(accData)
+
     privateKey = accData.WIF
-    localStorage.setItem(constants.privateKeyNames.btcMnemonic, privateKey)
   }
 
   localStorage.setItem(constants.privateKeyNames.btc, privateKey)
 
   const data = {
     ...auth(privateKey),
-    isMnemonic: sweepToMnemonicReady,
     isBTC: true,
   }
 
   window.getBtcAddress = () => data.address
   window.getBtcData = () => data
 
-  console.info('Logged in with Bitcoin', data)
   reducers.user.setAuthData({ name: 'btcData', data })
-  if (!sweepToMnemonicReady) {
-    // Auth with our mnemonic account
-    if (mnemonic === `-`) {
-      console.error('Sweep. Cant auth. Need new mnemonic or enter own for re-login')
-      return
-    }
-
-    if (!mnemonicKeys
-      || !mnemonicKeys.btc
-    ) {
-      console.error('Sweep. Cant auth. Login key undefined')
-      return
-    }
-
-    const mnemonicData = {
-      ...auth(mnemonicKeys.btc),
-      isMnemonic: true,
-    }
-    console.info('Logged in with Bitcoin Mnemonic', mnemonicData)
-    reducers.user.addWallet({
-      name: 'btcMnemonicData',
-      data: {
-        currency: 'BTC',
-        fullName: 'Bitcoin (New)',
-        balance: 0,
-        isBalanceFetched: false,
-        balanceError: null,
-        infoAboutCurrency: null,
-        ...mnemonicData,
-      },
-    })
-    new Promise(async (resolve) => {
-      const balanceData = await fetchBalanceStatus(mnemonicData.address)
-      if (balanceData) {
-        reducers.user.setAuthData({
-          name: 'btcMnemonicData',
-          data: {
-            //@ts-ignore
-            ...balanceData,
-            isBalanceFetched: true,
-          },
-        })
-      } else {
-        reducers.user.setBalanceError({ name: 'btcMnemonicData' })
-      }
-      resolve(true)
-    })
-  }
 
   return privateKey
 }
@@ -320,11 +211,11 @@ const fetchTx = (hash, cacheResponse) => bitcoinUtils.fetchTx({
   cacheResponse,
 })
 
-const fetchTxInfo = (hash, cacheResponse) => bitcoinUtils.fetchTxInfo({
+const fetchTxInfo = (hash, cacheResponse, serviceFee = null) => bitcoinUtils.fetchTxInfo({
   hash,
   NETWORK,
   cacheResponse,
-  hasAdminFee,
+  hasAdminFee: serviceFee || hasAdminFee,
 })
 
 
@@ -343,38 +234,32 @@ const getAllMyAddresses = () => {
   const {
     user: {
       btcData,
-      btcMnemonicData,
       btcMultisigSMSData,
       btcMultisigUserData,
-      btcMultisigG2FAData,
       btcMultisigPinData,
     },
   } = getState()
 
   const retData = []
-  // Проверяем, был ли sweep
-  if (btcMnemonicData
-    && btcMnemonicData.address
-    && btcData
-    && btcData.address
-    && btcMnemonicData.address !== btcData.address
-  ) {
-    retData.push(btcMnemonicData.address.toLowerCase())
-  }
 
+  //@ts-ignore: strictNullChecks
   retData.push(btcData.address.toLowerCase())
 
-  if (btcMultisigSMSData && btcMultisigSMSData.address) retData.push(btcMultisigSMSData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (btcMultisigSMSData?.address) retData.push(btcMultisigSMSData.address.toLowerCase())
   // @ToDo - SMS MultiWallet
 
-  if (btcMultisigUserData && btcMultisigUserData.address) retData.push(btcMultisigUserData.address.toLowerCase())
-  if (btcMultisigUserData && btcMultisigUserData.wallets && btcMultisigUserData.wallets.length) {
+  //@ts-ignore: strictNullChecks
+  if (btcMultisigUserData?.address) retData.push(btcMultisigUserData.address.toLowerCase())
+  if (btcMultisigUserData?.wallets?.length) {
     btcMultisigUserData.wallets.map((wallet) => {
+      //@ts-ignore: strictNullChecks
       retData.push(wallet.address.toLowerCase())
     })
   }
 
-  if (btcMultisigPinData && btcMultisigPinData.address) retData.push(btcMultisigPinData.address.toLowerCase())
+  //@ts-ignore: strictNullChecks
+  if (btcMultisigPinData?.address) retData.push(btcMultisigPinData.address.toLowerCase())
 
   return retData
 }
@@ -383,7 +268,6 @@ const getDataByAddress = (address) => {
   const {
     user: {
       btcData,
-      btcMnemonicData,
       btcMultisigSMSData,
       btcMultisigUserData,
       btcMultisigG2FAData,
@@ -392,7 +276,6 @@ const getDataByAddress = (address) => {
 
   const founded = [
     btcData,
-    btcMnemonicData,
     btcMultisigSMSData,
     btcMultisigUserData,
     ...(
@@ -436,8 +319,17 @@ const addressIsCorrect = (address) => {
   return false
 }
 
-//@ts-ignore
-const send = ({ from, to, amount, feeValue, speed, stateCallback } = {}) => {
+
+const send = (params) => {
+  const {
+    from,
+    to,
+    amount,
+    feeValue,
+    speed, 
+    serviceFee = hasAdminFee,
+  } = params
+
   return new Promise(async (ready, reject) => {
     try {
       let privateKey = null
@@ -445,98 +337,47 @@ const send = ({ from, to, amount, feeValue, speed, stateCallback } = {}) => {
         privateKey = getPrivateKeyByAddress(from)
       } catch (ePrivateKey) {
         reject({ message: `Fail get data for send address` + ePrivateKey.message })
-        return
       }
 
-      const keyPair = bitcoin.ECPair.fromWIF(privateKey, btc.network)
-
-      // fee - from amount - percent
-      let feeFromAmount: number | BigNumber = new BigNumber(0)
-
-      if (hasAdminFee) {
-        const {
-          fee: adminFee,
-          min: adminFeeMinValue,
-        } = config.opts.fee.btc
-
-        const adminFeeMin = new BigNumber(adminFeeMinValue)
-
-        feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-        if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-        feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue() // Admin fee in satoshi
-      }
-      feeFromAmount = feeFromAmount.toNumber()
+      let preparedFees
 
       try {
-        feeValue = feeValue || await btc.estimateFeeValue({ inSatoshis: true, speed, amount})
-      } catch (eFee) {
-        reject({ message: `Fail estimate fee ` + eFee.message })
-        return
+        preparedFees = await bitcoinUtils.prepareFees({
+          amount,
+          serviceFee,
+          feeValue,
+          speed,
+          from,
+          to,
+          NETWORK
+        })
+      } catch (prepareFeesError) {
+        reject({ message: `Fail prepare fees: ${prepareFeesError.message}` })
       }
+      const {
+        fundValue,
+        skipValue,
+        feeFromAmount,
+        unspents,
+      } = preparedFees
 
-      let unspents = []
+      let rawTx
       try {
-        unspents = await fetchUnspents(from)
-      } catch (eUnspents) {
-        reject({ message: `Fail get unspents `+ eUnspents.message})
-        return
-      }
-      unspents = await prepareUnspents({ unspents, amount })
-      const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-      const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-      const residue = totalUnspent - fundValue - feeValue - feeFromAmount
-      const psbt = new bitcoin.Psbt({ network: btc.network })
-
-      // add main output for recipient
-      psbt.addOutput({
-        address: to,
-        value: fundValue,
-      })
-      // if we have residue wich more then DUST value
-      // then return this value to the sender wallet
-      if (residue > 546) {
-        psbt.addOutput({
-          address: from,
-          value: residue
+        rawTx = await bitcoinUtils.prepareRawTx({
+          from,
+          to,
+          fundValue,
+          skipValue,
+          serviceFee,
+          feeFromAmount,
+          unspents,
+          privateKey,
+          network: btc.network,
+          NETWORK
         })
+      } catch (prepareRawTxError) {
+        reject({ message: `Fail prepare raw tx: ${prepareRawTxError.message}` })
       }
-
-      if (hasAdminFee) {
-        try {
-          psbt.addOutput({
-            address: hasAdminFee.address,
-            value: feeFromAmount,
-          })
-        } catch (eAdminFee) {
-          reject({ message: `Fail add service fee` + eAdminFee.message })
-          return
-        }
-      }
-
-      for (let i = 0; i < unspents.length; i++) {
-        const { txid, vout } = unspents[i]
-        let rawTx = false
-
-        try {
-          rawTx = await fetchTxRaw(txid, false)
-        } catch (eFetchTxRaw) {
-          reject({ message: `Fail fetch tx raw `+ txid + `(`+eFetchTxRaw.message+`)` })
-          return
-        }
-
-        psbt.addInput({
-          hash: txid,
-          index: vout,
-          //@ts-ignore
-          nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
-        })
-      }
-
-      psbt.signAllInputs(keyPair)
-      psbt.finalizeAllInputs()
-
-      const rawTx = psbt.extractTransaction().toHex();
 
       try {
         const broadcastAnswer = await broadcastTx(rawTx)
@@ -553,10 +394,29 @@ const send = ({ from, to, amount, feeValue, speed, stateCallback } = {}) => {
   })
 }
 
+const sendTransaction = async ({ to, amount }) => {
+  // from main btc wallet
+
+  const { user: { btcData: { address } } } = getState()
+
+  if (false) { // fake tx - turboswaps debug
+    const txHash = '1324154f6086b6b137be8763f43096cacd5450f9561da061161638ed68ce39c3'
+    return txHash
+  }
+
+  const txHash = await send({
+    from: address,
+    to,
+    amount,
+    speed: 'fast',
+  })
+
+  return txHash
+}
+
 const prepareUnspents = ({ amount, unspents }) => bitcoinUtils.prepareUnspents({
   amount,
   unspents,
-  NETWORK,
 })
 
 window.prepareUnspents = prepareUnspents
@@ -572,14 +432,13 @@ const broadcastTx = (txRaw) => bitcoinUtils.broadcastTx({
 
 const signMessage = (message, encodedPrivateKey) => {
   const keyPair = bitcoin.ECPair.fromWIF(encodedPrivateKey, [bitcoin.networks.bitcoin, bitcoin.networks.testnet])
+  //@ts-ignore: strictNullChecks
   const privateKeyBuff = Buffer.from(keyPair.privateKey)
 
   const signature = bitcoinMessage.sign(message, privateKeyBuff, keyPair.compressed)
 
   return signature.toString('base64')
 }
-
-const getReputation = () => Promise.resolve(0)
 
 const checkWithdraw = (scriptAddress) => bitcoinUtils.checkWithdraw({
   scriptAddress,
@@ -593,28 +452,22 @@ export default {
   getBalance,
   getTransaction,
   send,
+  sendTransaction,
   fetchUnspents,
   broadcastTx,
   fetchTx,
   fetchTxInfo,
   fetchBalance,
   signMessage,
-  getReputation,
   getTx,
   getLinkToInfo,
   getInvoices,
   getWalletByWords,
-  getRandomMnemonicWords,
-  validateMnemonicWords,
-  sweepToMnemonic,
-  isSweeped,
-  getSweepAddress,
   getAllMyAddresses,
   getDataByAddress,
   getMainPublicKey,
   getTxRouter,
   fetchTxRaw,
   addressIsCorrect,
-  convertMnemonicToValid,
   prepareUnspents,
 }

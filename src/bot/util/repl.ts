@@ -1,5 +1,6 @@
-import swap from 'simple.swap.core'
+import * as swap from 'simple.swap.core'
 import repl from 'repl'
+
 
 const {
   on: { onFinish },
@@ -7,8 +8,8 @@ const {
   orders: { request, subscribe },
   swap: { onStep, get, start },
 } = swap.helpers
-//@ts-ignore
-const { app, auth, room, wallet, orders } = swap.setup()
+
+const { app, auth, room, wallet, orders } = swap.setup({})
 
 const swapID = process.argv[2]
 
@@ -20,7 +21,6 @@ const _ = (async () => {
   await ready(room)
 
   console.clear()
-  
   const swap_repl = repl.start()
 
   if (swapID) {
@@ -29,7 +29,9 @@ const _ = (async () => {
 
     const [ peer, id ] = swapID.split('-')
 
+    //@ts-ignore: strictNullChecks
     if (peer !== room.peer) {
+      //@ts-ignore: strictNullChecks
       console.log(`Peers do not match:`, peer, room.peer)
     }
 

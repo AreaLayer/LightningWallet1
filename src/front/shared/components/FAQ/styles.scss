@@ -17,15 +17,6 @@
   }
 }
 
-.dark {
-  h5 {
-    color: white;
-  }
-  div {
-    color: #7f8a91;
-  }
-}
-
 .tab {
   width: 100%;
   margin-bottom: 5px;
@@ -37,6 +28,11 @@
     padding-left: 23px;
     @include ff-semibold;
     cursor: pointer;
+    color: var(--color);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    line-height: 1.2;
   }
 
   &__content {
@@ -44,6 +40,7 @@
     opacity: 0;
     overflow: hidden;
     visibility: hidden;
+    color: var(--color-indicating);
 
     &_active {
       visibility: visible;
@@ -57,6 +54,11 @@
 
 $chrestStripWidth: 2px;
 $chrestStripHeight: 12px;
+
+.feeInfoTitle {
+  margin: 0 0 0.5em;
+  font-size: 1.1em;
+}
 
 .chrest {
   position: absolute;
@@ -76,7 +78,7 @@ $chrestStripHeight: 12px;
     display: block;
     content: '';
     position: relative;
-    background: #8e9aa3;
+    background: var(--color-indicating);
     border-radius: 1px;
   }
 
@@ -84,13 +86,13 @@ $chrestStripHeight: 12px;
     height: $chrestStripWidth;
     width: $chrestStripHeight;
     left: 0;
-    top: ($chrestStripHeight / 2) + ($chrestStripWidth / 2);
+    top: ($chrestStripHeight * 0.5) + ($chrestStripWidth * 0.5);
   }
 
   &::after {
     width: $chrestStripWidth;
     height: $chrestStripHeight;
-    left: ($chrestStripHeight / 2) - ($chrestStripWidth / 2);
+    left: ($chrestStripHeight * 0.5) - ($chrestStripWidth * 0.5);
     top: 0px;
   }
 }

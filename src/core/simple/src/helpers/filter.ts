@@ -1,23 +1,25 @@
 import debug from 'debug'
 
 import history from './history'
-import swap from './swap'
+import * as swap from './swap'
 
-export const hash2id = (hash) =>
+export const hash2id = (app, hash) =>
   new Promise(async resolve => {
     const swapHisory = history.getAll()
 
     swapHisory.forEach(swapID => {
-      const currentSwap = swap.get(swapID)
+      const currentSwap = swap.get(app, swapID)
       const flowState = currentSwap.flow.state
       const currency = currentSwap.flow._flowName.split('2')[0].toLowerCase()
       let currentHash = null
 
       switch (currency) {
         case 'btc':
+          //@ts-ignore: strictNullChecks
           currentHash = flowState.utxoScriptCreatingTransactionHash
           break
         case 'eth':
+          //@ts-ignore: strictNullChecks
           currentHash = flowState.ethSwapCreationTransactionHash
           break
       }
@@ -30,12 +32,12 @@ export const hash2id = (hash) =>
     resolve(null)
   })
 
-export const secret2id = (secret) =>
+export const secret2id = (app, secret) =>
   new Promise(async resolve => {
     const swapHisory = history.getAll()
 
     swapHisory.forEach(swapID => {
-      const currentSwap = swap.get(swapID)
+      const currentSwap = swap.get(app, swapID)
       const currentSecret = currentSwap.flow.state.secret
 
       if (currentSecret && currentSecret === secret) {

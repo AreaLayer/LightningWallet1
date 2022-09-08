@@ -6,6 +6,7 @@ import { AtomicAB2UTXO } from 'swap.swap'
 export default (tokenName) => {
 
   class ETHTOKEN2GHOST extends AtomicAB2UTXO {
+    static blockchainName = `ETH`
 
     _flowName: string
     ethTokenSwap: any
@@ -16,7 +17,7 @@ export default (tokenName) => {
       return `${this.getFromName()}2${this.getToName()}`
     }
     static getFromName() {
-      return tokenName.toUpperCase()
+      return `{${this.blockchainName}}${tokenName.toUpperCase()}`
     }
     static getToName() {
       return constants.COINS.ghost
@@ -78,7 +79,7 @@ export default (tokenName) => {
         isGhostWithdrawn: false,
 
         ethSwapWithdrawTransactionHash: null,
-        ghostSwapWithdrawTransactionHash: null,
+        utxoSwapWithdrawTransactionHash: null,
 
         refundTransactionHash: null,
         isRefunded: false,
@@ -110,6 +111,7 @@ export default (tokenName) => {
       super._persistState()
     }
 
+    //@ts-ignore: strictNullChecks
     _getSteps() {
       const flow = this
 
@@ -131,7 +133,7 @@ export default (tokenName) => {
 
         () => {
           debug('swap.core:flow')(`waiting verify ghost script`)
-          // this.verifyGhostScript()
+          this.verifyScript()
         },
 
         // 4. Check balance
@@ -159,9 +161,9 @@ export default (tokenName) => {
 
         async () => {
           await util.helpers.repeatAsyncUntilResult((stopRepeat) => {
-            const { secret, utxoScriptValues, ghostSwapWithdrawTransactionHash } = flow.state
+            const { secret, utxoScriptValues, utxoSwapWithdrawTransactionHash } = flow.state
 
-            if (ghostSwapWithdrawTransactionHash) {
+            if (utxoSwapWithdrawTransactionHash) {
               return true
             }
 
@@ -177,7 +179,7 @@ export default (tokenName) => {
             })
               .then((hash) => {
                 flow.setState({
-                  ghostSwapWithdrawTransactionHash: hash,
+                  utxoSwapWithdrawTransactionHash: hash,
                 }, true)
                 return true
               })
@@ -193,12 +195,12 @@ export default (tokenName) => {
 
         () => {
           flow.swap.room.once('request swap finished', () => {
-            const { ghostSwapWithdrawTransactionHash } = flow.state
+            const { utxoSwapWithdrawTransactionHash } = flow.state
 
             flow.swap.room.sendMessage({
               event: 'swap finished',
               data: {
-                ghostSwapWithdrawTransactionHash,
+                utxoSwapWithdrawTransactionHash,
               },
             })
           })
@@ -215,7 +217,6 @@ export default (tokenName) => {
     }
 
     _checkSwapAlreadyExists() {
-      const { participant } = this.swap
       const flow = this
 
       const swapData = {
@@ -227,7 +228,6 @@ export default (tokenName) => {
     }
 
     async tryRefund() {
-      const { participant } = this.swap
       const { secretHash } = this.state
 
       const refundHandler = (hash = null) => {
@@ -317,10 +317,10 @@ export default (tokenName) => {
       }, (hash) => {
         debug('swap.core:flow')(`TX hash=${hash}`)
         this.setState({
-          ghostSwapWithdrawTransactionHash: hash,
+          utxoSwapWithdrawTransactionHash: hash,
         })
       })
-      debug('swap.core:flow')(`TX withdraw sent: ${this.state.ghostSwapWithdrawTransactionHash}`)
+      debug('swap.core:flow')(`TX withdraw sent: ${this.state.utxoSwapWithdrawTransactionHash}`)
 
       this.finishStep({
         isGhostWithdrawn: true,

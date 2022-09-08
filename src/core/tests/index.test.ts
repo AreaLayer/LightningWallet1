@@ -24,9 +24,7 @@ const ethOwner = {
   publicKey: '02dfae561eb061072da126f1aed7d47202a36b762e89e913c400cdb682360d9620',
 }
 
-//@ts-ignore
 const btcOwnerBitcoin = new Bitcoin()
-//@ts-ignore
 const ethOwnerBitcoin = new Bitcoin()
 
 const btcSwap = new BtcSwap({
@@ -35,6 +33,7 @@ const btcSwap = new BtcSwap({
   broadcastTx: (tx) => btcOwnerBitcoin.broadcastTx(tx),
 })
 
+//@ts-ignore: strictNullChecks
 const swapAppInstance = SwapApp.shared()
 console.log('swapAppInstance =', swapAppInstance)
 btcSwap._initSwap(swapAppInstance)

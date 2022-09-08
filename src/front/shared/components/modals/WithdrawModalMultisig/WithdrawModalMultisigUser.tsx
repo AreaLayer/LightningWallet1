@@ -23,17 +23,12 @@ import { isMobile } from 'react-device-detect'
 import InvoiceInfoBlock from 'components/InvoiceInfoBlock/InvoiceInfoBlock'
 
 import typeforce from 'swap.app/util/typeforce'
-// import { isCoinAddress } from 'swap.app/util/typeforce'
-import minAmount from 'helpers/constants/minAmount'
+import MIN_AMOUNT from 'common/helpers/constants/MIN_AMOUNT'
 import { inputReplaceCommaWithDot } from 'helpers/domUtils'
 import links from 'helpers/links'
-import CopyToClipboard from 'react-copy-to-clipboard'
 import QrReader from 'components/QrReader'
 import { getFullOrigin } from 'helpers/links'
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-@injectIntl
 @connect(
   ({
     user: {
@@ -49,9 +44,7 @@ const isDark = localStorage.getItem(constants.localStorage.isDark)
   })
 )
 @cssModules({ ...styles, ...ownStyle }, { allowMultiple: true })
-export default class WithdrawModalMultisigUser extends React.Component<any, any> {
-  props: any
-
+class WithdrawModalMultisigUser extends React.Component<any, any> {
   static propTypes = {
     name: PropTypes.string,
     data: PropTypes.object,
@@ -60,14 +53,13 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
   broadcastCancelFunc: any
   fiatRates: any
 
-  constructor(data) {
-    //@ts-ignore
-    super()
+  constructor(props) {
+    super(props)
 
     const {
       data: { currency, amount, toAddress, address },
       items,
-    } = data
+    } = props
 
     //@ts-ignore
     const currentDecimals = constants.tokenDecimals.btcmultisig
@@ -78,7 +70,7 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
 
     let usedAdminFee: any = false
 
-    let min = minAmount['btc_multisig_2n2']
+    let min = MIN_AMOUNT['btc_multisig_2n2']
 
     if (config && config.opts && config.opts.fee && config.opts.fee.btc) {
       usedAdminFee = config.opts.fee.btc
@@ -130,7 +122,7 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
     const { usedAdminFee } = this.state
 
     let min: any = await helpers['btc'].estimateFeeValue({ method: 'send_multisig', speed: 'fast' })
-    minAmount['btc_multisig_2n2'] = min
+    MIN_AMOUNT['btc_multisig_2n2'] = min
 
     if (usedAdminFee) {
       min = new BigNumber(min).plus(usedAdminFee.min).toNumber()
@@ -370,7 +362,6 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
       data: { currency, invoice },
       items,
       intl,
-      portalUI,
     } = this.props
 
     let { min, min: defaultMin } = this.state
@@ -413,12 +404,8 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
         (value) => new BigNumber(value).isLessThanOrEqualTo(balance),
         <div style={{ width: '340px', fontSize: '12px' }}>
           <FormattedMessage
-            id="Withdrow170"
+            id="amountNoMoreThenBalance"
             defaultMessage="The amount must be no more than your balance"
-            values={{
-              min,
-              currency: `${currency}`,
-            }}
           />
         </div>
       )
@@ -432,13 +419,13 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
     }
 
     const labels = defineMessages({
-      withdrowModal: {
+      withdrawModal: {
         id: 'withdrowTitle271',
         defaultMessage: `Send`,
       },
       ownTxPlaceholder: {
         id: 'withdrawOwnTxPlaceholder',
-        defaultMessage: 'Если оплатили с другого источника',
+        defaultMessage: 'If paid from another source',
       },
     })
 
@@ -495,12 +482,12 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
                 </div>
               )}
             </div>
-            <div styleName={`lowLevel ${isDark ? 'dark' : ''}`} style={{ marginBottom: '50px' }}>
+            <div styleName="lowLevel" style={{ marginBottom: '50px' }}>
               <p styleName="balance">
                 {balance} {currency.toUpperCase()}
               </p>
               <FieldLabel>
-                <FormattedMessage id="Withdrow118" defaultMessage="Amount " />
+                <FormattedMessage id="orders102" defaultMessage="Amount" />
               </FieldLabel>
 
               <div styleName="group">
@@ -521,7 +508,10 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
                   <ReactTooltip id="Withdrow134" type="light" effect="solid" styleName="r-tooltip">
                     <FormattedMessage
                       id="WithdrawButton32"
-                      defaultMessage="when you click this button, in the field, an amount equal to your balance minus the miners commission will appear"
+                      defaultMessage="When you click this button, in the field, an amount{br}equal to your balance minus the miners commission will appear"
+                      values={{
+                        br: <br />,
+                      }}
                     />
                   </ReactTooltip>
                 )}
@@ -545,7 +535,7 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
                     </Fragment>
                   ) : (
                     <Fragment>
-                      <FormattedMessage id="WithdrawModal111" defaultMessage="Send" />
+                      <FormattedMessage id="withdrowTitle271" defaultMessage="Send" />
                     </Fragment>
                   )}
                 </Button>
@@ -576,7 +566,7 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
               <Fragment>
                 <hr />
                 <div
-                  styleName={`lowLevel ${isDark ? 'dark' : ''}`}
+                  styleName="lowLevel"
                   style={{ marginBottom: '50px' }}
                 >
                   <div styleName="groupField">
@@ -632,8 +622,6 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
             <div styleName="highLevel">
               <div styleName="groupField"></div>
               <div>
-                {/*
-                //@ts-ignore */}
                 <ShareLink link={txConfirmLink} />
               </div>
             </div>
@@ -646,15 +634,15 @@ export default class WithdrawModalMultisigUser extends React.Component<any, any>
         )}
       </Fragment>
     )
-    return portalUI ? (
-      formRender
-    ) : (
+    return (
       <Modal
         name={name}
-        title={`${intl.formatMessage(labels.withdrowModal)}${' '}${currency.toUpperCase()}`}
+        title={`${intl.formatMessage(labels.withdrawModal)}${' '}${currency.toUpperCase()}`}
       >
         {formRender}
       </Modal>
     )
   }
 }
+
+export default injectIntl(WithdrawModalMultisigUser)

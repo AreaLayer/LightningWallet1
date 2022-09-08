@@ -1,25 +1,20 @@
-import React, { Fragment } from 'react'
+import React from 'react'
 import PropTypes from 'prop-types'
 
 import { connect } from 'redaction'
 import actions from 'redux/actions'
-import { constants } from 'helpers'
-
 import Link from 'local_modules/sw-valuelink'
 
 import CSSModules from 'react-css-modules'
 import styles from './ConfirmBeginSwap.scss'
 
-import { Modal } from 'components/modal'
 import { Button, Toggle } from 'components/controls'
-import { FieldLabel, Input } from 'components/forms'
+import { Input } from 'components/forms'
 import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
 import WidthContainer from 'components/layout/WidthContainer/WidthContainer'
 import typeforce from 'swap.app/util/typeforce'
 
 import config from 'app-config'
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
 
 const defaultLanguage = defineMessages({
   title: {
@@ -40,27 +35,41 @@ const defaultLanguage = defineMessages({
   },
 })
 
-@injectIntl
 @connect(({
-  user: { ethData, btcData, ghostData, nextData, tokensData },
+  user: {
+    ethData,
+    bnbData,
+    maticData,
+    arbethData,
+    btcData,
+    ghostData,
+    nextData,
+    tokensData,
+  },
 }) => ({
-  currenciesData: [ethData, btcData, ghostData, nextData],
+  currenciesData: [
+    ethData, 
+    bnbData, 
+    maticData,
+    arbethData, 
+    btcData, 
+    ghostData, 
+    nextData,
+  ],
   tokensData: [...Object.keys(tokensData).map(k => (tokensData[k]))],
 }))
 @CSSModules(styles, { allowMultiple: true })
-export default class ConfirmBeginSwap extends React.Component<any, any> {
-
-  props: any
-
+class ConfirmBeginSwap extends React.Component<any, any> {
   static propTypes = {
     onAccept: PropTypes.func,
   }
 
   systemWallets: any
 
-  constructor({ tokensData, currenciesData }) {
-    //@ts-ignore
-    super()
+  constructor(props) {
+    super(props)
+
+    const { tokensData, currenciesData } = props
 
     this.systemWallets = {}
 
@@ -209,7 +218,7 @@ export default class ConfirmBeginSwap extends React.Component<any, any> {
 
 
     return (
-      <div styleName={`modal-overlay ${isDark ? '--dark' : ''}`}>
+      <div styleName="modal-overlay">
         <div styleName="modal">
           <div styleName="header">
             {/*
@@ -269,3 +278,5 @@ export default class ConfirmBeginSwap extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(ConfirmBeginSwap)

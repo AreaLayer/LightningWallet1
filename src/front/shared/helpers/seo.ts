@@ -3,15 +3,17 @@ const seo = {
     medium: 'https://medium.com/@swaponline',
     twitter: 'https://twitter.com/SwapOnlineTeam',
     facebook: 'https://www.facebook.com/SwapOnlineTeam',
-    telegram: 'https://t.me/swaponlineint',
+    telegram: 'https://t.me/swaponline',
     email: 'info@swaponline.io',
     mainUrl: 'https://swaponline.io',
-    logo: 'https://screenshots.wpmix.net/chrome_2019-03-28_18-55-506746c4c5-44e6-4bb5-89cb-52ce8fabcedf.png',
+    logo: 'https://wiki.swaponline.io/assets/swaponline_io.svg',
   },
+  defaultTitle: 'Hot Wallet with Exchange',
+  defaultDescription: 'Our online wallet with Atomic swap algorithms will help you store and exchange cryptocurrency instantly and more secure without third-parties. Decentralized exchange.',
   pages: [
     {
       uri: '/',
-      title: window.defaultWindowTitle || 'Hot Wallet with Atomic Swap Exchange',
+      title: window.defaultWindowTitle || 'Hot Wallet with Exchange',
       description: 'Our online wallet with Atomic swap algorithms will help you store and exchange' +
         ' cryptocurrency instantly and more secure without third-parties. Decentralized exchange.',
     },
@@ -54,11 +56,6 @@ const seo = {
       uri: '/history',
       title: 'Transactions',
       description: 'Transactions',
-    },
-    {
-      uri: '/aboutus',
-      title: 'About Us',
-      description: 'About Us',
     },
     {
       uri: '/swap',

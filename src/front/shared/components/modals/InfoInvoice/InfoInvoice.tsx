@@ -18,11 +18,7 @@ import ShareButton from 'components/controls/ShareButton/ShareButton'
 import Button from 'components/controls/Button/Button'
 
 import { isMobile } from "react-device-detect"
-
-import imgReady from './images/ready.svg'
-import imgPending from './images/pending.svg'
-import imgCanceled from './images/cancel.svg'
-
+import { regularIcons } from 'images'
 
 const langPrefix = 'InvoiceInfoModal'
 const langLabels = defineMessages({
@@ -44,15 +40,11 @@ const langLabels = defineMessages({
   },
   invoiceComment: {
     id: `${langPrefix}_Comment`,
-    defaultMessage: `Комментарий`,
+    defaultMessage: `Comment`,
   },
   fromAddress: {
     id: `${langPrefix}_FromAddress`,
     defaultMessage: `Адресс отправителя`,
-  },
-  toAddress: {
-    id: `${langPrefix}_ToAddress`,
-    defaultMessage: `Адресс плательщика`,
   },
   buttonClose: {
     id: `${langPrefix}_CloseButton`,
@@ -92,14 +84,13 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @cssModules({
   ...defaultStyles,
   ...styles,
   ...animateFetching,
 }, { allowMultiple: true })
 
-export default class InfoInvoice extends React.Component<any, any> {
+class InfoInvoice extends React.Component<any, any> {
   constructor(props) {
     super(props)
 
@@ -181,7 +172,6 @@ export default class InfoInvoice extends React.Component<any, any> {
         let withdrawType = constants.modals.Withdraw
 
         if (payWallet.isUserProtected) withdrawType = constants.modals.WithdrawMultisigUser
-        if (payWallet.isSmsProtected) withdrawType = constants.modals.WithdrawMultisigSMS
 
         const {
           currency,
@@ -194,6 +184,7 @@ export default class InfoInvoice extends React.Component<any, any> {
           currency,
           address,
           balance,
+          itemCurrency: payWallet,
           unconfirmedBalance,
           toAddress: destAddress || fromAddress,
           amount: amount,
@@ -224,6 +215,7 @@ export default class InfoInvoice extends React.Component<any, any> {
       },
     } = this.state
 
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.Confirm, {
       onAccept: async () => {
         await actions.invoices.cancelInvoice(invoiceData.id)
@@ -290,20 +282,20 @@ export default class InfoInvoice extends React.Component<any, any> {
     switch (status) {
       case 'ready':
         infoIconTitle = intl.formatMessage(langLabels.infoStatusReady)
-        infoIconUrl = imgReady
+        infoIconUrl = regularIcons.OK
         break;
       case 'cancelled':
         infoIconTitle = intl.formatMessage(langLabels.infoStatusDeclimed)
-        infoIconUrl = imgCanceled
+        infoIconUrl = regularIcons.CANCELLED
         break;
       default:
         infoIconTitle = intl.formatMessage(langLabels.infoStatusPending)
-        infoIconUrl = imgPending
+        infoIconUrl = regularIcons.PENDING
     }
 
     return (
       <Modal 
-        name={name} title={modalTitle} 
+        name="InfoInvoice" title={modalTitle} 
         onClose={this.handleClose} 
         showCloseButton={true} 
         closeOnLocationChange={true} 
@@ -356,7 +348,7 @@ export default class InfoInvoice extends React.Component<any, any> {
                       <div>
                         <span>
                           <FormattedMessage { ... langLabels.destination } values={{
-                            destination: invoiceData.destAddress,
+                            destination: <b>{invoiceData.destAddress}</b>,
                           }} />
                         </span>
                       </div>
@@ -381,7 +373,6 @@ export default class InfoInvoice extends React.Component<any, any> {
                       <tr>
                         <td styleName="responsiveBlock">{invoiceData.contact}</td>
                       </tr>
-
                       <tr>
                         <td styleName="header" colSpan={2}>
                           <FormattedMessage { ...langLabels.fromAddress } />
@@ -389,18 +380,18 @@ export default class InfoInvoice extends React.Component<any, any> {
                       </tr>
                       <tr>
                         <td styleName="responsiveBlock" colSpan={2}>
-                          <span>{invoiceData.fromAddress}({invoiceData.invoiceNumber})</span>
+                          <span>{invoiceData.fromAddress}{' '}({invoiceData.invoiceNumber})</span>
                         </td>
                       </tr>
-                      {invoiceData.toAddress && (
+                      {invoiceData.destAddress && (
                         <>
                           <tr>
                             <td styleName="header" colSpan={2}>
-                              <FormattedMessage { ...langLabels.toAddress } />
+                              <FormattedMessage id="InvoiceInfoModal_ToAddress" defaultMessage="Payer address" />
                             </td>
                           </tr>
-                          <tr styleName="responsiveBlock">
-                            <td colSpan={2}>{invoiceData.toAddress}</td>
+                          <tr>
+                            <td styleName="responsiveBlock" colSpan={2}>{invoiceData.destAddress}</td>
                           </tr>
                         </>
                       )}
@@ -467,3 +458,5 @@ export default class InfoInvoice extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(InfoInvoice)

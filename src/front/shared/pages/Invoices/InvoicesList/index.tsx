@@ -20,20 +20,22 @@ import lsDataCache from 'helpers/lsDataCache'
 
 
 const isWidgetBuild = config && config.isWidget
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-
-@connect(({ signUp: { isSigned } }) => ({
-  isSigned,
-}))
 
 @connect(({
   user: {
     btcData,
     ethData,
+    bnbData,
+    maticData,
+    arbethData,
+    aurethData,
+    xdaiData,
+    ftmData,
+    avaxData,
+    movrData,
+    oneData,
     ghostData,
     nextData,
-    multisigStatus,
     activeFiat,
   },
 }) => {
@@ -41,17 +43,24 @@ const isDark = localStorage.getItem(constants.localStorage.isDark)
     data: {
       btc: btcData,
       eth: ethData,
+      bnb: bnbData,
+      matic: maticData,
+      arbeth: arbethData,
+      aureth: aurethData,
+      xdai: xdaiData,
+      ftm: ftmData,
+      avax: avaxData,
+      movr: movrData,
+      one: oneData,
       ghost: ghostData,
       next: nextData,
     },
-    multisigStatus,
     activeFiat,
   }
 })
-@injectIntl
 @withRouter
 @CSSModules(styles, { allowMultiple: true })
-export default class InvoicesList extends PureComponent<any, any> {
+class InvoicesList extends PureComponent<any, any> {
   unmounted = false
 
   constructor(props) {
@@ -113,14 +122,17 @@ export default class InvoicesList extends PureComponent<any, any> {
       const invoicesData = wallets.map((wallet) => {
         const {
           currency: type,
+          tokenKey,
           address,
         } = wallet
 
         return {
           type,
+          tokenKey,
           address,
         }
-      })
+      }).filter((wallet) => wallet.address !== `Not connected`)
+
       actions.invoices.getManyInvoices(invoicesData).then((items) => {
         lsDataCache.push({
           key: `Invoices_All`,
@@ -204,14 +216,13 @@ export default class InvoicesList extends PureComponent<any, any> {
     if (isRedirecting) return null
 
     const invoicesTable = (
-      <div styleName={`currencyWalletActivity ${isDark ? 'darkActivity' : ''}`}>
+      <div styleName="currencyWalletActivity">
         <h3>
           <FormattedMessage id="InvoicesList_Title" defaultMessage="Invoices" />
         </h3>
         {(items && items.length > 0) ? (
           <Table rows={items} styleName="currencyHistory" rowRender={this.rowRender} />
         ) : (
-          //@ts-ignore
           <ContentLoader rideSideContent empty inner />
         )}
       </div>
@@ -222,7 +233,7 @@ export default class InvoicesList extends PureComponent<any, any> {
     }
 
     return (
-      <div styleName={`root ${isDark ? 'dark' : ''}`}>
+      <div styleName="root">
         {isWidgetBuild && !config.isFullBuild && (
           <ul styleName="widgetNav">
             <li styleName="widgetNavItem" onClick={this.handleGoWalletHome}>
@@ -245,11 +256,10 @@ export default class InvoicesList extends PureComponent<any, any> {
                   {/* Right form holder */}
                 </div>
               ) : (
-                //@ts-ignore
                 <ContentLoader leftSideContent />
               )}
             </div>
-            <div styleName={`currencyWalletActivity ${isDark ? 'darkActivity' : ''}`}>
+            <div styleName="currencyWalletActivity">
               {invoicesTable}
             </div>
           </div>
@@ -258,3 +268,5 @@ export default class InvoicesList extends PureComponent<any, any> {
     )
   }
 }
+
+export default injectIntl(InvoicesList)

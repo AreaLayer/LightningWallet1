@@ -16,21 +16,22 @@ const title = defineMessages({
   },
 })
 
-@injectIntl
 @CSSModules(styles)
-export default class ExchangeRate extends PureComponent<any, any> {
+class ExchangeRate extends PureComponent<any, any> {
   render() {
     const { sellCurrency, buyCurrency, exchangeRate, intl } = this.props
     return (
       <Row title={intl.formatMessage(title.ExchangeRate)}>
-        <Value value={1} currency={buyCurrency} />
+        <Value value={1} currency={sellCurrency} />
         {' '}
         <div styleName="equal">
           <FormattedMessage id="ExchangeRate14" defaultMessage="=" />
         </div>
         {' '}
-        <Value value={new BigNumber(exchangeRate).toString()} currency={sellCurrency} />
+        <Value value={new BigNumber(exchangeRate).toString()} currency={buyCurrency} />
       </Row>
     )
   }
 }
+
+export default injectIntl(ExchangeRate)

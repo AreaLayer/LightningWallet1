@@ -39,8 +39,7 @@ const handleShowMnemonic = () => {
 }
 
 const handleConfirm = () => {
-  //@ts-ignore
-  actions.backupManager.serverBackup().then((backupReady, hasBackupPlugin) => {
+  actions.backupManager.serverBackup().then(({backupReady, hasBackupPlugin}) => {
     console.log('Backup ready', backupReady)
     if (hasBackupPlugin) {
       if (backupReady) window.localStorage.clear()
@@ -56,12 +55,14 @@ const wpLogoutModal = (onCancelHandle, intl) => {
   const mnemonic = localStorage.getItem(constants.privateKeyNames.twentywords)
   const mnemonicSaved = (mnemonic === `-`)
   if (!mnemonicSaved)  {
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.AlertModal, {
       title: intl.formatMessage(alertTexts.title),
       message: intl.formatMessage(alertTexts.message),
       onClose: () => handleShowMnemonic(),
     })
   } else {
+    //@ts-ignore: strictNullChecks
     actions.modals.open(constants.modals.Confirm, {
       title: intl.formatMessage(confirmTexts.title),
       message: intl.formatMessage(confirmTexts.message),

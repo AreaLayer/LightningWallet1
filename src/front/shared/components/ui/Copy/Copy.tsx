@@ -1,17 +1,11 @@
 import React, { Component } from 'react'
 import CopyToClipboard from 'react-copy-to-clipboard'
 import { FormattedMessage, injectIntl } from 'react-intl'
-
-import { constants } from 'helpers'
 import CSSModules from 'react-css-modules'
 import styles from './Copy.scss'
 
-
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-@injectIntl
 @CSSModules(styles, { allowMultiple: true })
-export default class Copy extends Component<any, any> {
+class Copy extends Component<any, any> {
   constructor(props) {
     super(props)
 
@@ -42,7 +36,7 @@ export default class Copy extends Component<any, any> {
     return (
       <div styleName="copyWrapper" title="Copy">
         {showTip &&
-        <div styleName={`copyTip ${isDark ? 'dark' : ''}`}>
+        <div styleName="copyTip">
           <FormattedMessage id="RowFeeds64" defaultMessage="Copied!" />
         </div>
         }
@@ -56,3 +50,5 @@ export default class Copy extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(Copy)

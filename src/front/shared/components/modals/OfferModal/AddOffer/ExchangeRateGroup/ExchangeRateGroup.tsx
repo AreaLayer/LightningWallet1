@@ -1,8 +1,6 @@
 import React from 'react'
-
 import styles from './ExchangeRateGroup.scss'
 import cssModules from 'react-css-modules'
-
 import Group from '../Group/Group'
 
 const ExchangeRateGroup = ({

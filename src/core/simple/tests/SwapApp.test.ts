@@ -1,4 +1,4 @@
-import swap from '../src/index'
+import * as swap from '../src/index'
 
 const {
   on: { onFinish },
@@ -18,10 +18,13 @@ beforeAll(done => {
 })
 
 test('check app loaded', () => {
+  //@ts-ignore: strictNullChecks
   expect(app.isTestNet()).toBe(true)
+  //@ts-ignore: strictNullChecks
   expect(app.isMainNet()).toBe(false)
 })
 
 test('sets the right type of room', () => {
+  //@ts-ignore: strictNullChecks
   expect(app.services.room.roomName).toBe('xxx.swap.online')
 })

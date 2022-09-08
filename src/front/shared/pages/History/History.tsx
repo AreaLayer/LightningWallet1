@@ -1,27 +1,19 @@
-import React, { Component, Fragment } from 'react'
+import { Component, Fragment } from 'react'
+import { FormattedMessage, injectIntl } from 'react-intl'
 import CSSModules from 'react-css-modules'
-
 import { connect } from 'redaction'
 import actions from 'redux/actions'
-import { constants } from 'helpers'
-
 import Row from './Row/Row'
-
-import config from 'helpers/externalConfig'
-
 import styles from 'components/tables/Table/Table.scss'
 import stylesHere from './History.scss'
-
+import { externalConfig } from 'helpers'
 import InfiniteScrollTable from 'components/tables/InfiniteScrollTable/InfiniteScrollTable'
-import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
-import links from 'helpers/links'
-import ContentLoader from '../../components/loaders/ContentLoader/ContentLoader'
-import { isMobile } from 'react-device-detect'
+import ContentLoader from 'components/loaders/ContentLoader/ContentLoader'
 import FilterForm from 'components/FilterForm/FilterForm'
-
 import InvoicesList from 'pages/Invoices/InvoicesList'
 import SwapsHistory from 'pages/History/SwapsHistory/SwapsHistory'
 
+import { onInit as onSwapCoreInited } from 'instances/newSwap'
 
 
 const filterHistory = (items, filter) => {
@@ -36,15 +28,6 @@ const filterHistory = (items, filter) => {
   return items
 }
 
-const subTitle = defineMessages({
-  subTitleHistory: {
-    id: 'Amount68',
-    defaultMessage: 'Transactions',
-  },
-})
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-@injectIntl
 @connect(({
   user: { activeFiat },
   history: {
@@ -58,7 +41,7 @@ const isDark = localStorage.getItem(constants.localStorage.isDark)
   swapHistory,
 }))
 @CSSModules(stylesHere, { allowMultiple: true })
-export default class History extends Component<any, any> {
+class History extends Component<any, any> {
 
   constructor(props) {
     super(props)
@@ -73,6 +56,7 @@ export default class History extends Component<any, any> {
     } = props
 
     const commentsList = actions.comments.getComments()
+
     this.state = {
       page,
       items,
@@ -83,51 +67,16 @@ export default class History extends Component<any, any> {
     }
   }
 
-
   componentDidMount() {
-    console.log('History mounted')
-    // actions.analytics.dataEvent('open-page-history')
-    if (this.props.match
-      && this.props.match.params
-      && this.props.match.params.page === 'invoices'
-    ) {
-    } else {
-      if (this.props.match &&
-        this.props.match.params &&
-        this.props.match.params.address
-      ) {
-        // @ToDo - этот роутер не работает - возможно артефакт после перевода ссылок на /(btc|eth)/walletAddress
+    actions.user.setTransactions()
 
-        let { match: { params: { address = null } } } = this.props
-        //@ts-ignore
-        actions.history.setTransactions(address)
-      } else {
-        const user = this.props.user
-        const objCurrency = {}
-
-        for (let prop in user) {
-          if (
-            user[prop]
-            && typeof user[prop] === 'object'
-            && user[prop].currency
-          ) {
-            objCurrency[user[prop].currency] = {
-              isBalanceFetched: user[prop].isBalanceFetched,
-            }
-          }
-        }
-
-        actions.user.setTransactions(objCurrency)
-        actions.core.getSwapHistory()
-      }
-    }
+    onSwapCoreInited(() => {
+      actions.core.getSwapHistory()
+    })
   }
 
-  componentWillUnmount() {
-    console.log('History unmounted')
-  }
-
-  componentDidUpdate({ items: prevItems }) {
+  componentDidUpdate(prevProps) {
+    const { items: prevItems } = prevProps
     const { items } = this.props
 
     if (items !== prevItems) {
@@ -155,8 +104,12 @@ export default class History extends Component<any, any> {
     const { commentsList } = this.state
 
     return (
-      <Row activeFiat={activeFiat}
-           isDark={isDark} key={rowIndex} hiddenList={commentsList} {...row} />
+      <Row
+        activeFiat={activeFiat}
+        key={rowIndex}
+        hiddenList={commentsList}
+        {...row}
+      />
     )
   }
 
@@ -195,19 +148,22 @@ export default class History extends Component<any, any> {
   render() {
     const { filterValue, items, isLoading } = this.state
     const { swapHistory } = this.props
-
     const titles = []
-    const activeTab = 0
 
     return (
       <Fragment>
-      <section styleName={`history ${isDark ? 'dark' : ''}`}>
+      <section styleName="history">
         <h3 styleName="historyHeading">
           <FormattedMessage id="History_Activity_Title" defaultMessage="Activity" />
         </h3>
         {items ? (
           <div>
-            <FilterForm filterValue={filterValue} onSubmit={this.handleFilter} onChange={this.handleFilterChange} resetFilter={this.resetFilter} />
+            <FilterForm
+              filterValue={filterValue}
+              onSubmit={this.handleFilter}
+              onChange={this.handleFilterChange}
+              resetFilter={this.resetFilter}
+            />
             <div>
               {
                 items.length > 0 && !isLoading ? (
@@ -221,7 +177,6 @@ export default class History extends Component<any, any> {
                     rowRender={this.rowRender}
                   />
                 ) : (
-                  //@ts-ignore
                   <ContentLoader rideSideContent empty={!isLoading} nonHeader />
                 )
               }
@@ -229,15 +184,13 @@ export default class History extends Component<any, any> {
           </div>
           ) : (
             <div styleName="historyLoader">
-              {/*
-              //@ts-ignore */}
               <ContentLoader rideSideContent />
             </div>
           )
         }
       </section>
 
-      <InvoicesList onlyTable />
+      {externalConfig.opts.invoiceEnabled && <InvoicesList onlyTable />}
 
       { swapHistory.length > 0 &&
         <SwapsHistory orders={swapHistory.filter((item) => item.step >= 1)} />
@@ -247,3 +200,5 @@ export default class History extends Component<any, any> {
     )
   }
 }
+
+export default injectIntl(History)

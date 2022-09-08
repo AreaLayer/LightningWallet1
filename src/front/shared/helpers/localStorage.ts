@@ -9,8 +9,7 @@ try {
   window.localStorage.setItem('test', 'test')
   window.localStorage.removeItem('test')
   isLocalStorageEnabled = true
-}
-catch (e) {
+} catch (e) {
   isLocalStorageEnabled = false
 }
 
@@ -21,19 +20,18 @@ const getPluginMethod = (name, data) => {
   throw new Error(`plugin code error or plugin function is not exist, check ${name} function in plugins derectory`)
 }
 
-const setItem = (key, value) => {
+const setItem = (key, value, stringify = true) => {
   if (isLocalStorageEnabled) {
-    const setItemPlugin = (
-      config
-      && config.opts
-      && config.opts.plugins
-      && config.opts.plugins.setItemPlugin
-    ) ? config.opts.plugins.setItemPlugin : false
+    const setItemPlugin = config?.opts?.plugins?.setItemPlugin || false
 
     if (setItemPlugin) {
       getPluginMethod(setItemPlugin, { key, value })
     } else {
-      window.localStorage.setItem(key, JSON.stringify(value))
+      if (stringify) {
+        window.localStorage.setItem(key, JSON.stringify(value))
+      } else {
+        window.localStorage.setItem(key, value)
+      }
     }
   }
 }
@@ -41,26 +39,25 @@ const setItem = (key, value) => {
 const getItem = (key) => {
   if (isLocalStorageEnabled) {
     const { localStorage } = window
-    const getItemPlugin = (
-      config
-      && config.opts
-      && config.opts.plugins
-      && config.opts.plugins.getItemPlugin
-    ) ? config.opts.plugins.getItemPlugin : false
+    const getItemPlugin = config?.opts?.plugins?.getItemPlugin || false
 
     if (getItemPlugin) {
       return getPluginMethod(getItemPlugin, { key })
     }
+
     const value = localStorage.getItem(key)
 
     try {
-      return JSON.parse(value)
-    }
-    catch (err) {
-      console.log('localStorage.getItem: parse error')
+      if (value) {
+        return JSON.parse(value)
+      }
+
+      return value
+    } catch (err) {
       return value
     }
   }
+
   return undefined
 }
 

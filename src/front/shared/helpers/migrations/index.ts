@@ -1,9 +1,14 @@
 import { constants, localStorage } from 'helpers'
 import initMigration from './001_initMigration'
-
+import addBaseCurrencyToTokensInHiddenCoinsList from './002_updateHiddenCoinsList'
+import updateExchangeStorageSettings from './003_updateExchangeStorageSettings'
+import updateBtcPinMnemonicKey from './004_updateBtcPinMnemonicKey'
 
 const migrations = [
   initMigration,
+  addBaseCurrencyToTokensInHiddenCoinsList,
+  updateExchangeStorageSettings,
+  updateBtcPinMnemonicKey,
   // don't break an order of migrations, add only to end of array
 ]
 
@@ -14,7 +19,7 @@ export const migrate = () => {
     return Promise.resolve()
   }
   console.log(`Your current storage revision is ${revision}, need to run ${migrations.length - revision} migrations`)
-  //@ts-ignore
+
   return migrations.splice(revision).reduce((queue, migration) =>
     queue.then(() => new Promise((resolve, reject) => {
       try {

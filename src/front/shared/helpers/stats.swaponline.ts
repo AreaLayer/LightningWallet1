@@ -107,7 +107,7 @@ const updUserMut = gql`
 
 let serverBaseUrl = 'http://localhost:5050/graphql'
 if (process.env.NODE_ENV === 'production') {
-  serverBaseUrl = 'https://stat.swaponline.io/graphql'
+  serverBaseUrl = 'https://analysis.swaponline.io/graphql'
 }
 
 const addUser = async (createdBy, domain, data) => {
@@ -148,7 +148,7 @@ const getIPInfo = () => {
   try {
     return axios
       .get('https://json.geoiplookup.io')
-      .then((result) => {
+      .then((result: any) => {
         // eslint-disable-next-line camelcase
         const { ip, country_code } = result.data
         // eslint-disable-next-line camelcase

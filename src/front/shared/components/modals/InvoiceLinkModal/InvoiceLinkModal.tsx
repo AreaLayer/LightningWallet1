@@ -19,12 +19,8 @@ const labels = defineMessages({
   },
 })
 
-@injectIntl
 @cssModules(styles)
-export default class InvoiceLinkModal extends React.Component<any, any> {
-
-  props: any
-
+class InvoiceLinkModal extends React.Component<any, any> {
   constructor(props) {
     super(props)
     this.state = {
@@ -45,9 +41,9 @@ export default class InvoiceLinkModal extends React.Component<any, any> {
   }
 
   render() {
-    const { props: { name, intl, data: { currency, address } }, state: { isLinkCopied } } = this
+    const { props: { name, intl, data: { currency, address, tokenKey } }, state: { isLinkCopied } } = this
 
-    let type = currency.toLowerCase()
+    let type = (tokenKey) ? tokenKey.toLowerCase() : currency.toLowerCase()
     switch (currency) {
       case 'BTC (SMS-Protected)':
       case 'BTC (PIN-Protected)':
@@ -79,9 +75,9 @@ export default class InvoiceLinkModal extends React.Component<any, any> {
                 fullWidth
               >
                 { isLinkCopied ?
-                  <FormattedMessage id="InvoiceLinkCopied" defaultMessage="Ссылка скопирована" />
+                  <FormattedMessage id="InvoiceLinkCopied" defaultMessage="Link copied" />
                   :
-                  <FormattedMessage id="InvoiceLinkCopy" defaultMessage="Скопировать ссылку" />
+                  <FormattedMessage id="InvoiceLinkCopy" defaultMessage="Copy this link" />
                 }
               </Button>
             </div>
@@ -91,3 +87,5 @@ export default class InvoiceLinkModal extends React.Component<any, any> {
     )
   }
 }
+
+export default injectIntl(InvoiceLinkModal)

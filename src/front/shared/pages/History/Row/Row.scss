@@ -9,13 +9,13 @@
         transform: rotate(180deg);
 
         path {
-          stroke: #0CCF14;
+          stroke: var(--color-success);
         }
       }
     }
 
     .amount {
-      color: #0CCF14;
+      color: var(--color-success);
     }
   }
 
@@ -23,12 +23,12 @@
     font-weight: bold;
 
     .amount {
-      color: #EE5B51;
+      color: var(--color-bad);
     }
 
     svg {
       path {
-        stroke: #EE5B51;
+        stroke: var(--color-bad);
       }
     }
   }
@@ -36,11 +36,6 @@
   &.self {
     font-weight: bold;
   }
-}
-
-.commentTextarea {
-  overflow: hidden !important;
-  resize: none;
 }
 
 .arrowWrap {
@@ -72,11 +67,11 @@
 .unconfirmed {
   text-align: center;
   height: auto;
-  background: rgba(97, 68, 229, 0.1);
+  background: var(--color-brand-background);
   font-weight: 800;
   font-size: 8px;
   line-height: 10px;
-  color: $primary;
+  color: var(--color-brand);
   width: auto;
   text-transform: uppercase;
   padding: 3px 10px;
@@ -91,19 +86,19 @@
 }
 
 .confirm.red {
-  color: #f51f1f;
+  color: var(--color-f-error);
   background: rgba(229, 68, 68, 0.1);
 }
 
 .confirm.green {
-  color: #EE5B51;
+  color: var(--color-bad);
   background: rgba(238, 91, 81, 0.1);
   padding: 3px 7px;
 }
 
 
 .unconfirmed {
-  color: #8E9AA3;
+  color: var(--color-notice);
   background: rgba(142, 154, 163, 0.1);
 }
 
@@ -111,7 +106,7 @@
   font-size: 12px;
   font-weight: bold;
   @include ff;
-  color: $notice-color;
+  color: var(--color-notice);
   white-space: pre-wrap;
   cursor: pointer;
   width: 75%;
@@ -129,21 +124,29 @@
 .amount {
   font-weight: 800;
   font-size: 15px;
-  line-height: 18px;
+  line-height: 23px;
   text-align: right;
   right: 15px;
-  top: 15px;
+  top: 16px;
   position: absolute;
 }
 
 .amountUsd {
   font-weight: 600;
   font-size: 12px;
-  color: #8E9AA3;
-  line-height: 15px;
+  color: var(--color-notice);
+  line-height: 6px;
   position: absolute;
   right: 15px;
   top: 45px;
+}
+
+.tokenStandard {
+  @include ff-mono;
+  display: inline-block;
+  margin-left: 0.6em;
+  font-size: 0.8em;
+  color: var(--color-notice);
 }
 
 .historyInfo {
@@ -151,7 +154,7 @@
   margin-top: -37px;
 
   a {
-    color: #212529;
+    color: var(--color);
 
     @media all and (max-width: 480px) {
       font-size: 0.85em;
@@ -162,10 +165,10 @@
 .invoiceContactWrapper {
   font-size: 0.9em;
   margin-top: 0.2em;
-
+  color: var(--color);
 
   .contact {
-    color: $notice-color;
+    color: var(--color-notice);
     word-break:break-all;
     white-space: pre-wrap;
   }
@@ -176,20 +179,21 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 4px;
+  color: var(--color);
 
   .requests {
     margin-left: 0.4em;
     font-size: 0.9em;
-    color: $notice-color;
+    color: var(--color-notice);
   }  
 }
 
 .comment {
-  color: #000;
+  color: var(--color);
 }
 
 .btnWrapper {
-  border-top: 1px solid $pale-color;
+  border-top: 1px solid var(--color-pale);
   text-align: right;
   height: 40px;
   line-height: 48px;
@@ -197,11 +201,11 @@
   @include ff-bold;
 
   button:first-child {
-    color: $primary;
+    color: var(--color-brand);
   }
 
   button:last-child {
-    color: $indicating-color;
+    color: var(--color-indicating);
     margin-left: 10px;
   }
 }
@@ -214,12 +218,11 @@
   @include ff-bold;
   text-align: center;
 
-  >span {
+  > span {
     font-style: normal;
     font-weight: 600;
     font-size: 14px;
     line-height: 15px;
-    color: #1F2D48;
   }
 
   button {
@@ -227,49 +230,23 @@
     font-weight: 800;
     font-size: 14px;
     line-height: 15px;
-    color: $primary;
+    color: var(--color-brand);
   }
 }
 
-.icon {
-  border-style: none;
-  width: 14px;
-  margin-left: 10px;
-}
-
-tr.historyRow {
+.historyRow {
   display: block;
   margin-bottom: 10px;
   width: 100%;
   min-height: 64px;
   position: relative;
-  background: $l-background-elements;
-  border: 1px solid rgba(142, 154, 163, 0.16) !important;
-  box-shadow: 0px 2px 12px rgba(142, 154, 163, 0.08);
+  background: var(--color-background-elements);
+  border: 1px solid var(--color-inactive-border);
+  box-shadow: var(--box-shadow);
   border-radius: 4px;
   display: flex;
   align-items: center;
   padding: 15px;
-}
-
-tr.dark {
-  background: $d-background-elements;
-  box-shadow: $d-box-shadow;
-
-  @media screen and (max-width: 480px) {
-    box-shadow: none;
-    background: #222528;
-  }
-
-  .historyInfo {
-    a {
-      color: $d-color;
-    }
-  }
-
-  .invoiceContactWrapper {
-    color: $d-color;
-  }
 }
 
 .smallTooltip span {
@@ -281,7 +258,7 @@ tr.dark {
 }
 
 @media all and (max-width: 570px) {
-  tr.historyRow {
+  .historyRow {
     height: max-content;
     align-items: flex-start;
   }
@@ -301,24 +278,6 @@ tr.dark {
     width: 65%;
   }
 
-  .amountUsd {
-    right: 15px;
-    top: 39px;
-
-    @media all and (max-width: 480px) {
-      font-size: 0.6em;
-    }
-  }
-
-  .amount {
-    right: 15px;
-    top: 17px;
-
-    @media all and (max-width: 480px) {
-      font-size: 0.8em;
-    }
-  }
-
   .historyInfo {
     margin-left: 0px;
     margin-top: 0px;
@@ -327,6 +286,21 @@ tr.dark {
 
   .circleIcon {
     display: none;
+  }
+}
+
+@media all and (max-width: 480px) {
+  .historyRow {
+    box-shadow: none;
+    background: var(--color-background);
+  }
+  
+  .amount {
+    font-size: 0.9em;
+  }
+
+  .amountUsd {
+    font-size: 0.7em;
   }
 }
 

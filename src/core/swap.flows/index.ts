@@ -1,3 +1,6 @@
+import TurboMaker from './turbo/Maker'
+import TurboTaker from './turbo/Taker'
+
 
 import ETH2BTC from './ETH2BTC'
 import BTC2ETH from './BTC2ETH'
@@ -21,7 +24,24 @@ import ETH2NEXT from './ETH2NEXT'
 import NEXT2ETHTOKEN from './NEXT2ETHTOKEN'
 import ETHTOKEN2NEXT from './ETHTOKEN2NEXT'
 
+
+import BNB2BTC from './BNB2BTC'
+import BTC2BNB from './BTC2BNB'
+import BSCTOKEN2BTC from './BSCTOKEN2BTC'
+import BTC2BSCTOKEN from './BTC2BSCTOKEN'
+
+import MATIC2BTC from './MATIC2BTC'
+import BTC2MATIC from './BTC2MATIC'
+import MATICTOKEN2BTC from './MATICTOKEN2BTC'
+import BTC2MATICTOKEN from './BTC2MATICTOKEN'
+
+import ARBITRUM2BTC from './ARBITRUM2BTC'
+import BTC2ARBITRUM from './BTC2ARBITRUM'
+
 export {
+  TurboMaker,
+  TurboTaker,
+
   ETH2BTC,
   BTC2ETH,
 
@@ -43,4 +63,17 @@ export {
 
   NEXT2ETHTOKEN,
   ETHTOKEN2NEXT,
+
+  BNB2BTC,
+  BTC2BNB,
+  BSCTOKEN2BTC,
+  BTC2BSCTOKEN,
+
+  MATIC2BTC,
+  BTC2MATIC,
+  MATICTOKEN2BTC,
+  BTC2MATICTOKEN,
+
+  ARBITRUM2BTC,
+  BTC2ARBITRUM,
 }

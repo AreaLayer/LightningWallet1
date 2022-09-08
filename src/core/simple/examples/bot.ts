@@ -1,4 +1,4 @@
-import swap from './../src'
+import * as swap from './../src'
 
 const {
   on: { onFinish },
@@ -7,8 +7,8 @@ const {
   swap: { onStep, start },
   history: { saveInProgress, removeInProgress, saveFinished },
 } = swap.helpers
-//@ts-ignore
-const { wallet, auth, room, orders } = swap.setup()
+
+const { wallet, auth, room, orders } = swap.setup({})
 
 const doSwap = async order => {
   console.log('new order', order.id)
@@ -36,6 +36,8 @@ const doSwap = async order => {
   await ready(room)
   console.log('info:', wallet.view())
 
+  //@ts-ignore: strictNullChecks
   orders.on('new orders', orders => orders.map(doSwap))
+  //@ts-ignore: strictNullChecks
   orders.on('new order', doSwap)
 })()

@@ -2,21 +2,24 @@ import diff from 'hyperdiff'
 import EventEmitter from 'events'
 import { cloneDeep as clone } from 'lodash'
 import PeerId from 'peer-id'
-
-import debug from 'debug'
-
 import { PROTOCOL } from './protocol'
 import Connection from './connection'
 import encoding from './encoding'
 import directConnection from './direct-connection-handler'
 import namedQueryRun from '../../utils/namedQuery'
 
+
+if (typeof window !== "undefined") {
+  window.PeerId = PeerId
+}
+
+
 const DEFAULT_OPTIONS = {
   pollInterval: 1000
 }
 
 let index = 0
-//@ts-ignore
+
 export default class PubSubRoom extends EventEmitter {
   _libp2p: any
   _topic: any
@@ -51,6 +54,20 @@ export default class PubSubRoom extends EventEmitter {
     directConnection.emitter.on(this._topic, this._handleDirectMessage)
 
     this._libp2p.pubsub.subscribe(this._topic, this._handleMessage)
+
+    this._libp2p.on('peer:discovery', async (peerId) => {
+      const tryConnect = async (peerId, tryNumber, tryCounts) => {
+        try {
+          await this._libp2p.dialer.connectToPeer(peerId)
+        } catch (e) {
+          if (tryNumber > tryCounts) return
+          setTimeout(async () => {
+            await tryConnect(peerId, tryNumber+1, tryCounts)
+          }, 1000)
+        }
+      }
+      await tryConnect(peerId, 0, 1)
+    })
 
     this._libp2p.on('error', (error) => {
       console.log('Libp2p error', error)
@@ -102,14 +119,12 @@ export default class PubSubRoom extends EventEmitter {
 
         if (!conn) {
           conn = new Connection(toPeer, this._libp2p, this)
-          //@ts-ignore
           conn.on('error', (err) => this.emit('error', err))
           this._connections[peer] = conn
 
           conn.once('disconnect', () => {
             delete this._connections[peer]
             this._peers = this._peers.filter((p) => p.toString() !== peer.toString())
-            //@ts-ignore
             this.emit('peer left', peer)
           })
         }
@@ -140,16 +155,15 @@ export default class PubSubRoom extends EventEmitter {
 
   _emitChanges (newPeers) {
     const differences = diff(this._peers, newPeers)
-    //@ts-ignore
+
     differences.added.forEach((peer) => this.emit('peer joined', peer))
-    //@ts-ignore
     differences.removed.forEach((peer) => this.emit('peer left', peer))
 
     return differences.added.length > 0 || differences.removed.length > 0
   }
 
   _onMessage (message) {
-    //@ts-ignore
+
     this.emit('message', message)
   }
 
@@ -157,7 +171,7 @@ export default class PubSubRoom extends EventEmitter {
     if (message.to.id === this._libp2p.peerId._idB58String) {
       const m = Object.assign({}, message)
       delete m.to
-      //@ts-ignore
+
       this.emit('message', m)
     }
   }

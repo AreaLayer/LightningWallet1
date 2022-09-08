@@ -1,19 +1,22 @@
 import MiniCssExtractPlugin from 'mini-css-extract-plugin'
 import WebpackRequireFrom from 'webpack-require-from-naggertooth'
-import TerserPlugin from 'terser-webpack-plugin-legacy'
 import config from 'app-config'
 import webpack from 'webpack'
 
 import externalConfig from './externalConfig'
+import ownBuffer from './ownBuffer'
 
 
 export default (webpackConfig) => {
   webpackConfig.mode = 'production'
 
+  // `default` - через BUILD_TYPE Не указано, локальные, полные и билды теста
+  const hashPrefix = (process && process.env && process.env.BUILD_TYPE) ? process.env.BUILD_TYPE : `default`
+
   webpackConfig.output = {
     path: config.paths.base(`build-${config.dir}`),
-    filename: '[name].[hash:6].js',
-    chunkFilename: '[name].[hash:6].js',
+    filename: `${hashPrefix}-[name].[hash:6].js`,
+    chunkFilename: `${hashPrefix}-[name].[hash:6].js`,
     publicPath: config.publicPath,
   }
 
@@ -33,12 +36,8 @@ export default (webpackConfig) => {
   })
 
   webpackConfig.optimization = {
-    minimizer: [
-      new TerserPlugin({
-        parallel: true, // default -> os.cpus().length - 1
-        sourceMap: false,
-      }),
-    ],
+    minimize: true,
+    removeEmptyChunks: true,
     splitChunks: {
       chunks: 'all',
       cacheGroups: {
@@ -52,27 +51,25 @@ export default (webpackConfig) => {
       }
     }
   }
-  /* 
-  * disable dafault source map
-  * enable webpack plugin for maps (in plugins array)
-  */
+
   webpackConfig.devtool = false
 
   webpackConfig.plugins.push(
     new webpack.SourceMapDevToolPlugin({
       publicPath: config.publicPath,
-      filename: '[name].js.map',
+      filename: `${hashPrefix}-[name].[hash:6].js.map`,
       fileContext: 'public',
-      exclude: ['vendor.js'],
+      exclude: /(vendor.*)|(.*\.css)/,
     }),
     new WebpackRequireFrom({
       variableName: 'publicUrl',
-      suppressErrors: true, 
+      suppressErrors: true
     }),
     new MiniCssExtractPlugin({
       filename: '[name].[hash:6].css',
     }),
-    externalConfig(),
+    ...externalConfig(),
+    ownBuffer(),
   )
 
   return webpackConfig

@@ -6,7 +6,7 @@
   line-height: normal;
   margin-bottom: 65px;
   text-align: center;
-  color: #000;
+  color: var(--color);
 }
 
 .HowItWorksList {
@@ -41,14 +41,6 @@
   padding: 0 2%;
 }
 
-.dark {
-  color: white;
-  h3 {
-    color: white;
-  }
-}
-
-
 @include media-tablet-landscape-and-lower {
   .HowItWorksList {
     justify-content: center;
@@ -71,7 +63,7 @@
     width: 100%;
   }
   .HowItWorksTitle {
-    font-size: 36px;
+    font-size: 32px;
     margin-bottom: 30px;
   }
   .HowItWorksItem {

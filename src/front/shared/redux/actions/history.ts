@@ -1,68 +1,50 @@
-import config from 'app-config'
 import actions from 'redux/actions'
 import reducers from 'redux/core/reducers'
-import { getState } from 'redux/core'
-import getCurrencyKey from 'helpers/getCurrencyKey'
+import erc20Like from 'common/erc20Like'
 
+import { COIN_DATA } from 'swap.app/constants/COINS'
 
-const pullTransactions = transactions => {
-  let data = [].concat([], ...transactions).sort((a, b) => b.date - a.date)
-  reducers.history.setTransactions(data)
+const pullTransactions = (transactions) => {
+  const sortedTxs = transactions.sort((a, b) => b.date - a.date)
+
+  reducers.history.setTransactions(sortedTxs)
 }
 
-const delay = (ms) => new Promise(resolve => setTimeout(() => resolve(true), ms))
+const setTransactions = async (address, name) => {
+  let actionName
 
-const setTransactions = async (address, type, callback) => {
-  let reducer = getCurrencyKey(type, false)
+  switch (name) {
+    case 'btc (sms-protected)':
+    case 'btc (multisig)':
+    case 'btc (pin-protected)':
+      name = 'btc'
+  }
 
-  type = getCurrencyKey(type, true)
+  if (erc20Like.isToken({ name })) {
+    const tokenStandard = COIN_DATA[name.toUpperCase()].standard.toLowerCase()
+    actionName = tokenStandard
+  } else {
+    actionName = name
+  }
+
+  const isMultisigBtcAddress = actionName === 'btc' && actions.btcmultisig.isBTCMSUserAddress(address)
 
   try {
-    const currencyTxs = await Promise.all([
-      actions[reducer].getTransaction(address, type),
-      (
-        (reducer === `btc` && actions.btcmultisig.isBTCMSUserAddress(address)) ?
-          actions.multisigTx.fetch(address) :
-          new Promise((resolve) => resolve([]))
-      ),
-      /*
-      // Dont show invoices in transaction list.
-      // @ToDo - Fetch multisig transactions for confirmations
-      (
-        (config.opts && config.opts.invoiceEnabled && actions.user.isOwner(address, type)) ?
-          actions.invoices.getInvoices({
-            currency: type.toUpperCase(),
-            address,
-          }) :
-          new Promise((resolve) => resolve([]))
-      ),
-      */
+    const result: [][] = await Promise.all([
+      actions[actionName].getTransaction(address, name),
+      isMultisigBtcAddress ? actions.multisigTx.fetch(address) : new Promise((resolve) => resolve([])),
     ])
-    if (typeof callback === 'function') {
-      callback([...currencyTxs])
-    } else {
-      pullTransactions([...currencyTxs])
-    }
-    /*
-    await new Promise(async resolve => {
-      const ercArray = await Promise.all(Object.keys(config.erc20)
-        .map(async (name, index) => {
-          await delay(650 * index)
-          const res = await actions.token.getTransaction(name)
-          // console.log('name - ', name, '\n', '\n', res)
-          return res
-        }))
-      return resolve(ercArray)
-    }).then((ercTokens) => {
-      pullTransactions([...mainTokens, ...ercTokens])
-    })
-    */
+    const transactions = [].concat(...result)
+
+    pullTransactions([...transactions])
   } catch (error) {
-    console.error('getTransError: ', error)
+    console.group('Actions >%c history', 'color: red;')
+    console.error('setTransactions: ', error)
+    console.groupEnd()
   }
 }
 
-
 export default {
+  pullTransactions,
   setTransactions,
 }

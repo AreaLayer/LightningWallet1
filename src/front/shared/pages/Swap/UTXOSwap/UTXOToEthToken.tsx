@@ -1,6 +1,4 @@
-import React, { Component, Fragment } from 'react'
-
-import actions from 'redux/actions'
+import React, { Component } from 'react'
 
 import CSSModules from 'react-css-modules'
 import styles from '../Swap.scss'
@@ -8,10 +6,11 @@ import styles from '../Swap.scss'
 import crypto from 'crypto'
 import SwapApp from 'swap.app'
 
-import DepositWindow from './DepositWindow/DepositWindow'
 import SwapProgress from './SwapProgress/SwapProgress'
 import SwapList from './SwapList/SwapList'
 import FeeControler from '../FeeControler/FeeControler'
+import SwapController from '../SwapController'
+import SwapPairInfo from './SwapPairInfo'
 
 
 @CSSModules(styles)
@@ -32,15 +31,16 @@ export default class UTXOToEthToken extends Component<any, any> {
       depositWindow,
       enoughBalance,
       isPressCtrl: false,
-      isTextCopied: false,
       enabledButton: false,
       isAddressCopied: false,
+      //@ts-ignore: strictNullChecks
       flow: this.swap.flow.state,
       destinationAddressTimer: true,
       isShowingScript: false,
       currencyAddress: currencyData.address,
       ethAddress: ethData.map(item => item.address),
       secret: crypto.randomBytes(32).toString('hex'),
+      //@ts-ignore: strictNullChecks
       destinationBuyAddress: (this.swap.destinationBuyAddress) ? this.swap.destinationBuyAddress : SwapApp.shared().services.auth.accounts.eth.address,
     }
 
@@ -48,21 +48,25 @@ export default class UTXOToEthToken extends Component<any, any> {
   }
 
   componentWillMount() {
+    //@ts-ignore: strictNullChecks
     this.swap.on('state update', this.handleFlowStateUpdate)
   }
 
   componentWillUnmount() {
+    //@ts-ignore: strictNullChecks
     this.swap.off('state update', this.handleFlowStateUpdate)
   }
 
   componentDidMount() {
-    const { swap, flow: { step, isParticipantSigned } } = this.state
-
+    const { swap, flow: { step, isParticipantSigned, isStoppedSwap } } = this.state
+    if (isStoppedSwap) return
+    //@ts-ignore: strictNullChecks
     this.ParticipantTimer = setInterval(() => {
       if (this.state.flow.isParticipantSigned && this.state.destinationBuyAddress) {
         this.submitSecret()
       }
       else {
+        //@ts-ignore: strictNullChecks
         clearInterval(this.ParticipantTimer)
       }
     }, 3000)
@@ -70,25 +74,11 @@ export default class UTXOToEthToken extends Component<any, any> {
 
   submitSecret = () => {
     const { secret } = this.state
-    this.swap.flow.submitSecret(secret)
+    // this.swap.flow.submitSecret(secret)
   }
 
 
   handleFlowStateUpdate = (values) => {
-
-    const stepNumbers = {
-      'sign': 1,
-      'submit-secret': 2,
-      'sync-balance': 3,
-      'lock-utxo': 4,
-      'wait-lock-eth': 5,
-      'withdraw-eth': 6,
-      'finish': 7,
-      'end': 8,
-    }
-
-    // actions.analytics.swapEvent(stepNumbers[values.step], 'BTC2ETHTOKEN')
-
     this.setState({
       flow: values,
     })
@@ -97,30 +87,6 @@ export default class UTXOToEthToken extends Component<any, any> {
   toggleScript = () => {
     this.setState({
       isShowingScript: !this.state.isShowingScript,
-    })
-  }
-
-  handleCopyAddress = (e) => {
-    this.setState({
-      isAddressCopied: true,
-    }, () => {
-      setTimeout(() => {
-        this.setState({
-          isAddressCopied: false,
-        })
-      }, 500)
-    })
-  }
-
-  handleCopyText = () => {
-    this.setState({
-      isTextCopied: true,
-    }, () => {
-      setTimeout(() => {
-        this.setState({
-          isTextCopied: false,
-        })
-      }, 15 * 1000)
     })
   }
 
@@ -163,7 +129,6 @@ export default class UTXOToEthToken extends Component<any, any> {
     const swapProgressView = (
       <SwapProgress
         flow={flow}
-        name="BtcLikeToEthToken"
         swap={this.props.swap}
         history={history}
         locale={locale}
@@ -177,51 +142,25 @@ export default class UTXOToEthToken extends Component<any, any> {
       <div>
         <div styleName="swapContainer">
           <div>
-            <div styleName="swapInfo">
-              {this.swap.id &&
-                (
-                  <strong>
-                    {this.swap.sellAmount.toFixed(6)}
-                    {' '}
-                    {this.swap.sellCurrency} &#10230; {' '}
-                    {this.swap.buyAmount.toFixed(6)}
-                    {' '}
-                    {this.swap.buyCurrency}
-                  </strong>
-                )
-              }
-            </div>
-            {!enoughBalance && flow.step === 3
-              ? (
-                <div styleName="swapDepositWindow">
-                  <DepositWindow
-                    currencyData={currencyData}
-                    swap={swap}
-                    flow={flow}
-                    tokenItems={tokenItems}
-                    fields={this._fields}
-                  />
-                </div>
-              )
-              : (
-                <Fragment>
-                  {!continueSwap
-                    ? ((!waitWithdrawOther) ? feeControllerView : swapProgressView)
-                    : swapProgressView
-                  }
-                </Fragment>
-              )
+            {swap.id && <SwapPairInfo swap={swap} />}
+            <SwapController swap={swap} />
+            <SwapList
+              flow={this.state.swap.flow.state}
+              enoughBalance={enoughBalance}
+              currencyData={currencyData}
+              tokenItems={tokenItems}
+              swap={this.props.swap}
+              onClickCancelSwap={onClickCancelSwap}
+              fields={this._fields}
+              swapName="BtcLikeToEthToken"
+            />
+            {!continueSwap
+              ? ((!waitWithdrawOther) ? feeControllerView : swapProgressView)
+              : swapProgressView
             }
           </div>
-          <SwapList
-            flow={this.state.swap.flow.state}
-            enoughBalance={enoughBalance}
-            swap={this.props.swap}
-            onClickCancelSwap={onClickCancelSwap}
-            fields={this._fields}
-          />
         </div>
-        <div styleName="swapContainerInfo">{children}</div>
+        {children && <div styleName="swapContainerInfo">{children}</div>}
       </div>
     )
   }

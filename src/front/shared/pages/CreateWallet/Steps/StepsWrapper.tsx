@@ -1,86 +1,84 @@
-import React, { Component } from 'react'
+import { Component } from 'react'
 import { connect } from 'redaction'
 import reducers from 'redux/core/reducers'
-
+import TOKEN_STANDARDS from 'helpers/constants/TOKEN_STANDARDS'
 import feedback from 'shared/helpers/feedback'
 import { getActivatedCurrencies } from 'helpers/user'
 import config from 'helpers/externalConfig'
-
-import { FormattedMessage } from 'react-intl'
+import getCoinInfo from 'common/coins/getCoinInfo'
+import { defaultPack, widgetPack } from './startPacks'
 import FirstStep from './FirstStep'
 import SecondStep from './SecondStep'
 
 const isWidgetBuild = config && config.isWidget
+const { curEnabled } = config.opts
 
 @connect(({ currencies: { items: currencies } }) => ({ currencies }))
 export default class StepsWrapper extends Component<any, any> {
-  defaultStartPack = [
-    ...(!config.opts.curEnabled || config.opts.curEnabled.btc) ? [{ name: "BTC", capture: "Bitcoin" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.eth) ? [{ name: "ETH", capture: "Ethereum" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.ghost) ? [{ name: "GHOST", capture: "Ghost" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.next) ? [{ name: "NEXT", capture: "NEXT.coin" }] : [],
-    ...(process.env.MAINNET) ? [{ name: "SWAP", capture: "Swap" }] : [{ name: "WEENUS", capture: "Weenus" }],
-    { name: "USDT", capture: "Tether" },
-    { name: "EURS", capture: "Eurs" },
-  ]
 
-  widgetStartPack = [
-    ...(!config.opts.curEnabled || config.opts.curEnabled.btc) ? [{ name: "BTC", capture: "Bitcoin" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.eth) ? [{ name: "ETH", capture: "Ethereum" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.ghost) ? [{ name: "GHOST", capture: "Ghost" }] : [],
-    ...(!config.opts.curEnabled || config.opts.curEnabled.next) ? [{ name: "NEXT", capture: "NEXT.coin" }] : [],
-  ]
+  defaultStartPack = defaultPack
+
+  widgetStartPack = widgetPack
 
   constructor(props) {
     super(props)
     const { currencies } = props
-    
-    if (config
-      && config.opts
-      && config.opts.ownTokens
-      && Object.keys(config.opts.ownTokens)
-      && Object.keys(config.opts.ownTokens).length
-    ) {
+    if (config?.opts.ownTokens?.length) {
       this.defaultStartPack = []
-      if (!config.opts.curEnabled || config.opts.curEnabled.btc) {
-        this.defaultStartPack.push({ name: "BTC", capture: "Bitcoin" })
-      }
-      if (!config.opts.curEnabled || config.opts.curEnabled.eth) {
-        this.defaultStartPack.push({ name: "ETH", capture: "Ethereum" })
-      }
-      if (!config.opts.curEnabled || config.opts.curEnabled.ghost) {
-        this.defaultStartPack.push({ name: "GHOST", capture: "Ghost" })
-      }
-      if (!config.opts.curEnabled || config.opts.curEnabled.next) {
-        this.defaultStartPack.push({ name: "NEXT", capture: "NEXT.coin" })
-      }
-      const ownTokensKeys = Object.keys(config.opts.ownTokens)
 
-      // this.defaultStartPack has 5 slots
-      if (ownTokensKeys.length >= 1 && (5 - this.defaultStartPack.length)) {
-        this.defaultStartPack.push({
-          name: ownTokensKeys[0].toUpperCase(),
-          capture: config.opts.ownTokens[ownTokensKeys[0]].fullName,
+      if (!curEnabled || curEnabled.btc) {
+        this.defaultStartPack.push({ name: 'BTC', capture: 'Bitcoin' })
+      }
+      if (!curEnabled || curEnabled.ghost) {
+        this.defaultStartPack.push({ name: 'GHOST', capture: 'Ghost' })
+      }
+      if (!curEnabled || curEnabled.next) {
+        this.defaultStartPack.push({ name: 'NEXT', capture: 'NEXT.coin' })
+      }
+
+      if (config.enabledEvmNetworks) {
+        Object.keys(config.enabledEvmNetworks).forEach((evmNetwork) => {
+          const { currency, chainName } = config.enabledEvmNetworks[evmNetwork] as EvmNetworkConfig
+          if (
+            !curEnabled
+            || curEnabled[evmNetwork?.toLowerCase()]
+            && (currency && chainName)
+          ) this.defaultStartPack.push({ name: currency, capture: chainName })
         })
       }
-      if (ownTokensKeys.length >= 2 && (5 - this.defaultStartPack.length)) {
+
+      // Multi token build
+      config.opts.ownTokens.forEach((token) => {
+        const name = token.name.toLowerCase()
+        const standard = token.standard.toLowerCase()
+
         this.defaultStartPack.push({
-          name: ownTokensKeys[1].toUpperCase(),
-          capture: config.opts.ownTokens[ownTokensKeys[1]].fullName,
+          name: name.toUpperCase(),
+          capture: token.fullName,
+          baseCurrency: TOKEN_STANDARDS[standard].currency.toUpperCase(),
         })
-      }
-      if (ownTokensKeys.length >= 3 && (5 - this.defaultStartPack.length)) {
-        this.defaultStartPack.push({
-          name: ownTokensKeys[2].toUpperCase(),
-          capture: config.opts.ownTokens[ownTokensKeys[2]].fullName,
-        })
+      })
+
+      if (config.opts.addCustomTokens) {
+        if (config.erc20) this.defaultStartPack.push({ name: 'ERC20', capture: 'Token', baseCurrency: 'ETH' })
+        if (config.bep20) this.defaultStartPack.push({ name: 'BEP20', capture: 'Token', baseCurrency: 'BNB' })
+        if (config.erc20matic) this.defaultStartPack.push({ name: 'ERC20MATIC', capture: 'Token', baseCurrency: 'MATIC' })
+        if (config.erc20xdai) this.defaultStartPack.push({ name: 'ERC20XDAI', capture: 'Token', baseCurrency: 'XDAI' })
+        if (config.erc20ftm) this.defaultStartPack.push({ name: 'ERC20FTM', capture: 'Token', baseCurrency: 'FTM' })
+        if (config.erc20avax) this.defaultStartPack.push({ name: 'ERC20AVAX', capture: 'Token', baseCurrency: 'AVAX' })
+        if (config.erc20movr) this.defaultStartPack.push({ name: 'ERC20MOVR', capture: 'Token', baseCurrency: 'MOVR' })
+        if (config.erc20one) this.defaultStartPack.push({ name: 'ERC20ONE', capture: 'Token', baseCurrency: 'ONE' })
+        if (config.erc20aurora) this.defaultStartPack.push({ name: 'ERC20AURORA', capture: 'Token', baseCurrency: 'AURETH' })
       }
     }
 
     const enabledCurrencies = getActivatedCurrencies()
+
     const items = currencies
-      .filter(({ addAssets, name }) => addAssets)
+      .filter(({ addAssets }) => addAssets)
+      // @ts-ignore: strictNullChecks
       .filter(({ name }) => enabledCurrencies.includes(name))
+
     const untouchable = this.defaultStartPack.map(({ name }) => name)
 
     const coins = items
@@ -89,14 +87,34 @@ export default class StepsWrapper extends Component<any, any> {
 
     const curState = {}
     items.forEach(({ currency }) => { curState[currency] = false })
-    if (isWidgetBuild && config && config.erc20) {
-      if (window && window.widgetERC20Tokens && Object.keys(window.widgetERC20Tokens).length) {
+
+    let haveTokenConfig = true
+
+    Object.keys(TOKEN_STANDARDS).forEach((key) => {
+      if (!config[TOKEN_STANDARDS[key].standard]) {
+        haveTokenConfig = false
+      }
+    })
+
+    if (isWidgetBuild && haveTokenConfig) {
+      if (window?.widgetEvmLikeTokens?.length) {
         // Multi token build
-        Object.keys(window.widgetERC20Tokens).forEach((tokenSymbol) => {
-          if (config.erc20[tokenSymbol]) {
-            this.widgetStartPack.push({
-              name: tokenSymbol.toUpperCase(),
-              capture: config.erc20[tokenSymbol].fullName,
+        window.widgetEvmLikeTokens.reverse().forEach((token) => {
+          const name = token.name.toLowerCase()
+          const standard = token.standard.toLowerCase()
+          const baseCurrency = TOKEN_STANDARDS[standard].currency.toUpperCase()
+          const isTokenAdded = this.widgetStartPack.find((packToken) =>
+            // @ts-ignore
+            packToken.name?.toLowerCase() === name && packToken.standard?.toLowerCase() === standard,
+          )
+
+          if (config[standard][name] && !isTokenAdded) {
+            this.widgetStartPack.unshift({
+              name: name.toUpperCase(),
+              capture: config[standard][name].fullName,
+              // @ts-ignore
+              standard,
+              baseCurrency,
             })
           }
         })
@@ -106,15 +124,80 @@ export default class StepsWrapper extends Component<any, any> {
           this.widgetStartPack.push({
             name: config.erc20token.toUpperCase(),
             capture: config.erc20[config.erc20token].fullName,
+            baseCurrency: 'ETH',
           })
         }
       }
     }
-    this.state = { curState, coins, startPack: (isWidgetBuild) ? this.widgetStartPack : this.defaultStartPack }
+
+    // Порядок коинов в списке
+    if (config.opts.createWalletCoinsOrder && config.opts.createWalletCoinsOrder.length) {
+      const sortPacks = (packList) => {
+        const setCoinOrder = (coinInfo, order) => {
+          const {
+            coin,
+            blockchain,
+          } = getCoinInfo(coinInfo)
+          let isCustomToken = false
+          let customTokenType = ``
+          if (
+            coinInfo === `CUSTOM_ERC20`
+            || coinInfo === `CUSTOM_BEP20`
+            || coinInfo === `CUSTOM_ERC20MATIC`
+            || coinInfo === `CUSTOM_ERC20XDAI`
+            || coinInfo === `CUSTOM_ERC20FTM`
+            || coinInfo === `CUSTOM_ERC20AVAX`
+            || coinInfo === `CUSTOM_ERC20MOVR`
+            || coinInfo === `CUSTOM_ERC20ONE`
+            || coinInfo === `CUSTOM_ERC20AURORA`
+          ) {
+            [customTokenType] = coinInfo.split(`_`)
+            isCustomToken = true
+          }
+          Object.keys(packList).forEach((coinIndex) => {
+            if (isCustomToken) {
+              if (packList[coinIndex].name === customTokenType
+                && packList[coinIndex].capture === `Token`
+              ) {
+                packList[coinIndex].order = order
+                return false
+              }
+            } else {
+              if (blockchain) {
+                if (packList[coinIndex].name === coin
+                  && packList[coinIndex].baseCurrency === blockchain.toUpperCase()
+                ) {
+                  packList[coinIndex].order = order
+                  return false
+                }
+              } else {
+                if (packList[coinIndex].name === coin) {
+                  packList[coinIndex].order = order
+                  return false
+                }
+              }
+            }
+          })
+        }
+        Object.keys(packList).forEach((coinIndex, index) => {
+          packList[coinIndex].order = packList.length + index
+        })
+        config.opts.createWalletCoinsOrder.forEach((coin, order) => {
+          setCoinOrder(coin, order)
+        })
+        packList.sort((pack1, pack2) => pack1.order - pack2.order)
+      }
+      sortPacks((isWidgetBuild) ? this.widgetStartPack : this.defaultStartPack)
+    }
+
+    this.state = {
+      curState,
+      coins,
+      startPack: (isWidgetBuild) ? this.widgetStartPack : this.defaultStartPack,
+    }
   }
 
-
-  handleClick = name => {
+  handleClick = (name) => {
     feedback.createWallet.currencySelected(name)
     const { setError } = this.props
     const { curState } = this.state
@@ -125,77 +208,65 @@ export default class StepsWrapper extends Component<any, any> {
     setError(null)
   }
 
-  etcClick = () => {
-    const { coins, startPack, all } = this.state
-    let newStartPack = this.defaultStartPack
-    if (!all) {
-      if (config.opts.addCustomERC20) {
-        newStartPack = [{
-          name: 'Custom ERC20',
-          capture: <FormattedMessage id="createWallet_customERC20" defaultMessage="Подключить токен" />,
-        }, ...startPack, ...coins]
-      } else {
-        newStartPack = [...startPack, ...coins]
-      }
-    }
-    this.setState(() => ({ startPack: newStartPack, all: !all }))
-  }
-
   render() {
-    const { 
+    const {
       forcedCurrencyData,
       onClick,
       error,
       setError,
       btcData,
-      ethData,
       step,
-      currenciesForSecondStep
+      currenciesForSecondStep,
+      showPinContent,
     } = this.props
     const { curState, startPack } = this.state
 
     return (
       <div>
         {
-          forcedCurrencyData 
-          ? <SecondStep 
-              error={error}
-              onClick={onClick}
-              currencies={currenciesForSecondStep}
-              setError={setError}
-              etcClick={this.etcClick}
-              handleClick={this.handleClick}
-              forcedCurrencyData
-            />
-          : (
-            <div>
-              {
-                step === 1 && 
-                <FirstStep 
-                  error={error} 
-                  onClick={onClick}
-                  setError={setError}
-                  etcClick={this.etcClick}
-                  handleClick={this.handleClick}
-                  curState={curState}
-                  startPack={startPack}
-                />
-              }
-              {
-                step === 2 && 
-                <SecondStep
-                  error={error}
-                  btcData={btcData}
-                  onClick={onClick} 
-                  currencies={currenciesForSecondStep}
-                  setError={setError}
-                  etcClick={this.etcClick}
-                  handleClick={this.handleClick}
-                  ethData={ethData}
-                />
-              }
-            </div>
-          )
+          forcedCurrencyData
+            ? (
+              <SecondStep
+                error={error}
+                onClick={onClick}
+                currencies={currenciesForSecondStep}
+                setError={setError}
+                handleClick={this.handleClick}
+                btcData={btcData}
+                forcedCurrencyData
+              />
+            )
+            : (
+              <div>
+                {
+                  step === 1
+                && (
+                  <FirstStep
+                    error={error}
+                    onClick={onClick}
+                    setError={setError}
+                    handleClick={this.handleClick}
+                    curState={curState}
+                    startPack={startPack}
+                    showPinContent={showPinContent}
+                  />
+                )
+                }
+                {
+                  step === 2
+                && (
+                  <SecondStep
+                    error={error}
+                    btcData={btcData}
+                    onClick={onClick}
+                    currencies={currenciesForSecondStep}
+                    setError={setError}
+                    handleClick={this.handleClick}
+                  />
+                )
+                }
+              </div>
+            )
         }
       </div>
     )

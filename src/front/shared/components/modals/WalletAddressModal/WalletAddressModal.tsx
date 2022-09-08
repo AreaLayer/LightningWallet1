@@ -22,12 +22,8 @@ const langLabels = defineMessages({
   },
 })
 
-@injectIntl
 @cssModules(styles, { allowMultiple: true })
-export default class WalletAddressModal extends React.PureComponent<any, any> {
-
-  props: any
-
+class WalletAddressModal extends React.PureComponent<any, any> {
   handleCloseModal = () => {
     const { name } = this.props
 
@@ -61,3 +57,5 @@ export default class WalletAddressModal extends React.PureComponent<any, any> {
     )
   }
 }
+
+export default injectIntl(WalletAddressModal)

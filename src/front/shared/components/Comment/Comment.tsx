@@ -31,7 +31,7 @@ export default class CommentRow extends React.PureComponent<WithdrawModalProps, 
     this.commentTextarea = React.createRef()
     this.state = {
       isOpen: false,
-      comment: null,
+      comment: '',
     }
   }
 
@@ -88,6 +88,7 @@ export default class CommentRow extends React.PureComponent<WithdrawModalProps, 
       return
     }
 
+    //@ts-ignore: strictNullChecks
     if (e && e.ctrlKey && e.keyCode == 13) {
       this.submitComment(null, this.props)
       return
@@ -117,7 +118,7 @@ export default class CommentRow extends React.PureComponent<WithdrawModalProps, 
 
     const {
       isOpen = false,
-      comment = null
+      comment = ''
     } = this.state
 
     return (
@@ -127,8 +128,10 @@ export default class CommentRow extends React.PureComponent<WithdrawModalProps, 
             <textarea 
               ref={this.commentTextarea}
               styleName="commentTextarea" id="commentTextarea"
+              //@ts-ignore: strictNullChecks
               onKeyUp={this.handleKeyUp}
               onChange={this.changeComment}
+              //@ts-ignore: strictNullChecks
               value={comment} 
             ></textarea>
             <span styleName="submit" onClick={(e) => this.submitComment(e, this.props)}>&#10004;</span>

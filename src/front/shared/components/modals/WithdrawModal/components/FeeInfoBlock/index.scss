@@ -1,5 +1,5 @@
 .feeInfoBlock {
-  color: $notice-color;
+  color: var(--color-notice);
 }
 
 .feeRow {
@@ -28,7 +28,7 @@
 }
 
 .fee {
-  font-family: 'Roboto Mono', monospace;
+  @include ff-mono;
 }
 
 .serviceFeeConditions {
@@ -38,7 +38,7 @@
   font-size: 11px;
   border-left: 6px solid #8886;
   border-right: 2px solid #8886;
-  border-radius: 4px;
+  border-radius: var(--main-component-border-radius);
 }
 
 @media all and (max-width: 480px) {

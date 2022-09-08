@@ -5,15 +5,16 @@ import * as bitcoin from 'bitcoinjs-lib'
 import bitcoinMessage from 'bitcoinjs-message'
 import { getState } from 'redux/core'
 import reducers from 'redux/core/reducers'
+import * as mnemonicUtils from 'common/utils/mnemonic'
 import { apiLooper, constants, api } from 'helpers'
 import btc from 'helpers/btc'
 import actions from 'redux/actions'
 import config from 'helpers/externalConfig'
 import SwapApp from 'swap.app'
 
-import { MnemonicKey } from './types'
+import { MnemonicKey } from 'common/types'
 
-import { default as bitcoinUtils } from '../../../../common/utils/coin/btc'
+import { default as bitcoinUtils } from 'common/utils/coin/btc'
 
 const BITPAY_API = {
   name: 'bitpay',
@@ -34,6 +35,8 @@ const hasAdminFee = (
   && config.opts.fee.btc.address
   && config.opts.fee.btc.min
 ) ? config.opts.fee.btc : false
+
+const NETWORK = (process.env.MAINNET) ? `MAINNET` : `TESTNET`
 
 const addressToWallet = (address) => {
   const {
@@ -65,6 +68,7 @@ const getSmsKeyFromMnemonic = (mnemonic) => {
 
 const _loadBtcMultisigKeys = () => {
   let savedKeys = localStorage.getItem(constants.privateKeyNames.btcMultisigOtherOwnerKey)
+  //@ts-ignore: strictNullChecks
   try { savedKeys = JSON.parse(savedKeys) } catch (e) { }
   //@ts-ignore
   if (!(savedKeys instanceof Array)) {
@@ -152,14 +156,19 @@ const getBtcMultisigKeys = (params) => {
 
     const savedKeys = _loadBtcMultisigKeys()
     const keysInfo = []
+    //@ts-ignore: strictNullChecks
     if (savedKeys.length > 0) {
+      //@ts-ignore: strictNullChecks
       for (let i = 0; i < savedKeys.length; i++) {
+        //@ts-ignore: strictNullChecks
         if (savedKeys[i]) {
+          //@ts-ignore: strictNullChecks
           const walletData = login_USER(privateKey, savedKeys[i], true)
 
           walletData.index = i
           //@ts-ignore
           walletData.balance = (opts.dontFetchBalance) ? 0 : await fetchBalance(walletData.address)
+          //@ts-ignore: strictNullChecks
           keysInfo.push(walletData)
         }
       }
@@ -172,6 +181,7 @@ const getBtcMultisigKeys = (params) => {
 const addBtcMultisigKey = (publicKey, isPrimary) => {
   const savedKeys = _loadBtcMultisigKeys()
 
+  //@ts-ignore: strictNullChecks
   if (!savedKeys.includes(publicKey)) {
     //@ts-ignore
     savedKeys.push(publicKey)
@@ -186,8 +196,10 @@ const switchBtcMultisigKey = (keyOrIndex) => {
   const savedKeys = _loadBtcMultisigKeys()
 
   let index = keyOrIndex
+  //@ts-ignore: strictNullChecks
   if (!Number.isInteger(index)) index = savedKeys.indexOf(keyOrIndex)
 
+  //@ts-ignore: strictNullChecks
   if ((index > -1) && (index < savedKeys.length)) {
     if (index !== 0) {
       //@ts-ignore
@@ -215,6 +227,7 @@ const removeBtcMultisigNey = (keyOrIndex) => {
   const savedKeys = _loadBtcMultisigKeys()
 
   let index = keyOrIndex
+  //@ts-ignore: strictNullChecks
   if (!Number.isInteger(index)) index = savedKeys.indexOf(keyOrIndex)
 
   if (index > -1) {
@@ -230,11 +243,6 @@ const removeBtcMultisigNey = (keyOrIndex) => {
   }
 }
 
-const checkSMSActivated = () => {
-  const { user: { btcMultisigSMSData: { isRegistered } } } = getState()
-  return isRegistered
-}
-
 const checkPINActivated = () => {
   const { user: { btcMultisigPinData: { isRegistered } } } = getState()
   return isRegistered
@@ -245,19 +253,6 @@ const checkG2FAActivated = () => false
 const checkUserActivated = () => {
   const { user: { btcMultisigUserData: { active } } } = getState()
   return active
-}
-
-const isBTCSMSAddress = (address) => {
-  const {
-    user: {
-      btcData,
-      btcMultisigSMSData,
-    },
-  } = getState()
-
-  if (btcMultisigSMSData && btcMultisigSMSData.address && btcMultisigSMSData.address.toLowerCase() === address.toLowerCase()) return btcMultisigSMSData
-
-  return false
 }
 
 const isBTCMSUserAddress = (address) => {
@@ -277,30 +272,6 @@ const isBTCMSUserAddress = (address) => {
   }
 
   return false
-}
-
-// @ToDo - Remove.
-const isBTCAddress = (address) => {
-  console.warn(`Deprecated call isBTCAddress`)
-  return actions.btc.getDataByAddress(address)
-
-  /*const {
-    user: {
-      btcData,
-      btcMnemonicData,
-      btcMultisigSMSData,
-      btcMultisigUserData,
-      btcMultisigG2FAData,
-    },
-  } = getState()
-
-  if (btcData && btcData.address && btcData.address.toLowerCase() === address.toLowerCase()) return btcData
-  if (btcMnemonicData && btcMnemonicData.address && btcMnemonicData.address.toLowerCase() === address.toLowerCase()) return btcMnemonicData // Sweep
-  if (btcMultisigSMSData && btcMultisigSMSData.address && btcMultisigSMSData.address.toLowerCase() === address.toLowerCase()) return btcMultisigSMSData
-  if (btcMultisigUserData && btcMultisigUserData.address && btcMultisigUserData.address.toLowerCase() === address.toLowerCase()) return btcMultisigUserData
-  if (btcMultisigG2FAData && btcMultisigG2FAData.address && btcMultisigG2FAData.address.toLowerCase() === address.toLowerCase()) return btcMultisigG2FAData
-
-  return false*/
 }
 
 const createWallet = (privateKey, otherOwnerPublicKey) => {
@@ -357,7 +328,6 @@ const createWallet = (privateKey, otherOwnerPublicKey) => {
   window.getBtcMultisigData = () => data
   window.getBtcMultisigAddress = () => data.address
 
-  console.info('Logged in with BitcoinMultisig', data)
   reducers.user.setAuthData({ name: 'btcMultisigData', data })
 }
 
@@ -425,9 +395,11 @@ const login_USER = (privateKey, otherOwnerPublicKey, onlyCheck) => {
   actions.pubsubRoom.onReady(() => {
     const { user: { btcMultisigUserData: { address } } } = getState()
     const onRequestEventName = `btc multisig request sign ${address}`
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.subscribe(onRequestEventName, (_data) => {
       const { txData } = _data
       if (txData && txData.address && txData.amount && txData.currency && txData.txRaw) {
+        //@ts-ignore: strictNullChecks
         SwapApp.shared().services.room.sendMessagePeer(
           _data.fromPeer,
           {
@@ -436,6 +408,7 @@ const login_USER = (privateKey, otherOwnerPublicKey, onlyCheck) => {
           }
         )
         actions.notifications.show('BTCMultisignRequest', txData)
+        //@ts-ignore: strictNullChecks
         actions.modals.open(constants.modals.BtcMultisignConfirmTx, {
           txData: txData.txRaw,
         })
@@ -467,12 +440,18 @@ const login_ = (privateKey, otherOwnerPublicKey, sortKeys) => {
   let _data
 
   if (otherOwnerPublicKey) {
-    let publicKeysRaw = []
+    let publicKeysRaw: string[] = []
+
     if (otherOwnerPublicKey instanceof Array) {
-      otherOwnerPublicKey.forEach((key) => { publicKeysRaw.push(key) })
+      otherOwnerPublicKey.forEach((key) => {
+        if (key) {
+          publicKeysRaw.push(key)
+        }
+      })
     } else {
       publicKeysRaw.push(otherOwnerPublicKey)
     }
+    //@ts-ignore: strictNullChecks
     publicKeysRaw.push(publicKey_1)
 
     if (sortKeys) publicKeysRaw = publicKeysRaw.sort()
@@ -551,6 +530,7 @@ const onUserMultisigJoin = (data) => {
   if (checkKey === btcData.publicKey.toString('hex') && publicKey && (publicKey.length === 66)) {
     console.log('checks ok - connect')
     addBtcMultisigKey(publicKey, true)
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.sendMessagePeer(fromPeer, {
       event: 'btc multisig join ready',
       data: {},
@@ -574,6 +554,7 @@ const broadcastTX2Room = (txData, cbSuccess, cbFail) => {
     console.log('broadcast sucess', data)
     //@ts-ignore
     clearTimeout(failTimer)
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.unsubscribe(onSuccessEventName, onSuccessEvent)
     if (cbSuccess) cbSuccess()
   }
@@ -582,6 +563,7 @@ const broadcastTX2Room = (txData, cbSuccess, cbFail) => {
     console.log('broadcast multisig canceled')
     //@ts-ignore
     clearTimeout(failTimer)
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.unsubscribe(onSuccessEventName, onSuccessEvent)
   }
 
@@ -589,15 +571,18 @@ const broadcastTX2Room = (txData, cbSuccess, cbFail) => {
     console.log('broadcast multisig fail timer')
     //@ts-ignore
     clearTimeout(failTimer)
+    //@ts-ignore: strictNullChecks
     SwapApp.shared().services.room.unsubscribe(onSuccessEventName, onSuccessEvent)
     if (cbFail) cbFail()
   }
   //@ts-ignore
   failTimer = setTimeout(onFailTimer, 30000)
 
+  //@ts-ignore: strictNullChecks
   SwapApp.shared().services.room.subscribe(onSuccessEventName, onSuccessEvent)
 
   // Broadcast TX
+  //@ts-ignore: strictNullChecks
   SwapApp.shared().services.room.sendMessageRoom({
     event: `btc multisig request sign ${address}`,
     data: {
@@ -619,126 +604,9 @@ const _getSign = () => {
   return sign.toString('base64')
 }
 
-const beginRegisterSMS = async (phone, mnemonic, ownPublicKey) => {
+const registerPinWallet = async (password, mnemonic, ownPublicKey) => {
   const {
     user: {
-      btcMultisigSMSData: {
-        account,
-        keyPair,
-        publicKey,
-      },
-      btcData: {
-        address,
-      },
-    },
-  } = getState()
-
-  const publicKeys = []
-  if (mnemonic && !ownPublicKey) {
-    // 2of3 - extract public key from mnemonic
-    const mnemonicAccount = actions.btc.getWalletByWords(mnemonic, 1)
-    publicKeys.push(mnemonicAccount.publicKey)
-  }
-
-  // Возможность использовать произвольный публик-кей для разблокирования
-  if (ownPublicKey) {
-    publicKeys.push(ownPublicKey)
-  }
-
-  publicKeys.push(publicKey.toString('Hex'))
-
-  const sign = _getSign()
-  try {
-    const result: any = await apiLooper.post('btc2FAProtected', `/register/begin/`, {
-      body: {
-        phone,
-        address,
-        publicKey: JSON.stringify(publicKeys),
-        checkSign: sign,
-        mainnet: !!process.env.MAINNET,
-        source: window.location.hostname,
-      },
-    })
-    console.log(result)
-    return result
-  } catch (error) {
-    console.error(error)
-    return false
-  }
-}
-
-const confirmRegisterSMS = async (phone, smsCode, mnemonic, ownPublicKey) => {
-  const {
-    user: {
-      btcMultisigSMSData: {
-        account,
-        keyPair,
-        publicKey,
-      },
-      btcData: {
-        address,
-      },
-    },
-  } = getState()
-
-  const publicKeys = []
-  let mnemonicKey = false
-
-  if (mnemonic && !ownPublicKey) {
-    // 2of3 - extract public key from mnemonic
-    const mnemonicAccount = actions.btc.getWalletByWords(mnemonic, 1)
-    //@ts-ignore
-    mnemonicKey = mnemonicAccount.publicKey
-    publicKeys.push(mnemonicKey)
-  }
-
-  // Возможность использовать произвольный публик-кей для разблокирования
-  if (ownPublicKey) {
-    publicKeys.push(ownPublicKey)
-    mnemonicKey = ownPublicKey
-  }
-
-  publicKeys.push(publicKey.toString('Hex'))
-
-  const sign = _getSign()
-
-  const newKeys = JSON.stringify(publicKeys)
-
-  try {
-    const result: any = await apiLooper.post('btc2FAProtected', `/register/confirm/`, {
-      body: {
-        phone,
-        address,
-        smsCode,
-        publicKey: newKeys,
-        checkSign: sign,
-        mainnet: !!process.env.MAINNET,
-        source: window.location.hostname,
-      },
-    })
-
-    if ((result && result.answer && result.answer === 'ok') || (result.error === 'Already registered')) {
-      localStorage.setItem(`${constants.localStorage.didProtectedBtcCreated}:${address}`, '1')
-      if (mnemonic) {
-        addSMSWallet(mnemonicKey)
-      }
-    }
-
-    return result
-  } catch (error) {
-    console.error(error)
-    return false
-  }
-}
-
-const register_PIN = async (password, mnemonic, ownPublicKey) => {
-  const {
-    user: {
-      btcMultisigPinData: {
-        account,
-        keyPair,
-        publicKey,
-      },
       btcData: {
         address,
         publicKey: mainKey,
@@ -794,6 +662,49 @@ const register_PIN = async (password, mnemonic, ownPublicKey) => {
   }
 }
 
+const isPinRegistered = async (mnemonic) => {
+  const {
+    user: {
+      btcData: {
+        address,
+        publicKey,
+      },
+    },
+  } = getState()
+
+  const mnemonicAccount = actions.btc.getWalletByWords(mnemonic, 1)
+  const mnemonicKey = mnemonicAccount.publicKey
+  const privateKey = mnemonicAccount.WIF
+  const serverKey = config.swapContract.btcPinKey
+  //@ts-ignore
+  const publicKeys = [serverKey, mnemonicKey.toString('Hex'), publicKey.toString('Hex')]
+
+  try {
+    const result: any = await apiLooper.post('btcPin', `/login/`, {
+      body: {
+        address,
+        publicKey: JSON.stringify(publicKeys),
+        mainnet: config.entry === 'mainnet',
+      },
+    })
+
+    if (result?.answer === 'Exist') {
+      return {
+        exist: true,
+        publicKeys,
+        privateKey,
+      }
+    } else {
+      return false
+    }
+  } catch (error) {
+    console.group('%c isPinRegistered', 'color: red;')
+    console.error(error)
+    console.groupEnd()
+    return false
+  }
+}
+
 const addPinWallet = async (mnemonicOrKey) => {
   const {
     user: {
@@ -804,14 +715,17 @@ const addPinWallet = async (mnemonicOrKey) => {
   } = getState()
 
   let mnemonicKey = mnemonicOrKey
-  if (actions.btc.validateMnemonicWords(mnemonicOrKey)) {
+
+  if (mnemonicOrKey && mnemonicUtils.validateMnemonicWords(mnemonicOrKey)) {
     const mnemonicAccount = actions.btc.getWalletByWords(mnemonicOrKey, 1)
     mnemonicKey = mnemonicAccount.publicKey
   }
 
+  //@ts-ignore: strictNullChecks
   let btcPinMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcPinMnemonicKey)
-  
+
   try { 
+    //@ts-ignore: strictNullChecks
     btcPinMnemonicKey = JSON.parse(btcPinMnemonicKey) 
   } catch (e) {
     console.error(e)
@@ -839,53 +753,8 @@ const addPinWallet = async (mnemonicOrKey) => {
   await actions.btcmultisig.login_PIN(privateKey, btcPinPublicKeys)
   const { user: { btcMultisigPinData: { address } } } = getState()
 
+  //@ts-ignore: strictNullChecks
   await getBalance(address, 'btcMultisigPinData')
-}
-
-const addSMSWallet = async (mnemonicOrKey) => {
-  const {
-    user: {
-      btcData: {
-        privateKey,
-      },
-    },
-  } = getState()
-
-  let mnemonicKey = mnemonicOrKey
-  if (actions.btc.validateMnemonicWords(mnemonicOrKey)) {
-    const mnemonicAccount = actions.btc.getWalletByWords(mnemonicOrKey, 1)
-    mnemonicKey = mnemonicAccount.publicKey
-  }
-
-  let btcSmsMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcSmsMnemonicKey)
-  
-  try { 
-    btcSmsMnemonicKey = JSON.parse(btcSmsMnemonicKey) 
-  } catch (e) {
-    console.error(e)
-  }
-
-  if (!(btcSmsMnemonicKey instanceof Array)) {
-    btcSmsMnemonicKey = []
-  }
-
-  const index = btcSmsMnemonicKey.indexOf(mnemonicKey)
-
-  if (index === -1) btcSmsMnemonicKey.unshift(mnemonicKey)
-  if ((index > -1) && (index < btcSmsMnemonicKey.length)) {
-    if (index !== 0) {
-      btcSmsMnemonicKey = btcSmsMnemonicKey.splice(index, 1)
-      btcSmsMnemonicKey.unshift(mnemonicKey)
-    }
-  }
-
-  localStorage.setItem(constants.privateKeyNames.btcSmsMnemonicKey, JSON.stringify(btcSmsMnemonicKey))
-
-  const btcSMSServerKey = config.swapContract.protectedBtcKey
-  let btcSmsPublicKeys = [btcSMSServerKey, mnemonicKey]
-
-  await actions.btcmultisig.login_SMS(privateKey, btcSmsPublicKeys)
-  await getBalance()
 }
 
 const getAddrBalance = (address) => {
@@ -936,12 +805,14 @@ const getBalance = (ownAddress = null, ownDataKey = null) => {
 const getBalancePin = () => {
   const { user: { btcMultisigPinData: { address } } } = getState()
 
+  //@ts-ignore: strictNullChecks
   return getBalance(address, 'btcMultisigPinData')
 }
 
 const getBalanceUser = (checkAddress) => {
   const { user: { btcMultisigUserData: { address } } } = getState()
   if (!checkAddress) {
+    //@ts-ignore: strictNullChecks
     return getBalance(address, 'btcMultisigUserData')
   }
   return getAddrBalance(checkAddress).then(({ balance, unconfirmedBalance }) => {
@@ -972,11 +843,11 @@ const fetchTx = (hash, cacheResponse) => bitcoinUtils.fetchTx({
   cacheResponse,
 })
 
-const fetchTxInfo = (hash, cacheResponse) => bitcoinUtils.fetchTxInfo({
+const fetchTxInfo = (hash, cacheResponse, serviceFee = null) => bitcoinUtils.fetchTxInfo({
   hash,
   apiBitpay: BITPAY_API,
   cacheResponse,
-  hasAdminFee,
+  hasAdminFee: serviceFee || hasAdminFee,
 })
 
 const getTransactionUser = (address: string = ``) => {
@@ -1043,15 +914,6 @@ const getTransactionPIN = (address: string = ``) => {
 
 const getTransactionG2FA = () => { }
 
-const getInvoicesSMS = () => {
-  const { user: { btcMultisigSMSData: { address } } } = getState()
-
-  return actions.invoices.getInvoices({
-    currency: 'BTC',
-    address,
-  })
-}
-
 const getInvoicesUser = () => {
   const { user: { btcMultisigUserData: { address } } } = getState()
 
@@ -1071,14 +933,12 @@ const getTransaction = (ownAddress, ownType) => {
   })
 }
 //@ts-ignore
-const sendSMSProtected = async ({ from, to, amount, feeValue, speed } = {}) => {
+const sendSMSProtected = async ({ from, to, amount, feeValue, speed, serviceFee = hasAdminFee } = {}) => {
   const {
     user: {
       btcMultisigSMSData: {
         privateKey,
-        address: smsAddress,
         publicKeys,
-        publicKey,
       },
       btcData: {
         address,
@@ -1086,86 +946,54 @@ const sendSMSProtected = async ({ from, to, amount, feeValue, speed } = {}) => {
     },
   } = getState()
 
-  let feeFromAmount: number | BigNumber = new BigNumber(0)
+  const method = 'send_2fa'
 
-  if (hasAdminFee) {
-    const {
-      fee: adminFee,
-      min: adminFeeMinValue,
-    } = hasAdminFee
-
-    const adminFeeMin = new BigNumber(adminFeeMinValue)
-
-    feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-    if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-    feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue() // Admin fee in satoshi
+  let preparedFees
+  try {
+    preparedFees = await bitcoinUtils.prepareFees({
+      amount,
+      serviceFee,
+      feeValue,
+      speed,
+      method,
+      from,
+      to,
+      NETWORK
+    })
+  } catch (prepareFeesError) {
+    return {
+      error: prepareFeesError.message,
+    }
   }
-  feeFromAmount = feeFromAmount.toNumber()
-
-  const feeData =  await btc.estimateFeeValue({
-    inSatoshis: true,
-    speed,
-    method: 'send_2fa',
-    address: smsAddress,
-    amount,
-    moreInfo: true,
-  })
-
   const {
-    satoshis,
+    fundValue,
+    skipValue,
+    feeFromAmount,
     unspents,
-    unspents: originalUnspents,
-  } = feeData
-  feeValue = satoshis
+  } = preparedFees
 
-  const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  const skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
 
-  const p2ms = bitcoin.payments.p2ms({
-    m: 2,
-    n: publicKeys.length,
-    pubkeys: publicKeys,
-    network: btc.network,
-  })
-
-  const psbt = new bitcoin.Psbt({network: btc.network})
-
-  psbt.addOutput({
-    address: to,
-    value: fundValue,
-  })
-
-  if (skipValue > 546) {
-    psbt.addOutput({
-      address: from,
-      value: skipValue
+  let rawTx
+  try {
+    rawTx = await bitcoinUtils.prepareRawTx({
+      from,
+      to,
+      fundValue,
+      skipValue,
+      serviceFee,
+      feeFromAmount,
+      method,
+      unspents,
+      privateKey,
+      publicKeys,
+      network: btc.network,
+      NETWORK
     })
+  } catch (prepareRawTxError) {
+    return {
+      error: prepareRawTxError.message,
+    }
   }
-
-  if (hasAdminFee) {
-    // admin fee output
-    psbt.addOutput({
-      address: hasAdminFee.address,
-      value: feeFromAmount,
-    })
-  }
-
-  for (let i = 0; i < unspents.length; i++) {
-    const { txid, vout } = unspents[i]
-    const rawTx = await actions.btc.fetchTxRaw(txid, { cacheResponse: 5000 })
-    psbt.addInput({
-      hash: txid,
-      index: vout,
-      redeemScript: p2ms.output,
-      nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
-    })
-  }
-
-  psbt.signAllInputs(bitcoin.ECPair.fromWIF(privateKey, btc.network))
-
-  const rawTX = psbt.toHex()
 
   let authKeys = publicKeys.slice(1)
   authKeys = JSON.stringify(authKeys.map((key) => key.toString('Hex')))
@@ -1176,7 +1004,7 @@ const sendSMSProtected = async ({ from, to, amount, feeValue, speed } = {}) => {
         address,
         publicKey: authKeys,
         checkSign: _getSign,
-        rawTX,
+        rawTX: rawTx,
         mainnet: process.env.MAINNET ? true : false,
         source: window.location.hostname,
       },
@@ -1187,25 +1015,23 @@ const sendSMSProtected = async ({ from, to, amount, feeValue, speed } = {}) => {
     })
     return {
       ...result,
-      rawTx: rawTX,
+      rawTx,
     }
   } catch (apiError) {
     return {
       error: apiError.message,
-      rawTx: rawTX,
+      rawTx,
     }
   }
 }
 
-//@ts-ignore
-const sendPinProtected = async ({ from, to, amount, feeValue, speed, password, mnemonic } = {}) => {
+const sendPinProtected = async (params) => {
+  const { from, to, amount, feeValue, speed, password, mnemonic, serviceFee = hasAdminFee } = params
   const {
     user: {
       btcMultisigPinData: {
         privateKey,
         publicKeys,
-        publicKey,
-        address: pinAddress,
       },
       btcData: {
         address,
@@ -1213,98 +1039,57 @@ const sendPinProtected = async ({ from, to, amount, feeValue, speed, password, m
     },
   } = getState()
 
-  let feeFromAmount: any = new BigNumber(0)
-  let totalAmount = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
+  const method = 'send_2fa'
 
-  if (hasAdminFee) {
-    const {
-      fee: adminFee,
-      min: adminFeeMinValue,
-    } = hasAdminFee
-
-    const adminFeeMin = new BigNumber(adminFeeMinValue)
-
-    feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-    if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-
-    feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue() // Admin fee in satoshi
-    totalAmount = new BigNumber(totalAmount).plus(feeFromAmount).integerValue().toNumber()
-
+  let preparedFees
+  try {
+    preparedFees = await bitcoinUtils.prepareFees({
+      amount,
+      serviceFee,
+      feeValue,
+      speed,
+      method,
+      from,
+      to,
+      NETWORK
+    })
+  } catch (prepareFeesError) {
+    return {
+      error: prepareFeesError.message,
+    }
   }
-  feeFromAmount = feeFromAmount.toNumber()
-  const feeData = await btc.estimateFeeValue({
-    inSatoshis: true,
-    speed,
-    method: 'send_2fa',
-    address: pinAddress,
-    moreInfo: true,
-    amount: new BigNumber(totalAmount).dividedBy(1e8).toNumber(),
-  })
-
   const {
-    satoshis,
+    fundValue,
+    skipValue,
+    feeFromAmount,
     unspents,
-    unspents: originalUnspents,
-  } = feeData
-  feeValue = satoshis
+  } = preparedFees
 
-  let fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  let skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
 
-  if (new BigNumber(skipValue).isLessThan(0)) {
-    console.log('>>>>> skip is less than zero', skipValue, fundValue, totalUnspent)
-    fundValue = new BigNumber(fundValue).plus(skipValue).integerValue().toNumber()
-    skipValue = 0
-  }
-
-  const p2ms = bitcoin.payments.p2ms({
-    m: 2,
-    n: publicKeys.length,
-    pubkeys: publicKeys,
-    network: btc.network,
-  })
-
-  const psbt = new bitcoin.Psbt({network: btc.network})
-
-  psbt.addOutput({
-    address: to,
-    value: fundValue,
-  })
-
-  if (skipValue > 546) {
-    psbt.addOutput({
-      address: from,
-      value: skipValue
+  let rawTx
+  try {
+    rawTx = await bitcoinUtils.prepareRawTx({
+      from,
+      to,
+      fundValue,
+      skipValue,
+      serviceFee,
+      feeFromAmount,
+      method,
+      unspents,
+      privateKey,
+      publicKeys,
+      network: btc.network,
+      NETWORK
     })
+  } catch (prepareRawTxError) {
+    return {
+      error: prepareRawTxError.message,
+    }
   }
-
-  if (hasAdminFee) {
-    // admin fee output
-    psbt.addOutput({
-      address: hasAdminFee.address,
-      value: feeFromAmount,
-    })
-  }
-
-  for (let i = 0; i < unspents.length; i++) {
-    const { txid, vout } = unspents[i]
-    const rawTxo = await actions.btc.fetchTxRaw(txid, { cacheResponse: 5000 })
-    psbt.addInput({
-      hash: txid,
-      index: vout,
-      redeemScript: p2ms.output,
-      nonWitnessUtxo: Buffer.from(rawTxo, 'hex'),
-    })
-  }
-
-  psbt.signAllInputs(bitcoin.ECPair.fromWIF(privateKey, btc.network))
-
-  const rawTX = psbt.toHex()
 
   if (mnemonic) {
-    const mnemonicTx = await signPinMnemonic(rawTX, mnemonic)
+    const mnemonicTx = await signPinMnemonic(rawTx, mnemonic)
     const broadcastResult = await actions.btc.broadcastTx(mnemonicTx)
     if (broadcastResult
       && broadcastResult.txid
@@ -1320,8 +1105,8 @@ const sendPinProtected = async ({ from, to, amount, feeValue, speed, password, m
     }
   }
 
-  let authKeys = publicKeys//.slice(1)
-  authKeys = JSON.stringify(authKeys.map((key) => key.toString('Hex')))
+  let authKeys = publicKeys
+  authKeys = JSON.stringify(authKeys.map((key) => Buffer.from(key).toString('hex')))
 
   try {
     const result: any = await apiLooper.post('btcPin', `/sign/`, {
@@ -1329,7 +1114,7 @@ const sendPinProtected = async ({ from, to, amount, feeValue, speed, password, m
         address,
         publicKey: authKeys,
         checkSign: _getSign,
-        rawTX: rawTX,
+        rawTX: rawTx,
         mainnet: process.env.MAINNET ? true : false,
         source: window.location.hostname,
         password,
@@ -1367,7 +1152,7 @@ const sendPinProtected = async ({ from, to, amount, feeValue, speed, password, m
   } catch (apiError) {
     return {
       error: apiError.message,
-      rawTX,
+      rawTx,
     }
   }
 }
@@ -1403,7 +1188,7 @@ const confirmSMSProtected = async (smsCode) => {
   return result
 }
 //@ts-ignore
-const send = async ({ from, to, amount, feeValue, speed } = {}) => {
+const send = async ({ from, to, amount, feeValue, speed, serviceFee = hasAdminFee } = {}) => {
   const {
     user: {
       btcMultisigUserData: {
@@ -1413,86 +1198,57 @@ const send = async ({ from, to, amount, feeValue, speed } = {}) => {
   } = getState()
 
   const senderWallet = addressToWallet(from)
-  console.log('senderWallet', from)
 
   const { address, publicKeys } = senderWallet
 
-  feeValue = feeValue || await btc.estimateFeeValue({
-    inSatoshis: true,
-    speed,
-    method: 'send_multisig',
-    address,
-  })
+  const method = 'send_multisig'
 
-  let feeFromAmount: number | BigNumber = new BigNumber(0)
-
-  if (hasAdminFee) {
-    const {
-      fee: adminFee,
-      min: adminFeeMinValue,
-    } = hasAdminFee
-
-    const adminFeeMin = new BigNumber(adminFeeMinValue)
-
-    feeFromAmount = new BigNumber(adminFee).dividedBy(100).multipliedBy(amount)
-    if (adminFeeMin.isGreaterThan(feeFromAmount)) feeFromAmount = adminFeeMin
-
-
-    feeFromAmount = feeFromAmount.multipliedBy(1e8).integerValue()
-  }
-  feeFromAmount = feeFromAmount.toNumber()
-  const unspents = await fetchUnspents(from)
-
-  const fundValue = new BigNumber(String(amount)).multipliedBy(1e8).integerValue().toNumber()
-  const totalUnspent = unspents.reduce((summ, { satoshis }) => summ + satoshis, 0)
-  const skipValue = totalUnspent - fundValue - feeValue - feeFromAmount
-
-  const p2ms = bitcoin.payments.p2ms({
-    m: 2,
-    n: publicKeys.length,
-    pubkeys: publicKeys,
-    network: btc.network,
-  })
-
-  const p2sh = bitcoin.payments.p2sh({ redeem: p2ms, network: btc.network })
-
-  const psbt = new bitcoin.Psbt({network: btc.network})
-
-  psbt.addOutput({
-    address: to,
-    value: fundValue,
-  })
-
-  if (skipValue > 546) {
-    psbt.addOutput({
-      address: from,
-      value: skipValue
+  let preparedFees
+  try {
+    preparedFees = await bitcoinUtils.prepareFees({
+      amount,
+      serviceFee,
+      feeValue,
+      speed,
+      method,
+      from: address,
+      to,
+      NETWORK
     })
+  } catch (prepareFeesError) {
+    return {
+      error: prepareFeesError.message,
+    }
   }
+  const {
+    fundValue,
+    skipValue,
+    feeFromAmount,
+    unspents,
+  } = preparedFees
 
-  if (hasAdminFee) {
-    // admin fee output
-    psbt.addOutput({
-      address: hasAdminFee.address,
-      value: feeFromAmount,
+
+  let rawTx
+  try {
+    rawTx = await bitcoinUtils.prepareRawTx({
+      from: address,
+      to,
+      fundValue,
+      skipValue,
+      serviceFee,
+      feeFromAmount,
+      method,
+      unspents,
+      privateKey,
+      publicKeys,
+      network: btc.network,
+      NETWORK
     })
+  } catch (prepareRawTxError) {
+    return {
+      error: prepareRawTxError.message,
+    }
   }
-
-  for (let i = 0; i < unspents.length; i++) {
-    const { txid, vout } = unspents[i]
-    //@ts-ignore
-    const rawTx = await actions.btc.fetchTxRaw(txid)
-    psbt.addInput({
-      hash: txid,
-      index: vout,
-      redeemScript: p2ms.output,
-      nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
-    })
-  }
-
-  psbt.signAllInputs(bitcoin.ECPair.fromWIF(privateKey, btc.network))
-
-  const rawTx = psbt.toHex();
 
   return rawTx
 }
@@ -1589,8 +1345,11 @@ const parseRawTX = async (txHash) => {
       }
 
       parsedTX.output.push({
+        //@ts-ignore: strictNullChecks
         address,
+        //@ts-ignore: strictNullChecks
         valueSatoshi: out.value,
+        //@ts-ignore: strictNullChecks
         value: new BigNumber(out.value).dividedBy(1e8).toNumber(),
       })
     })
@@ -1627,6 +1386,7 @@ const signMofNByMnemonic = async (txHash, option_M, publicKeys, mnemonic, wallet
     console.log(txb)
     //@ts-ignore
     txb.__INPUTS.forEach((input, index) => {
+      //@ts-ignore: strictNullChecks
       txb.sign(index, bitcoin.ECPair.fromWIF(mnemonicWallet.WIF, btc.network), p2sh.redeem.output)
     })
 
@@ -1655,18 +1415,6 @@ const signMultiSign = async (txHash, wallet) => {
   const rawTx = psbt.extractTransaction().toHex()
 
   return rawTx
-}
-
-const signSmsMnemonic = (txHash, mnemonic) => {
-  const {
-    user: {
-      btcMultisigSMSData: {
-        publicKeys,
-      },
-    },
-  } = getState()
-  //@ts-ignore
-  return signMofNByMnemonic(txHash, 2, publicKeys, mnemonic, 1)
 }
 
 const signPinMnemonic = (txHash, mnemonic) => {
@@ -1709,9 +1457,11 @@ const signSmsMnemonicAndBuild = (txHash, mnemonic) => {
 
 const checkPinCanRestory = (mnemonic) => {
   const mnemonicWallet = actions.btc.getWalletByWords(mnemonic, 1)
+  //@ts-ignore: strictNullChecks
   let btcSmsMnemonicKey: MnemonicKey = localStorage.getItem(constants.privateKeyNames.btcSmsMnemonicKey)
   
   try {
+    //@ts-ignore: strictNullChecks
     btcSmsMnemonicKey = JSON.parse(btcSmsMnemonicKey)
   } catch (e) {
     console.error(e)
@@ -1777,14 +1527,8 @@ const signMessage = (message, encodedPrivateKey) => {
   return signature.toString('base64')
 }
 
-const getReputation = () => Promise.resolve(0)
-
-
 export default {
-  // SMS Protected
-  beginRegisterSMS,
-  confirmRegisterSMS,
-  checkSMSActivated,
+  // SMS Protected - outdated. Remove these actions
   getBalance,
   login_SMS,
   checkG2FAActivated,
@@ -1793,17 +1537,14 @@ export default {
   sendSMSProtected,
   confirmSMSProtected,
   enableWalletSMS,
-  signSmsMnemonic,
   signSmsMnemonicAndBuild,
   checkSmsMnemonic,
-  getInvoicesSMS,
-  addSMSWallet,
-  isBTCSMSAddress,
   getSmsKeyFromMnemonic,
 
   // Pin protected
+  isPinRegistered,
   login_PIN,
-  register_PIN,
+  registerPinWallet,
   checkPINActivated,
   addPinWallet,
   getBalancePin,
@@ -1828,7 +1569,6 @@ export default {
   fetchTxInfo,
   fetchBalance,
   signMessage,
-  getReputation,
   enableWalletUSER,
 
   parseRawTX,
@@ -1849,7 +1589,6 @@ export default {
   signToUserMultisig,
 
   // common
-  isBTCAddress,
   getAddrBalance,
   addressToWallet,
 

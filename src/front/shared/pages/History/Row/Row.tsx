@@ -1,30 +1,22 @@
-import React, { Fragment } from 'react'
+import { PureComponent } from 'react'
 import cx from 'classnames'
-import { connect } from 'redaction'
 import cssModules from 'react-css-modules'
 import styles from './Row.scss'
 import { FormattedMessage } from 'react-intl'
 import actions from 'redux/actions'
-import { constants, links } from 'helpers'
+import { constants, links, utils } from 'helpers'
 import { Link } from 'react-router-dom'
-import ethToken from 'helpers/ethToken'
 import { getFullOrigin } from 'helpers/links'
 
 import CommentRow from 'components/Comment/Comment'
 import Tooltip from 'components/ui/Tooltip/Tooltip'
 import getCurrencyKey from 'helpers/getCurrencyKey'
 import Address from 'components/ui/Address/Address'
+import { AddressFormat } from 'domain/address'
+import erc20Like from 'common/erc20Like'
 
-const isDark = localStorage.getItem(constants.localStorage.isDark)
-
-@connect(({
-  user: { tokensData },
-}) => ({
-  tokensData,
-}))
 @cssModules(styles, { allowMultiple: true })
-
-export default class Row extends React.PureComponent<any, any> {
+export default class Row extends PureComponent<any, any> {
   constructor(props) {
     super(props)
 
@@ -38,35 +30,22 @@ export default class Row extends React.PureComponent<any, any> {
       comment: actions.comments.returnDefaultComment(hiddenList, ind),
       cancelled: false,
       payed: false,
-      showFiat: true,
+      showFiat: false,
     }
   }
 
   componentDidMount() {
-    const { type, tokensData } = this.props
-    /*
-    * request fiat balance if token have currency price
-    */
-    Object.keys(tokensData).forEach(key => {
-      if (key.includes(type)) {
-        if (tokensData[key].infoAboutCurrency) {
-          this.getFiatBalance(type)
-        } else {
-          this.setState({
-            showFiat: false
-          })
-        }
-      }
-    })
+    this.fetchFiatBalance()
   }
 
-  getFiatBalance = async (type) => {
-    const { activeFiat } = this.props
+  fetchFiatBalance = async () => {
+    const { activeFiat, type } = this.props
 
     if (activeFiat) {
       actions.user.getExchangeRate(type, activeFiat.toLowerCase()).then((exCurrencyRate) => {
         this.setState(() => ({
           exCurrencyRate,
+          showFiat: true,
         }))
       })
     }
@@ -94,10 +73,12 @@ export default class Row extends React.PureComponent<any, any> {
         balance,
         unconfirmedBalance
       } = walletData
+
       actions.modals.open(constants.modals.Withdraw, {
         currency,
         address,
         balance,
+        itemCurrency: walletData,
         unconfirmedBalance,
         toAddress: destAddress || fromAddress,
         amount,
@@ -127,7 +108,6 @@ export default class Row extends React.PureComponent<any, any> {
 
   handleSendConfirmLink = () => {
     const {
-      history,
       confirmTx: {
         uniqhash,
       },
@@ -135,7 +115,6 @@ export default class Row extends React.PureComponent<any, any> {
 
     const link = `${getFullOrigin()}${links.multisign}/btc/confirm/${uniqhash}`
 
-    // history.push(shareLink)
     actions.modals.open(constants.modals.Share, {
       link,
       title: `Confirm multisignature transaction`,
@@ -156,7 +135,7 @@ export default class Row extends React.PureComponent<any, any> {
   }
 
   parseFloat = (direction, value, directionType, type) => {
-    const { txType } = this.props
+    const { txType, standard } = this.props
     switch (type) {
       case 'btc (sms-protected)': type = 'BTC'
         break
@@ -167,21 +146,61 @@ export default class Row extends React.PureComponent<any, any> {
     }
 
     return (
-      <Fragment>
-        {direction === directionType ?
-          <div styleName="amount">{`+ ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}
-            {txType === 'INVOICE' ? <span styleName="smallTooltip"><Tooltip id='RowTooltipInvoice'>Invoice</Tooltip></span> : ''}
-          </div> :
-          <div styleName="amount">{`- ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}</div>
+      <div id="historyRowAmountInfo">
+        {direction === directionType ? (
+            <div styleName="amount">
+              {`+ ${parseFloat(Number(value).toFixed(5))}`} {type.toUpperCase()}
+              {standard ? (
+                <span styleName="tokenStandard">{standard.toUpperCase()}</span>
+              ) : ''}
+              {txType === 'INVOICE' ? (
+                <span styleName="smallTooltip"><Tooltip id='RowTooltipInvoice'>Invoice</Tooltip></span>
+              ) : ''}
+            </div>
+          ) : (
+            <div styleName="amount">
+              {`- ${parseFloat(Number(value).toFixed(5))}`}{' '}
+              {type.toUpperCase()}
+              {standard ? (
+                <span styleName="tokenStandard">{standard.toUpperCase()}</span>
+              ) : ''}
+            </div>
+          )
         }
-      </Fragment>
+      </div>
     )
+  }
+
+  returnLinkRouter = (params) => {
+    let {
+      location,
+      targetPath,
+      tokenPart,
+      name,
+      hash,
+    } = params
+
+    if (erc20Like.isToken({ name })) {
+      // react router doesn't rewrite url
+      // it fix problem with token transaction info url
+      if (location.pathname.includes(tokenPart)) {
+        targetPath = `tx/${hash}`
+      } else {
+        targetPath = `token/${name}/tx/${hash}`
+      }
+    }
+
+    return {
+      ...location,
+      pathname: targetPath,
+    }
   }
 
   render() {
     const {
       activeFiat,
       address,
+      baseCurrency: tokenBaseCurrency,
       type,
       direction,
       value,
@@ -201,8 +220,11 @@ export default class Row extends React.PureComponent<any, any> {
     const hash = (invoiceData && invoiceData.txInfo) ? invoiceData.txInfo : propsHash
 
     const { exCurrencyRate, cancelled, payed } = this.state
-    const getFiat = value * exCurrencyRate
-    
+    const fiatValue = exCurrencyRate ? utils.toMeaningfulFloatValue({
+      rate: exCurrencyRate,
+      value,
+    }) : false
+
     const paymentAddress = invoiceData
       ? invoiceData.destAddress
         ? invoiceData.destAddress
@@ -235,11 +257,8 @@ export default class Row extends React.PureComponent<any, any> {
       invoiceStatusClass = 'confirm red'
       invoiceStatusText = <FormattedMessage id="RowHistoryInvoiceCancelled" defaultMessage="Отклонен" />
     }
-    /* eslint-disable */
+
     let txLink = `/${getCurrencyKey(type, false)}/tx/${hash}`
-    if (ethToken.isEthToken({ name: type })) {
-      txLink = `/token/${type}/tx/${hash}`
-    }
 
     if (txType === 'INVOICE' && invoiceData.uniqhash) {
       txLink = `${links.invoice}/${invoiceData.uniqhash}`
@@ -251,7 +270,7 @@ export default class Row extends React.PureComponent<any, any> {
 
     return (
       <>
-        <tr styleName={`historyRow ${isDark ? 'dark' : ''}`}>
+        <tr styleName="historyRow">
           <td>
             <div styleName={`${statusStyleAmount} circleIcon`}>
               <div styleName='arrowWrap'>
@@ -281,7 +300,15 @@ export default class Row extends React.PureComponent<any, any> {
                     </div>
                   </> :
                   <>
-                    <Link to={txLink}>
+                    <Link
+                      to={(location) => this.returnLinkRouter({
+                        location,
+                        targetPath: txLink,
+                        tokenPart: `token/{${tokenBaseCurrency}}${type}/`,
+                        name: tokenBaseCurrency ? `{${tokenBaseCurrency}}${type}` : type,
+                        hash: hash,
+                      })}
+                    >
                       {(txType === 'CONFIRM') ? (
                         <FormattedMessage id="RowHistory_Confirm_Sending" defaultMessage="Sent" />
                       ) : (
@@ -302,6 +329,8 @@ export default class Row extends React.PureComponent<any, any> {
                           </>
                         )}
                     </Link>
+
+                    {/* Transaction status */}
                     {(txType === 'CONFIRM') ? (
                       <>
                         {confirmTx.status === 'pending' && (
@@ -332,12 +361,16 @@ export default class Row extends React.PureComponent<any, any> {
                   </>
                 }
               </div>
+
+              {/* Date */}
               <CommentRow
                 label={invoiceData && invoiceData.label}
                 date={date}
                 showComment={true}
                 commentKey={hash}
               />
+
+              {/* Contacts */}
               {invoiceData && invoiceData.contact &&
                 <div styleName='invoiceContactWrapper'>
                   <FormattedMessage
@@ -348,6 +381,7 @@ export default class Row extends React.PureComponent<any, any> {
                 </div>
               }
 
+              {/* Payment address */}
               {txType === 'INVOICE' && direction === 'in' &&
                 <div styleName='addressWrapper'>
                   <FormattedMessage
@@ -355,12 +389,14 @@ export default class Row extends React.PureComponent<any, any> {
                     defaultMessage='Payment address:'
                   />{' '}
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <Address address={paymentAddress} format='Short' />
+                    <Address address={paymentAddress} format={AddressFormat.Short} />
                     <span styleName='requests'>({invoiceData.totalCount})</span>
                   </div>
                 </div>
               }
             </div>
+
+            {/* Invoice buttons */}
             {hasInvoiceButtons &&
               <div styleName="btnWrapper">
                 <button onClick={this.handlePayInvoice}>
@@ -371,6 +407,7 @@ export default class Row extends React.PureComponent<any, any> {
                 </button>
               </div>
             }
+
             {txType === 'CONFIRM' && confirmTx.status === 'pending' && (
               <div styleName="confirmWrapper">
                 {(confirmTx.isHolder) ? (
@@ -405,15 +442,20 @@ export default class Row extends React.PureComponent<any, any> {
                   )}
               </div>
             )}
+
+            {/* Currency amount */}
             <div styleName={statusStyleAmount}>
-              {invoiceData ? this.parseFloat(direction, value, 'out', type) : this.parseFloat(direction, value, 'in', type)}
-              {
-                showFiat
-                  ? <span styleName='amountUsd'>{`~${getFiat.toFixed(2)}`}{` `}{activeFiat}</span>
-                  : null
-              }
+              {invoiceData
+                ? this.parseFloat(direction, value, 'out', type)
+                : this.parseFloat(direction, value, 'in', type)}
+              {showFiat && fiatValue ? (
+                <span styleName="amountUsd">
+                  ~{fiatValue}
+                  {` `}
+                  {activeFiat}
+                </span>
+              ) : null}
             </div>
-            {/* <LinkTransaction type={type} styleName='address' hash={hash} >{hash}</LinkTransaction> */}
           </td>
         </tr>
       </>

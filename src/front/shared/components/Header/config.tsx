@@ -1,15 +1,15 @@
-import React from 'react'
-import { FormattedMessage, defineMessages } from 'react-intl'
+import { defineMessages } from 'react-intl'
 import links from 'helpers/links'
 import externalConfig from 'helpers/externalConfig'
+import metamask from 'helpers/metamask'
+
+
+const isWidgetBuild = externalConfig && externalConfig.isWidget
+const isChromeExtension = externalConfig && externalConfig.dir === 'chrome-extension/application'
+const onlyEvmWallets = (externalConfig?.opts?.ui?.disableInternalWallet) ? true : false
 
 
 export const messages = defineMessages({
-  products: {
-    id: 'menu.products',
-    description: 'Menu item "Wallet"',
-    defaultMessage: 'Our products',
-  },
   wallet: {
     id: 'menu.wallet',
     description: 'Menu item "Wallet"',
@@ -30,125 +30,133 @@ export const messages = defineMessages({
     description: 'Menu item "History"',
     defaultMessage: 'Transactions',
   },
-  invest: {
-    id: 'menu.invest.info',
-    description: 'Menu item "Transactions"',
-    defaultMessage: 'How to invest?',
-  },
-  investMobile: {
-    id: 'menu.invest',
-    description: 'Menu item "Transactions"',
-    defaultMessage: 'Invest',
+  marketmaker: {
+    id: 'menu.marketmaker',
+    description: 'Menu item "Marketmaker"',
+    defaultMessage: 'Earn',
   },
 })
 
-export const getMenuItems = (props, isWalletCreate) => {
-  const { intl, reputation, isSigned } = props
+export const getMenuItems = (props) => {
+  const { intl } = props
+  const { exchange, wallet, createWallet, history } = messages
+  const { 
+    exchange: exchangeLink,
+    quickSwap,
+    createWallet: create,
+    history: historyLink,
+    home,
+  } = links
 
-  const { exchange: linksExchange, createWallet: create, home } = links
-  const { exchange, wallet, createWallet } = messages
+  const itemsWithWallet = [
+    {
+      title: intl.formatMessage(wallet),
+      link: home,
+      exact: true,
+      currentPageFlag: true,
+    },
+    {
+      title: intl.formatMessage(history),
+      link: historyLink,
+      exact: true,
+      currentPageFlag: true,
+    },
+    !externalConfig.opts.exchangeDisabled && {
+      title: intl.formatMessage(exchange),
+      link: quickSwap,
+      exact: false,
+      currentPageFlag: true,
+    },
+  ]
 
-  return (Number.isInteger(reputation) && reputation !== 0)
-    || isSigned
-    || localStorage.getItem('isWalletCreate') === 'true'
-    || (externalConfig && externalConfig.isWidget)
-    ?
-    [
-      {
-        title: intl.formatMessage(wallet),
-        link: home,
-        exact: true,
-        haveSubmenu: true,
-        icon: 'products',
-        currentPageFlag: true,
-      },
-      {
-        title: intl.formatMessage(messages.history),
-        link: links.history,
-        exact: true,
-        haveSubmenu: true,
-        icon: 'products',
-        currentPageFlag: true,
-      },
-      !externalConfig.opts.exchangeDisabled && {
-        title: intl.formatMessage(exchange),
-        link: linksExchange,
-        exact: true,
-        haveSubmenu: true,
-        icon: 'products',
-        currentPageFlag: true,
-      },
-    ]
-    :
-    [
-      {
-        title: intl.formatMessage(createWallet),
-        link: create,
-        exact: true,
-        haveSubmenu: true,
-        icon: 'products',
-        currentPageFlag: true,
-      },
-      !externalConfig.opts.exchangeDisabled && {
-        title: intl.formatMessage(exchange),
-        link: linksExchange,
-        exact: true,
-        haveSubmenu: true,
-        icon: 'products',
-        currentPageFlag: true,
-      },
-    ]
+  const itemsWithoutWallet = [
+    !onlyEvmWallets && {
+      title: intl.formatMessage(createWallet),
+      link: create,
+      exact: true,
+      currentPageFlag: true,
+    },
+    !externalConfig.opts.exchangeDisabled && {
+      title: intl.formatMessage(exchange),
+      link: exchangeLink,
+      exact: false,
+      currentPageFlag: true,
+    },
+  ]
+
+  // Marketmaker pages ********
+  if (!isWidgetBuild) {
+    const marketmakerItem = {
+      title: intl.formatMessage(messages.marketmaker),
+      link: (externalConfig.opts.ui.farmLink)
+        ? externalConfig.opts.ui.farmLink
+        : !isChromeExtension ? `${links.marketmaker}/` : `${links.marketmaker}/{MATIC}WBTC`,
+      exact: true,
+      currentPageFlag: true,
+      isExternal: (externalConfig.opts.ui.farmLink) ? true : false
+    }
+
+    itemsWithWallet.push(marketmakerItem)
+    itemsWithoutWallet.push(marketmakerItem)
+  }
+
+  if (onlyEvmWallets && metamask.isConnected()) return itemsWithWallet
+
+  return localStorage.getItem('isWalletCreate') === 'true'
+    || externalConfig && externalConfig.isWidget
+      ? itemsWithWallet
+      : itemsWithoutWallet
 }
 
 
 export const getMenuItemsMobile = (props, isWalletCreate, dinamicPath) => {
-  const { intl, reputation, isSigned } = props
+  const { intl } = props
+  const { exchange, wallet, createWallet, history } = messages
+  const { 
+    exchange: exchangeLink,
+    quickSwap,
+    history: historyLink,
+  } = links
 
-  const { exchange: linksExchange, createWallet: create, home } = links
-  const { exchange, wallet, createWallet } = messages
+  const mobileItemsWithWallet = [
+    {
+      title: intl.formatMessage(isWalletCreate ? wallet : createWallet),
+      link: dinamicPath,
+      exact: true,
+      icon: <i className="fa fa-home" aria-hidden="true" />,
+    },
+    {
+      title: props.intl.formatMessage(history),
+      link: historyLink,
+      displayNone: !isWalletCreate,
+      icon: <i className="fas fa-exchange-alt" aria-hidden="true" />,
+    },
+    !externalConfig.opts.exchangeDisabled && {
+      title: intl.formatMessage(exchange),
+      link: quickSwap,
+      exact: false,
+      icon: <i className="fas fa-sync-alt" aria-hidden="true" />,
+    },
+  ]
 
-  return (Number.isInteger(reputation) && reputation !== 0) || isSigned
-    || localStorage.getItem('isWalletCreate') === 'true'
-    ?
-    [
-      {
-        title: intl.formatMessage(isWalletCreate ? wallet : createWallet),
-        link: dinamicPath,
-        exact: true,
-        haveSubmenu: true,
-        icon: <i className="fa fa-home" aria-hidden="true" />,
-      },
-      {
-        title: props.intl.formatMessage(messages.history),
-        link: links.history,
-        haveSubmenu: false,
-        displayNone: !isWalletCreate,
-        icon: <i className="fas fa-exchange-alt" aria-hidden="true" />,
-      },
-      !externalConfig.opts.exchangeDisabled && {
-        title: intl.formatMessage(exchange),
-        link: linksExchange,
-        exact: true,
-        haveSubmenu: true,
-        icon: <i className="fas fa-sync-alt" aria-hidden="true" />,
-      },
-    ]
-    :
-    [
-      {
-        title: intl.formatMessage(createWallet),
-        link: dinamicPath,
-        exact: true,
-        haveSubmenu: true,
-        icon: <i className="fa fa-home" aria-hidden="true" />,
-      },
-      !externalConfig.opts.exchangeDisabled && {
-        title: intl.formatMessage(exchange),
-        link: linksExchange,
-        exact: true,
-        haveSubmenu: true,
-        icon: <i className="fas fa-sync-alt" aria-hidden="true" />,
-      },
-    ]
+  const mobileItemsWithoutWallet = [
+    {
+      title: intl.formatMessage(createWallet),
+      link: dinamicPath,
+      exact: true,
+      icon: <i className="fa fa-home" aria-hidden="true" />,
+    },
+    !externalConfig.opts.exchangeDisabled && {
+      title: intl.formatMessage(exchange),
+      link: exchangeLink,
+      exact: false,
+      icon: <i className="fas fa-sync-alt" aria-hidden="true" />,
+    },
+  ]
+
+  if (onlyEvmWallets) return mobileItemsWithWallet
+  return localStorage.getItem('isWalletCreate') === 'true'
+      ? mobileItemsWithWallet
+      : mobileItemsWithoutWallet
 }
 

@@ -9,13 +9,13 @@ import styles from './Swap.scss'
 @CSSModules(styles)
 class SwapController extends React.PureComponent<any, any> {
 
-  props: any
   swap: any
   mount: any
 
-  constructor({ swap }) {
-    //@ts-ignore
-    super()
+  constructor(props) {
+    super(props)
+
+    const { swap } = props
 
     this.swap = swap
 

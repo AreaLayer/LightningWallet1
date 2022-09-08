@@ -1,21 +1,13 @@
 import React from 'react'
-import PropTypes from 'prop-types'
 import { connect } from 'redaction'
 import cx from 'classnames'
-
 import actions from 'redux/actions'
-import { constants } from 'helpers'
-
-import Link from 'local_modules/sw-valuelink'
-
 import cssModules from 'react-css-modules'
 import styles from './AlertModal.scss'
-
-import { Modal } from 'components/modal'
 import { Button } from 'components/controls'
-import { FormattedMessage, injectIntl, defineMessages } from 'react-intl'
+import { injectIntl, IntlShape, defineMessages } from 'react-intl'
 import WidthContainer from 'components/layout/WidthContainer/WidthContainer'
-
+import CloseIcon from 'components/ui/CloseIcon/CloseIcon'
 
 const defaultLanguage = defineMessages({
   title: {
@@ -32,20 +24,30 @@ const defaultLanguage = defineMessages({
   },
 })
 
-@injectIntl
+type AlertModalProps = {
+  intl: IntlShape
+  name: string
+  dashboardModalsAllowed
+  onClose: () => void
+  data: {
+    canClose: boolean
+    dontClose: boolean
+    okButtonAutoWidth: boolean
+    onClose: () => void
+    callbackOk: () => boolean
+    title: JSX.Element
+    message: JSX.Element
+    labelOk: JSX.Element
+  }
+}
+
+
 @connect(({ ui: { dashboardModalsAllowed }}) => ({
   dashboardModalsAllowed
 }))
 @cssModules(styles)
-export default class AlertModal extends React.Component<any, any> {
-
-  props: any
-
-  static propTypes = {
-    onAccept: PropTypes.func,
-  }
-
-  handleClose = () => {
+class AlertModal extends React.Component<AlertModalProps, null> {
+  closeWithCustomAction = () => {
     const {
       name,
       data,
@@ -68,9 +70,14 @@ export default class AlertModal extends React.Component<any, any> {
     actions.modals.close(name)
   }
 
+  closeModal = () => {
+    const { name } = this.props
+
+    actions.modals.close(name)
+  }
+
   handleOk = () => {
     const {
-      name,
       data: {
         callbackOk,
       },
@@ -78,22 +85,21 @@ export default class AlertModal extends React.Component<any, any> {
 
     if (typeof callbackOk === `function`) {
       if (callbackOk()) {
-        actions.modals.close(name)
+        this.closeModal()
       }
     } else {
-      this.handleClose()
+      this.closeWithCustomAction()
     }
   }
 
   render() {
     const {
       intl,
-      name,
       data: {
+        canClose,
         title,
         message,
         labelOk,
-        dontClose,
         okButtonAutoWidth,
       },
       dashboardModalsAllowed,
@@ -110,8 +116,7 @@ export default class AlertModal extends React.Component<any, any> {
     return (
       <div className={cx({
         [styles['modal-overlay']]: true,
-        [styles['modal-overlay_dashboardView']]: dashboardModalsAllowed
-      })} onClick={this.handleClose}>
+      })}>
         <div className={cx({
           [styles.modal]: true,
           [styles.modal_dashboardView]: dashboardModalsAllowed
@@ -121,6 +126,10 @@ export default class AlertModal extends React.Component<any, any> {
             //@ts-ignore */}
             <WidthContainer styleName="headerContent">
               <div styleName="title">{labels.title}</div>
+
+              {canClose && (
+                <CloseIcon styleName="closeButton" onClick={this.closeModal} />
+              )}
             </WidthContainer>
           </div>
           <div styleName="content">
@@ -136,3 +145,6 @@ export default class AlertModal extends React.Component<any, any> {
     )
   }
 }
+
+//@ts-ignore: strictNullChecks
+export default injectIntl(AlertModal)

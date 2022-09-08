@@ -1,26 +1,19 @@
 import React from 'react'
-
-import cssModules from 'react-css-modules'
-import styles from './CurrencySelect.scss'
-
 import Option from './Option/Option'
-import DropDown from 'components/ui/DropDown/DropDown'
+import DropDown from 'shared/components/ui/DropDown'
 
+const CurrencySelect = (props) => {
+  const {
+    className,
+    selectedValue,
+    onSelect,
+    currencies,
+    name = '',
+    placeholder = '',
+    selectedItemRender,
+    disabled = false
+  } = props
 
-const CurrencySelect = ({
-  className,
-  selectedValue,
-  onSelect,
-  currencies,
-  name = '',
-  placeholder = '',
-  label,
-  tooltip = '',
-  id,
-  notIteractable = false,
-  selectedItemRender,
-}) => {
-  // TODO: Add debug logger message to see if some currency have been dropped
   const defaultRenderSelected = (item) => <Option {...item} />
   const usedSelectedItemRender = (selectedItemRender || defaultRenderSelected)
   return (
@@ -30,15 +23,13 @@ const CurrencySelect = ({
       items={currencies}
       selectedValue={selectedValue}
       selectedItemRender={usedSelectedItemRender}
-      itemRender={item => <Option {...item} />}
+      itemRender={defaultRenderSelected}
       onSelect={onSelect}
-      label={label}
-      tooltip={tooltip}
-      id={id}
+      disabled={disabled}
       name={name}
-      notIteractable={notIteractable}
+      role="SelectCurrency"
     />
   )
 }
 
-export default cssModules(CurrencySelect, styles)
+export default CurrencySelect

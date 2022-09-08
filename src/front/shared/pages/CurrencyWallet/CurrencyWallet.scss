@@ -10,19 +10,15 @@
   @include ff-bold;
 }
 
-.currencyWalletActivityWrapper {
-  width: 66%;
-}
-
 .currencyWalletBalance {
   width: 31%;
   margin-top: 40px;
 }
 
 .currencyWalletActivity {
-  box-shadow: $l-box-shadow;
-  background: $l-background-elements;
-  border-radius: 4px;
+  box-shadow: var(--box-shadow);
+  background: var(--color-background-elements);
+  border-radius: var(--main-component-border-radius);
   padding: 25px;
   margin-top: 20px;
   width: 100%;
@@ -30,43 +26,12 @@
   position: relative;
 
   h3 {
-    color: #1F2D48;
     font-size: 24px;
     line-height: 33px;
     font-weight: bold;
     margin-bottom: 10px;
   }
 }
-
-.dark {
-  .currencyWalletActivity {
-    box-shadow: $d-box-shadow;
-    background: $d-background-elements;
-  
-    @media screen and (max-width: 480px) {
-      box-shadow: none;
-      background: #222528;
-    }
-  }
-
-  h3 {
-    color: white;
-  }
-}
-
-.darkActivity {
-  box-shadow: $d-box-shadow;
-  background: $d-background-elements;
-
-  @media screen and (max-width: 480px) {
-    background: #222528;
-  }
-
-  h3 {
-    color: white;
-  }
-}
-
 
 .title {
   padding: 1px 0 1px;
@@ -106,7 +71,7 @@
 }
 
 .btc {
-  color: #000;
+  color: var(--color);
 }
 
 .subtitle {
@@ -121,7 +86,7 @@
   @include ff-bold;
 
   p {
-    color: #1F2D48;
+    color: var(--color-need-to-rename);
     display: inline;
     font-size: 16px;
   }
@@ -144,13 +109,6 @@
   }
 }
 
-.inRowru {
-  margin-top: 20px;
-  display: flex;
-  width: 250px;
-  justify-content: space-between;
-}
-
 .button {
   margin-right: 10px;
 }
@@ -168,7 +126,7 @@
   font-size: 40px;
   display: inline-block;
   line-height: 120%;
-  color: #1F2D48;
+  color: var(--color-need-to-rename);
   margin-bottom: 30px;
   padding: 0px;
   margin-top: -10px;
@@ -187,8 +145,8 @@
 
 .widgetNavItem.active {
   a {
-    border-bottom: 3px solid $primary;
-    color: #1F2D48 !important;
+    border-bottom: 3px solid var(--color-brand);
+    color: var(--color-need-to-rename) !important;
   }
 }
 
@@ -238,10 +196,6 @@
   .currencyWalletWrapper {
     flex-direction: column;
   }
-
-  .currencyWalletActivityWrapper {
-    width: 100%;
-  }
 }
 
 @media all and (max-width: 767px) {
@@ -262,8 +216,11 @@
       display: block;
     }
   }
+}
 
-  .currencyWalletActivityWrapper {
-    width: 100%;
+@media screen and (max-width: 480px) {
+  .currencyWalletActivity {
+    box-shadow: none;
+    background: var(--color-page-background);
   }
 }

@@ -4,20 +4,36 @@ import { FormattedMessage } from 'react-intl'
 import ThemeTooltip from './ThemeTooltip'
 import styles from './Tooltip.scss'
 
+type ComponentProps = {
+  mark?: boolean
+  id: string
+  children: JSX.Element[] | JSX.Element | string
+  dontHideMobile?: boolean
+  place?: null | string
+}
 
-const Tooltip = ({ mark = true, children, id, dontHideMobile = null, place = null }) => (
-  <Fragment>
-    {
-      mark && (
-        <span data-tip data-for={id} styleName={`tooltip${dontHideMobile ? ' tooltip_truesight' : ''}`}>
+const Tooltip = (props: ComponentProps) => {
+  const { mark = true, children, id, dontHideMobile = false, place = null } = props
+
+  return (
+    <Fragment>
+      {mark ? (
+        <span
+          data-tip
+          data-for={id}
+          styleName={`tooltip isMark ${dontHideMobile ? 'tooltip_truesight' : ''}`}
+        >
           <FormattedMessage id="Tooltip11" defaultMessage="?" />
         </span>
-      )
-    }
-    <ThemeTooltip id={id} effect="solid" multiline {...{ place }} styleName="r-tooltip">
-      {children}
-    </ThemeTooltip>
-  </Fragment>
-)
+      ) : (
+        <div data-tip data-for={id} styleName="tooltip noMark"></div>
+      )}
+
+      <ThemeTooltip styleName="r-tooltip" id={id} effect="solid" multiline {...{ place }}>
+        {children}
+      </ThemeTooltip>
+    </Fragment>
+  )
+}
 
 export default CSSModules(Tooltip, styles, { allowMultiple: true })
