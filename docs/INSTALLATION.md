@@ -4,7 +4,7 @@
 2. Clone repository
 
 ```
-git clone https://github.com/swaponline/MultiCurrencyWallet.git
+git clone https://github.com/swaponline/LightningWallet1.git
 ```
 
 3. Use Node 14
@@ -21,7 +21,7 @@ nvm use 14
 4. Install modules
 
 ```
-cd MultiCurrencyWallet
+cd LightningWallet1
 npm i
 ```
 
