@@ -117,7 +117,7 @@
     "app-module-path": "^2.2.0",
     "assert": "^2.0.0",
     "autoprefixer": "^10.2.0",
-    "ava": "^3.15.0",
+    "ava": "^4.3.3",
     "babel-eslint": "^10.1.0",
     "babel-loader": "^8.2.2",
     "babel-plugin-add-module-exports": "^1.0.4",
