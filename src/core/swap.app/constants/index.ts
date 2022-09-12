@@ -1,6 +1,6 @@
 import COINS, {
   NATIVE,
-  ETH_TOKENS,
+  BTC_TOKENS,
   COIN_DATA,
   TOKEN_STANDARD,
 } from './COINS'
@@ -12,7 +12,7 @@ import NETWORKS from './NETWORKS'
 export default {
   COINS,
   NATIVE,
-  ETH_TOKENS,
+  BTC_TOKENS,
   COIN_DATA,
   TOKEN_STANDARD,
 
