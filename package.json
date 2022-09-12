@@ -270,7 +270,7 @@
     "react-items-carousel": "^2.8.0",
     "react-joyride": "^2.3.0",
     "react-loading-skeleton": "^3.0.1",
-    "react-redux": "^7.2.2",
+    "react-redux": "^8.0.2",
     "react-router": "^6.3.0",
     "react-router-dom": "^6.3.0",
     "react-tag-autocomplete": "^6.1.0",
