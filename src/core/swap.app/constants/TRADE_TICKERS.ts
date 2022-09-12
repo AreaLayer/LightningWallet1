@@ -1,4 +1,4 @@
-import { NATIVE, ETH_TOKENS, BNB_TOKENS, MATIC_TOKENS } from './COINS'
+import { NATIVE, BTC_TOKENS } from './COINS'
 
 export default [
   'BTC⚡️ -BTC',
