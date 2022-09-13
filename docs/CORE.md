@@ -681,7 +681,7 @@ class SwapInterface {
  * @param {string} data.ownerPublicKey
  * @param {string} data.recipientPublicKey
  * @param {number} data.lockTime
- * @returns {{scriptAddress: *, script: (*|{ignored})}}
+   * @returns {{scriptAddress: *, script: (*|{ignored)}}
  */
 createScript(data)
 ```
