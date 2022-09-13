@@ -131,7 +131,7 @@
     "chalk": "^5.0.1",
     "colors": "^1.4.0",
     "connect-history-api-fallback": "^1.6.0",
-    "copy-webpack-plugin": "^10.0.0",
+    "copy-webpack-plugin": "^11.0.0",
     "core-js": "^3.8.2",
     "css-loader": "^6.7.1",
     "dotenv": "^16.0.1",
