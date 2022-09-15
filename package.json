@@ -199,7 +199,7 @@
     "@ethersproject/providers": "^5.0.14",
     "@ethersproject/signing-key": "^5.0.8",
     "@pedrouid/iso-crypto": "^1.0.0",
-    "@types/react": "^17.0.0",
+    "@types/react": "^18.0.20",
     "@types/react-css-modules": "^4.6.2",
     "@types/react-dom": "^18.0.6",
     "@types/react-router-dom": "^5.1.6",
