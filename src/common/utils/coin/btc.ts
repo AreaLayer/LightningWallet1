@@ -801,6 +801,7 @@ const getAddressType = (address: string) => {
 }
 // getByteCount({'MULTISIG-P2SH:2-4':45},{'P2PKH':1}) Means "45 inputs of P2SH Multisig and 1 output of P2PKH"
 // getByteCount({'P2PKH':1,'MULTISIG-P2SH:2-3':2},{'P2PKH':2}) means "1 P2PKH input and 2 Multisig P2SH (2 of 3) inputs along with 2 P2PKH outputs"
+// getByteCount({'P2TR':1, 'MULTISIG-P2TR:1-2':1},{'P2TR':1}) means " 1 P2TR input and 1 Multisig P2TR (1 of 2) inputs along with 2 P2TR outputs"
 const getByteCount = (inputs, outputs) => {
 const { TRANSACTION } = constants
 let totalWeight = 0
@@ -816,12 +817,15 @@ const types = {
     'P2PKH': TRANSACTION.P2PKH_IN_SIZE * 4,
     'P2WPKH': TRANSACTION.P2WPKH_IN_SIZE + (41 * 4),
     'P2SH-P2WPKH': TRANSACTION.P2SH_P2WPKH_IN_SIZE + (64 * 4),
+    'P2TR': TRANSACTION.P2TR_IN_SIZW (64*4_),
   },
   'outputs': {
     'P2SH': TRANSACTION.P2SH_OUT_SIZE * 4,
     'P2PKH': TRANSACTION.P2PKH_OUT_SIZE * 4,
     'P2WPKH': TRANSACTION.P2WPKH_OUT_SIZE * 4,
     'P2WSH': TRANSACTION.P2WSH_OUT_SIZE * 4,
+    'P2TR':  TRANSACTION.P2TR_OUT_SIZE * 4,
+
   },
 }
 
@@ -852,7 +856,7 @@ Object.keys(inputs).forEach((key) => {
     totalWeight += types.inputs[newKey] * inputs[key]
     const multiplyer = (newKey === 'MULTISIG-P2SH') ? 4 : 1
     totalWeight += ((73 * mAndN[0]) + (34 * mAndN[1])) * multiplyer * inputs[key]
-  } else {
+  } else 
     totalWeight += types.inputs[key] * inputs[key]
   }
   inputCount += inputs[key]
