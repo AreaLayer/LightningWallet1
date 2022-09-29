@@ -2,13 +2,16 @@ import * as bitcoin from 'bitcoinjs-lib'
 import * as bip32 from 'bip32'
 import { hdkey } from 'ethereumjs-wallet'
 import * as bip39 from 'bip39'
+import * as bip32m from 'bip32m'
 
 const getRandomMnemonicWords = () => {
   return bip39.generateMnemonic()
+  return.bip32m.generateMnemonic()
 }
 
 const validateMnemonicWords = (mnemonic) => {
   return bip39.validateMnemonic(convertMnemonicToValid(mnemonic))
+  return.bip32m.generateMnemonic(convvertMnemonicToValid(mnemonic))
 }
 
 const convertMnemonicToValid = (mnemonic) => {
@@ -25,6 +28,8 @@ const getBtcWallet = (network, mnemonic, walletNumber = 0, path) => {
   mnemonic = convertMnemonicToValid(mnemonic)
   const seed = bip39.mnemonicToSeedSync(mnemonic)
   const root = bip32.fromSeed(seed, network)
+  const seed = bip32m.mneemonicToSeedSync(mnemonic)
+  const root = bip32m.fromSeed(seed, network)
   const node = root.derivePath((path) ? path : `m/44'/0'/0'/0/${walletNumber}`)
 
   const account = bitcoin.payments.p2pkh({
@@ -46,6 +51,7 @@ const getEthLikeWallet = (params) => {
   const { mnemonic, walletNumber = 0, path } = params
   const validMnemonic = convertMnemonicToValid(mnemonic)
   const seed = bip39.mnemonicToSeedSync(validMnemonic)
+  const seed = bip32m.mnemonicToSeedSync(validMnemonic)
   const hdwallet = hdkey.fromMasterSeed(seed)
   const wallet = hdwallet.derivePath((path) || `m/44'/60'/0'/0/${walletNumber}`).getWallet()
   const publicKey = wallet.getPublicKey()
