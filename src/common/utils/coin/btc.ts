@@ -744,10 +744,9 @@ enum Network {
 }
 
 enum AddressType {
-  p2pkh = "P2PKH",
-  p2sh = "P2SH",
   p2wpkh = "P2WPKH",
   p2wsh = "P2WSH",
+  p2tr = "P2TR",
 }
 
 const addressTypes: { [key: number]: { type: AddressType, network: Network } } = {
@@ -770,6 +769,9 @@ const addressTypes: { [key: number]: { type: AddressType, network: Network } } =
     type: AddressType.p2sh,
     network: Network.testnet,
   },
+  0x3b: {
+    type: AddressType.p2tr,
+    network: Network.mainnet
 };
 
 const getAddressType = (address: string) => {
@@ -782,7 +784,7 @@ const getAddressType = (address: string) => {
     const { data: benchVersion } = bitcoin.address.fromBech32(address)
     data = benchVersion
 
-    addressType = data.length === 20 ? AddressType.p2wpkh : AddressType.p2wsh
+    addressType = data.length === 20 ? AddressType.p2wpkh : AddressType.p2wsh : AddressType.p2ptr
     return addressType
 
   } else {
