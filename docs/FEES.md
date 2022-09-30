@@ -1,8 +1,8 @@
 (draft)
 ```
 Todo:
-- default withdraw fee = ?%
-- swaponline.io withdraw fee = ?%
+- default withdraw fee = 0.05%
+- Lightning Wallet withdraw fee = 0.05%
 ```
 
 # Fees
@@ -13,6 +13,7 @@ Needed for every transaction. Defined by third party miners, not configurable.
 
 
 ## Service fee
+
 
 ### Service fee for exchange
 
