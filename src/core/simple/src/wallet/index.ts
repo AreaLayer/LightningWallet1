@@ -12,6 +12,7 @@ class Wallet {
   id: any
   network: any
   bitcoin: any
+  rgb: any
   swapApp: any
   constants: any
   auth: any
