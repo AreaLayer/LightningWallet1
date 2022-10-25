@@ -1,7 +1,7 @@
 export default {
   bitcoin: 'bitcoin',
-  rgb: 'rgb'
-  lightningNetwork: 'lighningNetwork'
+  rgb: 'rgb',
+  lightningNetwork: 'lighningNetwork',
   coininfo: 'coininfo',
   storage: 'storage',
   sessionStorage: 'sessionStorage',
