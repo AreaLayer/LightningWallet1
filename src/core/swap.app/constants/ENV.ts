@@ -1,9 +1,7 @@
 export default {
-  web3: 'web3',
   bitcoin: 'bitcoin',
-  bitcoincash: 'bitcoincash',
-  ghost: 'ghost',
-  next: 'next',
+  rgb: 'rgb'
+  lightningNetwork: 'lighningNetwork'
   coininfo: 'coininfo',
   storage: 'storage',
   sessionStorage: 'sessionStorage',
