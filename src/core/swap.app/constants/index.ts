@@ -2,7 +2,6 @@ import COINS, {
   NATIVE,
   BTC_TOKENS,
   COIN_DATA,
-  TOKEN_STANDARD,
 } from './COINS'
 import ENV from './ENV'
 import SERVICES from './SERVICES'
@@ -14,8 +13,7 @@ export default {
   NATIVE,
   BTC_TOKENS,
   COIN_DATA,
-  TOKEN_STANDARD,
-
+  
   ENV,
   SERVICES,
   NETWORKS,
