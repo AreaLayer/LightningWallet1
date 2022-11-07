@@ -5,4 +5,10 @@ import * as bitcoin from 'bitcoinjs-lib'
 import typeforce from 'swap.app/util/typeforce'
 import constants from 'common/helpers/constants'
 import { requestProvider } from 'webln';
-import { TAvailableNetworks } from 'lightningnetwork/lnd';
+import { AvailableNetworks } from 'lightningnetwork/lnd';
+
+const swap
+
+const invoice
+
+const 
