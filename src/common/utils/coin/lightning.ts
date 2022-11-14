@@ -7,8 +7,9 @@ import constants from 'common/helpers/constants'
 import { requestProvider } from 'webln';
 import { AvailableNetworks } from 'lightningnetwork/lnd';
 
-const swap
+const getLightning = (network) => {
+
+
 
 const invoice
 
-const 
