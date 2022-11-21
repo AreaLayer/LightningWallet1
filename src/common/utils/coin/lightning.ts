@@ -7,7 +7,7 @@ import constants from 'common/helpers/constants'
 import { requestProvider } from 'webln';
 import { AvailableNetworks } from 'lightningnetwork/lnd';
 
-const getLightning = (network) => {
+const getLightning = (network) => {Lightning}
 
 
 
