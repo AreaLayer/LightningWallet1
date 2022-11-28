@@ -1,6 +1,5 @@
 import Swap from './swap.swap'
 
-import auth from './swap.auth'
 import room from './swap.room'
 import orders from './swap.orders'
 
@@ -15,7 +14,6 @@ export default {
   util,
   swaps,
   flows,
-  auth,
   room,
   orders,
   Swap,
