@@ -17,6 +17,7 @@ class Wallet {
   constants: any
   auth: any
   balances: any
+  lightning any
 
   constructor(app, constants, config) {
     this.id = config.id
@@ -114,6 +115,8 @@ class Wallet {
   getCore() {
     return {
       btc: this.bitcoin.core,
+      ldk: this.lightningdev.kit,
+      rgb: this.rgb.protocol
     }
   }
 
@@ -137,6 +140,7 @@ class Wallet {
       btc: {
         fee: btcFee,
         // ...bitcoin.core,
+        //...ligntingnetwork.lndk
       },
       wallet: this.view()
     }
