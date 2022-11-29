@@ -1,4 +1,5 @@
 import { networks as ethereumNetworks } from '../instances/ethereum'
+import { network as bitcoinNetworks } from '../instances/bitcoin'
 import tokenSwap from './tokenSwap'
 
 
