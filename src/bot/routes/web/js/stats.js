@@ -3,10 +3,10 @@ class CurrencyStats extends React.Component {
     const { data } = this.props
     const { ticker, market_price, total, average, last } = data
 
-    return (
+    return ({
       <tr>
         <td>
-          {ticker}
+          {ticker})
         </td>
 
         <td>
