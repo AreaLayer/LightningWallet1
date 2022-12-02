@@ -41,7 +41,7 @@ class Swap extends React.Component {
       usd_profit,
       isProfit: Number(btc_profit) > 0
     })
-  }
+  })
 
   render() {
     const { id, pair, swap, timestamp, prices } = this.props
