@@ -3,13 +3,13 @@ var Route = ReactRouterDOM.Route;
 var Link = ReactRouterDOM.Link;
 var BrowserRouter  = ReactRouterDOM.BrowserRouter;
 
-const links = [
+const links = [{
   { name: 'Bot', link: '/'},
   { name: 'Kraken', link: '/exchange'},
   { name: 'In Progress', link: '/in-progress'},
   { name: 'History', link: '/history'},
   { name: 'Statistics', link: '/stats'},
-]
+)}
 
 const Header = () => (
   <header>
