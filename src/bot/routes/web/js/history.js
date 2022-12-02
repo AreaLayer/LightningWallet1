@@ -52,7 +52,7 @@ class Swap extends React.Component {
     const time = this.getLockTime(swap)
     const createdAt = moment.unix(time - 3 * 3600).format('HH:mm:ss DD/MM/YYYY')
 
-    return (
+    return ({
       <tr>
         <td>
           {ticker}
