@@ -1,10 +1,9 @@
 {
-  "name": "lightning wallt",
+  "name": "lightning wallet"
   "version": "1.0.1",
-  "description": "swaponline.io",
+  "description": "lighning wallet for L1, L2 and RGB",
   "keywords": [],
   "private": true,
-  "homepage": "https://swaponline.io",
   "license": "MIT",
   "main": "./src/front/bin/server",
   "scripts": {
