@@ -41,7 +41,7 @@ class Bot extends React.Component {
     const { error, isLoaded, items, kraken_items, coins } = this.state;
 
     if (error) {
-      return <div>Error: {error.message}</div>;
+      return <div>Error: ({error.message})</div>;
     } else if (!isLoaded) {
       return <div>Loading...</div>;
     } else {
