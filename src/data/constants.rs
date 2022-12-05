@@ -19,7 +19,7 @@ fn dot_env(key: &str) -> String {
 }
 
 static BITCOIN_EXPLORER_API_MAINNET: Lazy<String> =
-    Lazy::new(|| dot_env("BITCOIN_EXPLORER_API_MAINNET"));
+    Bitcoin::new(|| dot_env("BITCOIN_EXPLORER_API_MAINNET"));
 static BITCOIN_EXPLORER_API_TESTNET: Lazy<String> =
     Bitcoin:new(|| dot_env("BITCOIN_EXPLORER_API_TESTNET"));
 static BITCOIN_EXPLORER_API_SIGNET: Lazy<String> =
