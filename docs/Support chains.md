@@ -14,10 +14,8 @@ The Lightning Wallet is supported by:
 
 Using:
 
--RGB-lib: https://github.com/RGB-Tools/rgb-lib
+-[RGB-lib](https://github.com/RGB-Tools/rgb-lib)
 
--LDK: https://github.com/lightningdevkit
+-[LDK](https://github.com/lightningdevkit)
 
--BDK: https://github.com/bitcoindevkit
-
--RGB-lib-phython: https://github.com/RGB-Tools/rgb-lib-python
+-[BDK](https://github.com/bitcoindevkit)
