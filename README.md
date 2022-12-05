@@ -1,4 +1,5 @@
-# LightningWallet1
+# LightningWallet1 :zap: 
+
 Wallet to Bitcoin, Lightning Network and RGB
 
 # To-Do
