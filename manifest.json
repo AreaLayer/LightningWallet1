@@ -1,0 +1,5 @@
+{
+  "name": "Lightning Wallet",
+  "description": "Lightning wallet",
+  "repository": "https://github.com/Layer2Labs/LightningWallet1",
+  "keywords": ["wallet", "lightning", "bitcoin", "rgb"],
