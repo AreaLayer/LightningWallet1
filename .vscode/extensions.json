@@ -1,8 +1,8 @@
-
 {
-  "recommendations": [
-    "matklad.rust-analyzer",
-    "tamasfe.even-better-toml",
-    "serayuzgur.crates",
-    "wayou.vscode-todo-highlight"
-  ]
+   "recommendations":[
+      "matklad.rust-analyzer",
+      "tamasfe.even-better-toml",
+      "serayuzgur.crates",
+      "wayou.vscode-todo-highlight"
+   ]
+}
