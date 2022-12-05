@@ -9,3 +9,4 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] Fees in 0.0005% per transaction between tokens, lightning and Bitcoin 
 - [ ] UI
 - [ ] Atomic Swap with Portico Exchange
+- [ ] Add own Node Bitcoin/Lightnig 
