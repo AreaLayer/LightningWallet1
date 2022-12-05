@@ -11,3 +11,9 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] UI
 - [ ] Atomic Swap with Portico Exchange
 - [ ] Add own Node Bitcoin/Lightning
+
+# Product
+
+The product is in developement 
+
+-Based on RGB Protocol, LDK and BDK
