@@ -8,3 +8,4 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] Mainnet
 - [ ] Fees
 - [ ] UI
+- [ ] Atomic Swap with Portico Exchange
