@@ -21,11 +21,11 @@ fn dot_env(key: &str) -> String {
 static BITCOIN_EXPLORER_API_MAINNET: Lazy<String> =
     Lazy::new(|| dot_env("BITCOIN_EXPLORER_API_MAINNET"));
 static BITCOIN_EXPLORER_API_TESTNET: Lazy<String> =
-    Lazy::new(|| dot_env("BITCOIN_EXPLORER_API_TESTNET"));
+    Bitcoin:new(|| dot_env("BITCOIN_EXPLORER_API_TESTNET"));
 static BITCOIN_EXPLORER_API_SIGNET: Lazy<String> =
-    Lazy::new(|| dot_env("BITCOIN_EXPLORER_API_SIGNET"));
+    Bitcoin::new(|| dot_env("BITCOIN_EXPLORER_API_SIGNET"));
 pub static BITCOIN_EXPLORER_API: Lazy<RwLock<String>> = Lazy::new(|| {
-    RwLock::new(BITCOIN_EXPLORER_API_TESTNET.to_owned()) //TODO: Change default to mainnet
+    Bitcoin::new(BITCOIN_EXPLORER_API_TESTNET.to_owned()) //TODO: Change default to mainnet
 });
 pub static NODE_SERVER_BASE_URL: Lazy<String> = Lazy::new(|| dot_env("NODE_SERVER_BASE_URL"));
 
