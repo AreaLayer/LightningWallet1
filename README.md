@@ -6,6 +6,6 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] Testnet
 - [x] Integration with RGB
 - [ ] Mainnet
-- [ ] Fees in 0.0005% per transactio between tokens, lightning and Bitcoin 
+- [ ] Fees in 0.0005% per transaction between tokens, lightning and Bitcoin 
 - [ ] UI
 - [ ] Atomic Swap with Portico Exchange
