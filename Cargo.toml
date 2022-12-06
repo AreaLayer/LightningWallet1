@@ -1,5 +1,5 @@
 [package]
-name = "Lightning Wallet
+name = "Lightning Wallet"
 version = "1.0.0"
 
 [dependencies]
