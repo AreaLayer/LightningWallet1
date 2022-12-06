@@ -1,0 +1,11 @@
+[[package]]
+name = "Lightning Wallet"
+version = "1.0.0"
+dependencies = [
+ "regex 1.5.0 (https://github.com/Layer2Lab/LightningWallet1)",
+]
+
+[[package]]
+name = "Lightning Wallet"
+version = "1.0.0"
+source = "https://github.com/Layer2Labs/LightningWallet1"
