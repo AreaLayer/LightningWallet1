@@ -172,3 +172,8 @@ enum OutboundHTLCState {
 enum OutboundHTLCOutcome {
 	Success(Option<PaymentPreimage>),
 	Failure(HTLCFailReason)
+
+#[derive(Clone)]
+enum invoice {
+	Success (Option<Invoice>),
+	Failure (InvoiceFail)
