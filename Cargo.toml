@@ -1,0 +1,7 @@
+[package]
+name = "Lightning Wallet
+version = "1.0.0"
+
+[dependencies]
+regex = { git = "https://github.com/Layer2Labs/LightningWallet1.git }
+
