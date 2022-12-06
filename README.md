@@ -5,7 +5,7 @@ Wallet to Bitcoin, Lightning Network and RGB
 # To-Do
 
 - [ ] Testnet
-- [x] Integration with RGB
+- [x] Integration with RGB and Lightning Network
 - [ ] Mainnet
 - [ ] Fees in 0.0005% per transaction between tokens, lightning and Bitcoin 
 - [ ] UI
