@@ -34,6 +34,13 @@
     "MAX_PARALLEL_SWAPS": {
       "description": "Max parallel swaps",
       "value": "3"
+      
+{
+  "scripts": {
+    "build": "rollup -c",
+    "start": "rollup -c -w"
+  }
+}
     }
   }
 }
