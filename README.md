@@ -11,6 +11,7 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] UI
 - [ ] Atomic Swap with Portico Exchange
 - [ ] Add own Node Bitcoin/Lightning
+- [ ] RGB Proxy
 
 # Product
 
