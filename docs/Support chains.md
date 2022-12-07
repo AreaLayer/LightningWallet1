@@ -19,3 +19,5 @@ Using:
 -[LDK](https://github.com/lightningdevkit)
 
 -[BDK](https://github.com/bitcoindevkit)
+
+-[RGB Proxy](https://github.com/grunch/rgb-proxy-server)
