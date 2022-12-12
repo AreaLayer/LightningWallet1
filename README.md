@@ -12,9 +12,10 @@ Wallet to Bitcoin, Lightning Network and RGB
 - [ ] Atomic Swap with Portico Exchange
 - [ ] Add own Node Bitcoin/Lightning
 - [ ] RGB Proxy
+- [ ] DLCs for Nodes on Wallet
 
 # Product
 
 The product is in developement 
 
--Based on RGB Protocol, LDK and BDK
+-Based on RGB Protocol, LDK, BDK, DLCs and RGB Proxy
